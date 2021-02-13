@@ -33,6 +33,7 @@ else
   sudo tar czvf ~/$TS.tar.gz /usr/local/frostybot-js  > /dev/null 2>&1
   mkdir -p "/tmp/$TS"
   sudo cp ./database/database.* /tmp/$TS/
+  sudo cp ./.dbcfg /tmp/$TS/
   sudo cp ./.port /tmp/$TS/
   sudo cp ./.proxy /tmp/$TS/
   echo "Updating Frostybot files from Github"
@@ -40,6 +41,7 @@ else
   sudo git stash 
   sudo git pull -f
   sudo cp -f /tmp/$TS/database.* database/
+  sudo cp -f /tmp/$TS/.dbcfg ./.dbcfg
   sudo cp -f /tmp/$TS/.port ./.port
   sudo cp -f /tmp/$TS/.proxy ./.proxy
   ./scripts/dbupgrade
