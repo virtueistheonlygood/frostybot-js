@@ -142,6 +142,31 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return this.render_page(res, "pages/register", { pageTitle: 'Register', recaptchasite: recaptchasite });
     }
 
+    // Get Data
+
+    async data(params) {
+        var [res, req] = this.extract_request(params);
+        var params = {...req.params, ...req.query};
+        var token = params.hasOwnProperty('token') ? params.token : false;
+        var uuid = token != false ? token.uuid : false;
+        if (uuid == false) {
+            return res.send(false);
+        } else {
+            context.set('uuid', uuid);
+            if (params.hasOwnProperty('key')) {
+                var key = params.key;
+                var result = false;
+                var contentfunc = 'data_' + key.toLowerCase()
+                if (typeof( this[contentfunc] ) == 'function') {
+                    var result = await this[contentfunc](params);
+                }
+                return res.send(result);   
+            } else {
+                return res.send(false);
+            }
+        }
+    }
+
     // Get Content
 
     async content(params) {
@@ -271,6 +296,52 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             }
         }
         return config;
+    }
+
+    // Positions Tab
+
+    async content_tab_positions(params) {
+        var config = this.accounts.get();
+        return config;
+    }
+
+    // Positions Table
+
+    async content_table_positions(params) {
+        /*
+        var stub = params.stub;
+        let positions = this.data_griddata_positions(params)
+        var config = {
+            stub: stub,
+            positions: positions
+        }*/
+        return {} //config;
+    }
+
+    // Position Grid Data
+
+    async data_griddata_positions(params) {
+        var stub = params.stub;
+        var classes = require('./mod.classes');
+        var exchange = new classes.exchange(stub);
+        var positions = await exchange.execute('positions');
+        var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1);
+        for (var i =0; i < positions.length; i++) {
+            var position = positions[i];
+            position.actions = '<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
+        }
+        return positions;
+    }
+
+
+    // Log Viewer
+
+    async content_tab_logs(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        if (uuid !== false) {
+            return {uuid : uuid};
+        }
+        return {};
     }
 
     // Logout

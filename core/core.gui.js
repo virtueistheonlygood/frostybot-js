@@ -11,8 +11,8 @@ module.exports = {
         'get|/'                          :  'gui:main',             // Main GUI Loader
         'get|/register'                  :  'gui:register',         // Register User
         'get|/login'                     :  'gui:login',            // Login Page
-        //'get|/auth_callback'             :  'gui:auth_callback',    // OAuth Login Callback
-        'get|/content/:key'             :  'gui:content',           // Get Content
+        'get|/content/:key'              :  'gui:content',          // Get Content
+        'get|/data/:key'                 :  'gui:data',             // Get Data
 
     },
 

@@ -94,6 +94,7 @@ const api_methods = {
         'auth_callback',
         'verify_recaptcha',
         'content',
+        'data',
     ],
 
     signals: [
@@ -151,12 +152,18 @@ module.exports = class frostybot_core_module extends frostybot_module {
             'gui:content',
             'user:register',
             'user:login',
+            'signals:send',
         ]
 
+        //console.log({isgui: isgui, isapi : isapi, localhost: localhost, param_uuid: param_uuid, multiuser: multiuser, token_uuid: token_uuid, verified: verified})
 
         if (!localhost && isapi && multiuser && param_uuid == null && !all_ip_allowed.includes(command)) {
             await this.output.error('required_param', ['uuid']);
             return false;
+        }
+
+        if (isgui && all_ip_allowed.includes(command)) {
+            return true;
         }
 
         if (isgui && !verified) {
@@ -195,6 +202,13 @@ module.exports = class frostybot_core_module extends frostybot_module {
         if (isapi && !multiuser && param_uuid == null) {
             uuid = core_uuid;
             this.output.debug('access_api_core')
+            context.set('uuid', uuid);
+            return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
+        }
+
+        if (isapi && !multiuser && param_uuid != null) {
+            uuid = param_uuid;
+            this.output.debug('access_api_uuid')
             context.set('uuid', uuid);
             return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
         }
