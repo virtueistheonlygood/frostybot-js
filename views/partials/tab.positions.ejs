@@ -1,0 +1,44 @@
+<%
+
+if (typeof(tab_positions) !== 'undefined') {
+  var accounts = Object.values(tab_positions);
+  var stubs = [];
+  accounts.forEach(account => {
+    stubs.push(account.stub);
+  })
+} else {
+  var stubs = [];
+}
+
+%>
+
+<div class="frostybot-panel-header">
+  <div class="row">
+    <div class="col "><p class="m-0" id="positionstitle">Positions</p></div>
+    <div class="col text-right">
+      <div class="float-right" id="positionsnavbar" style="width: 500px; vertical-align: middle;">
+        <span>
+          <select id="positionsstub" style="width: 200px; display: inline-block; font-weight: normal">
+            <%
+              stubs.forEach(stub => {
+            %>
+                <option value="<%= stub %>"><%= stub %></option>
+            <%
+              });
+            %>
+          </select>  
+        </span>
+        <span>
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsclosealllink" style="margin-bottom: 20px; width: 100px; color: red"><span class="fa fa-close"></span> Close All</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="frostybot-panel-content">
+  <div id="table_positions">
+    <div style="margin-bottom: 10px;">Loading...</div>
+  </div>
+</div>
+

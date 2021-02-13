@@ -71,6 +71,41 @@ $( document ).ready(function() {
             return data;
     }
 
+
+    // --------------------------------------------------------------------------------------
+    //  Websocket Client
+    // --------------------------------------------------------------------------------------
+
+    /*
+
+    var wsserver = window.location.hostname;
+    var ws = new WebSockets_Callback({
+        verbose: true, 
+        asElectron: false, 
+        asClient: true, 
+        address: wsserver,
+        //port: 6969
+    });
+
+    ws.options.onUnexpectedMessage = function(conn, msg){
+        console.log('Client sent a responseless message: ' + msg)
+    }    
+
+    ws.on('id', function(msg, respondWith) {
+        console.log('Server said:')
+        console.log(msg)
+        respondWith({msg: 'ACK'});
+    })
+
+    function wsAuth(token) {
+
+        ws.send({cmd: 'auth', token: token}, function(response){
+            console.log(response);
+        });
+    }
+
+    */
+
     // ---------------------------------------------------------
     //   AJAX Loading Icon
     // ---------------------------------------------------------
@@ -303,8 +338,10 @@ $( document ).ready(function() {
         api('user:login', data, function(json) {
             if (json.result == "success") {
                 var token = json.data;
+                var uuid = token.uuid;
                 if(localStorage)
                     localStorage.setItem("token", JSON.stringify(token));
+                //wsAuth(token);
                 loadPage('/ui');
             } else {
                 showError("Login failed. Please check your credentials and try again.", 5000)
@@ -626,6 +663,42 @@ $( document ).ready(function() {
 
     }
 
+    // ---------------------------------------------------------
+    //   Positions Tab
+    // ---------------------------------------------------------
+
+    contentHooks['tab_positions'] = function() {
+
+        $("#positionsstub").jqxDropDownList({height: 30, width: 200});
+        $("#positionsrefreshlink").on('click', function() {
+            $('#table_positions').html('<div style="margin-bottom: 10px;">Loading...</div>');
+            updateContent('table_positions');
+        });
+       
+        $("#positionsstub").on('change', function() {
+            $('#table_positions').html('<div style="margin-bottom: 10px;">Loading...</div>');
+            updateContent('table_positions');
+        });
+
+        updateContent('table_positions');
+        
+        $("#positionsclosealllink").on('click', function() {
+            var stub = $("#positionsstub").val();
+            if (confirm('Are you sure you want to close all positions on ' + stub + '?')) {
+                api('trade:closeall', { stub: stub }, function(json) {
+                    if (json.result == "success") {
+                        showSuccess('All positions closed successfully');
+                        updateContent('table_positions');
+                    } else {
+                        showFail('Failed to close all positions')
+                    }
+                });      
+            }
+        });
+     
+
+    }
+
 
     // ---------------------------------------------------------
     //   Security Tab : Change Password Form
@@ -723,13 +796,16 @@ $( document ).ready(function() {
     //   Log Viewer
     // ---------------------------------------------------------
 
+    contentHooks['tab_logviewer'] = function() {
+
+    }
 
     // ---------------------------------------------------------
     //   Logout 
     // ---------------------------------------------------------
 
 
-    contentHooks['tab_logout'] - function() {
+    contentHooks['tab_logout'] = function() {
 
     }
     
