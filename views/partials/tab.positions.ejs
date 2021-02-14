@@ -99,7 +99,7 @@ if (typeof(tab_positions) !== 'undefined') {
 
       function refreshCache(stub = null) {
         if (stub == null)
-        stub = $("#positionsstub").val();
+          stub = $("#positionsstub").val();
         var token = null;
         if (localStorage) {
           var token = localStorage.getItem("token");
@@ -108,6 +108,7 @@ if (typeof(tab_positions) !== 'undefined') {
               token: JSON.parse(token),
               stub: stub
             };
+            setGridData([]);
             jQuery.getJSON({
               url: "/ui/data/griddata_positions",
               data: params,
