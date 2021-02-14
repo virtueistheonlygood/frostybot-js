@@ -58,6 +58,14 @@ module.exports = class frostybot_queue_module extends frostybot_module {
         });
     }
 
+    // Get queue contents
+
+    get(stub, symbol) {
+        var uuid = context.get('reqId')
+        this.create(stub, symbol)
+        return this.queue[uuid][stub][symbol];
+    }
+
 
     // Process order queue (submit orders to the exchange)
 
@@ -73,31 +81,33 @@ module.exports = class frostybot_queue_module extends frostybot_module {
         }
         this.results[uuid][stub][symbol] = []
         var total = this.queue[uuid][stub][symbol].length;
-        var success = 0;
-        this.output.subsection('processing_queue', total);
-        this.output.notice('processing_queue', total); 
-        var exchange = new this.classes.exchange(stub);
-        for (const order of this.queue[uuid][stub][symbol]) {
-            let result = await exchange.execute('create_order', order);
-            if (result.result == 'success') {
-                success++;
-                this.output.success('order_submit', { ...{stub: stub}, ...order}); 
-            } else {
-                //output.set_exitcode(-1);
-                var message = result.error.type + ': ' + (this.utils.is_object(result.error.message) ? this.utils.serialize_object(result.error.message) : result.error.message);
-                var params = this.utils.serialize(result.params);
-                var info = message + ': ' + params;
-                this.output.error('order_submit', { ...{error: result.error}, ...{stub: stub}, ...order} ); 
+        if (total > 0) { 
+            var success = 0;
+            this.output.subsection('processing_queue', total);
+            this.output.notice('processing_queue', total); 
+            var exchange = new this.classes.exchange(stub);
+            for (const order of this.queue[uuid][stub][symbol]) {
+                let result = await exchange.execute('create_order', order);
+                if (result.result == 'success') {
+                    success++;
+                    this.output.success('order_submit', { ...{stub: stub}, ...order}); 
+                } else {
+                    //output.set_exitcode(-1);
+                    var message = result.error.type + ': ' + (this.utils.is_object(result.error.message) ? this.utils.serialize_object(result.error.message) : result.error.message);
+                    var params = this.utils.serialize(result.params);
+                    var info = message + ': ' + params;
+                    this.output.error('order_submit', { ...{error: result.error}, ...{stub: stub}, ...order} ); 
+                }
+                this.results[uuid][stub][symbol].push(result);
+            };
+            var results = this.results[uuid][stub][symbol];
+            this.output.notice('processed_queue', [success, total]);   
+            this.clear(stub, symbol);
+            if (success == 0) {
+                return false;
             }
-            this.results[uuid][stub][symbol].push(result);
-        };
-        var results = this.results[uuid][stub][symbol];
-        this.output.notice('processed_queue', [success, total]);   
-        this.clear(stub, symbol);
-        if (success == 0) {
-            return false;
-        }
-        return results;
+            return results;
+        } else return true;
     }
 
 

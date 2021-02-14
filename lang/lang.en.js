@@ -29,11 +29,12 @@ module.exports = {
         context_uuid:       'Context: {0}',
         trade_cmd_shortcut: 'Converting command shortcut \'{0}:{1}\' to \'trade:{0}:{1}\'',
         loaded_module:      'Loaded module: {0}',
+        source_ip:          'Connection from remote IP: {0}',
         whitelist_verify:   'API Access Granted: {0} is whitelisted: {0}',
         whitelist_get:      'Retrieved IP address from the whitelist: {0}: {1}',
         tvsymbolmap_map:    'TradingView syminfo.tickerid mapping: {0}: {1} => {2}',
         symbolmap_get:      'Retrieved symbol mapping: {0}: {1} => {2}',
-        convert_rel_price:  'Converted relative price: {0} => {1}',
+        convert_rel_price:  'Converted relative price: {0}{1} => {2}',
         convert_size_usd:   'Size provided in USD on a stablecoin-paired asset. Using USD size as quote size.',
         convert_size_pair:  'Size provided in USD, using the following pairs for conversion: {0}',
         exchange_size_base: 'Exchange uses base sizing. Order size converted to {0}',
@@ -55,6 +56,8 @@ module.exports = {
         access_local_core:  'Access granted on localhost using core uuid',
         access_gui_token:   'Access granted using verified token',
         access_api_core:    'Access granted on API using core uuid',
+        signal_exec_result: 'Result of signal execution: {0}',
+        potential_position: 'Current position and open orders calculated to potential position: {0}',
     },
 
     notice: {
@@ -69,6 +72,8 @@ module.exports = {
         order_sizing_cur:   'Current position {0} size is: {1} {2}',
         order_sizing_tar:   'Target position {0} size is:  {1} {2}',
         order_sizing_ord:   'Order required to reach target: {0} {1} {2}',
+        order_cancel:       'Successfully cancelled order {0}',
+        orders_cancel:      '{0} Order(s) cancelled',
         order_queued:       'Order added to queue: {0}',
         symbol_mapping:     'Using symbol mapping: {0}: {1} => {2}',
         tvsymbolmap_map:    'TradingView syminfo.tickerid mapping: {0}: {1} => {2}',
@@ -77,6 +82,7 @@ module.exports = {
         whitelist_verify:   'API Access Granted: {0} is whitelisted',
         database_type:      'Database Type:  {0}',
         database_name:      'Database Name:  {0}',
+        position_nopotential:'No open positions or orders on {0}',
 
     },
 
@@ -188,7 +194,7 @@ module.exports = {
         invalid_provider:    'Invalid provider UUID: {0}',
         invalid_user:        'Invalid user UUID: {0}',
         exch_not_supported:  'Signal provider does not support exchange: {0}',
-        no_accounts:         'No {1} accounts configured for provider: {0}',
+        no_accounts:         'No {0} accounts configured: Provider: {1}, User: {2}',
         
     },
 
@@ -213,8 +219,6 @@ module.exports = {
 
         order_submit:       'Order submitted successfully: {0}',
         orders_retrieve:    '{0} Order(s) retrieved',
-        order_cancel:       'Successfully cancelled order {0}',
-        orders_cancel:      '{0} Order(s) cancelled',
 
         position_retrieve:  'Successfully retrieved position on {0}',
         positions_retrieve: '{0} Positions(s) retrieved',
@@ -245,7 +249,7 @@ module.exports = {
         add_provider_ip:     'Successfully whitelisted IP {1} for signal provider: {0}',
         del_provider_exch:   'Successfully removed {1} exchange from signal provider: {0}',
         del_provider_ip:     'Successfully removed whitelisted IP {1} from signal provider: {0}',
-        signal_queued:       'Signal Queued: {0}: {1}',
+        signal_queued:       'Signal Queued: Provider: {0}, User: {1}',
 
     }
     

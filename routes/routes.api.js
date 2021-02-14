@@ -50,15 +50,19 @@ Object.keys(api).forEach(baseapi => {
             const proxyfile = '../.proxy';
             try {
                 var proxy = fs.readFileSync(proxyfile, {encoding:'utf8', flag:'r'});
-                if (proxy == '') proxy = false;
+                if (proxy.trim() == '') 
+                    proxy = [];
+                else
+                    proxy = (proxy + ',').split(',').filter(val => val.trim() != '');
             } catch {
-                var proxy = false;
+                var proxy = [];
             }
+
+            var proxydetected = (Array.isArray(proxy) && proxy.includes(req.socket.remoteAddress)) ? true : false;
 
             // Get Source IP Address
 
-            var ip = ((proxy !== false ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
-            
+            var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
             var uuid = params.hasOwnProperty('uuid') ? params.uuid : (params.hasOwnProperty('body') && params.body.hasOwnProperty('uuid') ? params.body.uuid : null);
             var token = params.hasOwnProperty('token') ? params.token : (params.hasOwnProperty('body') && params.body.hasOwnProperty('token') ? params.body.token : null);
             if (command.command == 'output:status') {
