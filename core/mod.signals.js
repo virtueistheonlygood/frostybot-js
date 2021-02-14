@@ -2,6 +2,7 @@
 
 const frostybot_module = require('./mod.base')
 var context = require('express-http-context');
+const axios = require('axios')
 
 module.exports = class frostybot_signals_module extends frostybot_module {
 
@@ -284,53 +285,111 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         if (!(params = this.utils.validator(params, schema))) return false; 
 
-        var [provider_uuid, user_uuid, exchange, signal, symbol] = this.utils.extract_props(params, ['provider', 'user', 'exchange', 'signal', 'symbol']);
+        var [provider_uuid, user, exchange, signal, symbol] = this.utils.extract_props(params, ['provider', 'user', 'exchange', 'signal', 'symbol']);
 
-        var provider = await this.get_provider(provider_uuid);
-        var config = await this.get_user_config(user_uuid);
-        if (!provider)
-            return this.output.error('invalid_provider', [provider_uuid]);
-        
-        if (!provider.exchanges.includes(exchange))
-            return this.output.error('exch_not_supported', [exchange]);
+        var signalmap = {
+            'long'  : 'buy',
+            'short' : 'sell',
+        }
 
-        var accounts = await this.get_user_accounts(user_uuid);        
-        if (this.utils.is_array(accounts))
-            accounts = accounts
-                .filter(account => (account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '')) == exchange)
-                .filter(account => (Object.keys(config).includes(account.stub+':provider') && config[account.stub+':provider'] == provider_uuid))
-                .filter(account => (Object.keys(config).includes(account.stub+':defsize')));
-
-        if (accounts.length == 0)
-            return this.output.error('no_accounts', [provider_uuid, exchange]);
-
-        accounts.forEach(async account => {
-
-            var cmd = {
-                uuid: user_uuid,
-                command : 'trade:' + account.stub + ':' + signal,
-                symbol: symbol,
-            }
-
-            if (signal.toLowerCase() == 'close') {
-                cmd['cancelall'] = true;
-            }
-            /*
-            if (['long', 'short', 'buy', 'sell'].includes(signal)) {
-                cmd['size'] = config[account.stub+':defsize'];
-            }
-            */
-
-            var core = global.frostybot._modules_['core'];
-            core.execute_single(cmd, true);
+        signal = signalmap.hasOwnProperty(signal.toLowerCase()) ? signalmap[signal.toLowerCase()] : signal.toLowerCase();
     
-        });
+        if ((!Array.isArray(user)) && (typeof(user) == 'string')) {
+            var user = user.split(',');
+            var user = (!Array.isArray(user) ? [user] : user);
+        }
 
+        function onlyUnique(value, index, self) {
+            return self.indexOf(value) === index;
+        }
+
+        var user = user.filter(onlyUnique);
+
+        user.forEach(async (user_uuid) => {
+
+            var provider = await this.get_provider(provider_uuid);
+            var config = await this.get_user_config(user_uuid);
+            if (!provider)
+                return this.output.error('invalid_provider', [provider_uuid]);
+            
+            if (!provider.exchanges.includes(exchange))
+                return this.output.error('exch_not_supported', [exchange]);
+
+            var accounts = await this.get_user_accounts(user_uuid);        
+            if (this.utils.is_array(accounts))
+                accounts = accounts
+                    .filter(account => (account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '')) == exchange)
+                    .filter(account => (Object.keys(config).includes(account.stub+':provider') && config[account.stub+':provider'] == provider_uuid))
+                    .filter(account => (Object.keys(config).includes(account.stub+':defsize')));
+
+            if (accounts.length == 0) {
+
+                var data = {
+                    provider: provider_uuid,
+                    user: user_uuid,
+                    exchange: exchange,
+                    symbol: symbol,
+                    result: 0,
+                    message: 'No accounts configured for ' + exchange
+                }
+                this.database.insert('signals',data);
+                this.output.debug('signal_exec_result', [data]);
+                this.output.error('no_accounts', [exchange, provider_uuid, user_uuid]);
+
+            } else {
+
+                accounts.forEach(async account => {
+
+                    var stub = account.stub;
+
+                    var cmd = {
+                        uuid        : user_uuid,
+                        command     : 'trade:' + stub + ':' + signal,
+                        cancelall   : 'true',
+                        reduce      : 'true',
+                        symbol      : symbol,
+                        source      : { 
+                                        type: 'signal',
+                                        provider: provider_uuid,
+                                        signal: signal
+                                    }
+                    }
+
+                    // Create new request for the signal processing
+                    axios.post((global.loopback != undefined ? global.loopback : 'http://localhost') + '/frostybot',  cmd).then(function (response) {
+                        var result = response.data;
+                        var data = {
+                            provider: provider_uuid,
+                            user: user_uuid,
+                            exchange: exchange,
+                            stub: stub,
+                            symbol: symbol,
+                            signal: signal,
+                            result: result.result == 'error' ? 0 : 1,
+                            message: result.message != undefined ? result.message : ''
+                        }
+                        var database = global.frostybot._modules_['database'];
+                        var output = global.frostybot._modules_['output'];
+                        database.insert('signals',data);
+                        output.debug('signal_exec_result', [data]);
+                    })
+
+                    //var core = global.frostybot._modules_['core'];
+                    //core.execute_single(cmd, true);
+            
+                });
+
+                this.output.success('signal_queued', [provider_uuid, user_uuid]);
+                
+            }
+
+
+        });
 
         //if (!user)
         //    return this.output.error('invalid_user', [user_uuid]);
 
-        return this.output.success('signal_queued', [provider_uuid, user_uuid]);
+        return true;
 
     }
 

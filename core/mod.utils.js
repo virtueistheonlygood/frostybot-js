@@ -430,7 +430,9 @@ module.exports = class frostybot_utils_module extends frostybot_module {
     // Serialize a value for output to the log
 
     serialize(val) {
-        if (typeof val === 'string') return val;
+        if (this.is_bool(val)) return Boolean(val);
+        if (typeof(val) === 'string' && ['true', 'false'].includes(val.toLowerCase())) return Boolean(val);
+        if (typeof(val) === 'string') return val;
         if (this.is_numeric(val)) return String(val);
         if (this.is_numeric(val)) return String(val);
         if (this.is_object(val)) return this.serialize_object(val);

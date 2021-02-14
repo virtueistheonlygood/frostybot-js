@@ -134,6 +134,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
     async verify_access(ip, uuid, token, params) {
         var command = params != undefined && params.hasOwnProperty('body') && params.body.hasOwnProperty('command') ? params.body.command : null;
         context.set('srcIp', ip)
+        this.output.debug('source_ip', [ip]);
         var core_uuid = await this.encryption.core_uuid();
         var token_uuid = token != null && token.hasOwnProperty('uuid') ? token.uuid : null;
         var param_uuid = uuid;

@@ -32,17 +32,21 @@ try {
 } catch {
   var port = (process.env.FROSTYBOT_PORT || 80);
 }
+global['loopback'] = 'http://localhost:' + port.toString();
 app.set('port', port);
 fs.writeFileSync(portfile, port.toString())
 
 // Get Reverse Proxy Address 
 
-const proxyfile = __dirname + '/.proxy';
+const proxyfile = '../.proxy';
 try {
-  var proxy = fs.readFileSync(proxyfile, {encoding:'utf8', flag:'r'});
-  if (proxy == '') proxy = false;
+    var proxy = fs.readFileSync(proxyfile, {encoding:'utf8', flag:'r'});
+    if (proxy.trim() == '') 
+        proxy = [];
+    else
+        proxy = (proxy + ',').split(',').filter(val => val.trim() != '');
 } catch {
-  var proxy = false;
+    var proxy = [];
 }
 
 
@@ -70,7 +74,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(context.middleware);
 app.use(function(req, res, next) {
     context.set('reqId', uuidv4());
-    var ip = ((proxy !== false ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
+    var proxydetected = (Array.isArray(proxy) && proxy.includes(req.socket.remoteAddress)) ? true : false;
+    var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
     context.set('srcIp', ip);
     var reqId = context.get('reqId');
     next();

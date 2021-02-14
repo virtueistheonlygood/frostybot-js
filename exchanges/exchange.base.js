@@ -94,7 +94,7 @@ module.exports = class frostybot_exchange_base {
 
     // Execute method
 
-    async execute(method, params) {
+    async execute(method, params, nocache = false) {
         if (this.utils.is_empty(params)) {
             params = [];
         }
@@ -104,16 +104,16 @@ module.exports = class frostybot_exchange_base {
         await this.markets();
         var result = false;
         if (typeof(this[method]) == 'function') {
-            result = await this.normalizer(method, params);
+            result = await this.normalizer(method, params, nocache);
         } else {
-            result = await this.ccxt(method, params);
+            result = await this.ccxt(method, params, nocache);
         }
         return result;
     }
 
     // Cache Execute
 
-    async cache_exec(type, method, params = []) {
+    async cache_exec(type, method, params = [], nocache = false) {
         if (!this.utils.is_array(params)) params = [params];
         if (this.ccxtobj == undefined) await this.load_account();
         try {
@@ -122,7 +122,7 @@ module.exports = class frostybot_exchange_base {
             stat.start();
             var cachetime = this.interfaces.cache.hasOwnProperty(method) ? this.interfaces.cache[method] : null;
             var key = md5([this.shortname, this.stub, type, method, this.utils.serialize(params)].join('|'));
-            var value = cachetime == null ? undefined : this.cache.get( key );
+            var value = cachetime == null || nocache ? undefined : this.cache.get( key );
             if ( value == undefined ) {
                 var result = null;
                 switch (type) {
@@ -147,14 +147,14 @@ module.exports = class frostybot_exchange_base {
 
     // Normalizer Wrapper
 
-    async normalizer(method, params = []) {
-        return await this.cache_exec('normalizer', method, params);
+    async normalizer(method, params = [], nocache = false) {
+        return await this.cache_exec('normalizer', method, params, nocache);
     }
 
     // CCXT Wrapper
 
-    async ccxt(method, params = []) {
-        return await this.cache_exec('ccxt', method, params);
+    async ccxt(method, params = [], nocache = false) {
+        return await this.cache_exec('ccxt', method, params, nocache);
     }
 
     // Get market by ID
@@ -305,7 +305,6 @@ module.exports = class frostybot_exchange_base {
                     var price = this.get_usd_price(currency)
                     const balance = new this.classes.balance(currency, price, free, used, total);
                     if (total != 0) {
-                        console.log(balance)
                         balances.push(balance);
                     }
                 });
@@ -466,8 +465,19 @@ module.exports = class frostybot_exchange_base {
     // Cancel all orders
     
     async cancel_all(params) {
-        params.id = 'all';
-        return this.cancel(params);
+        if (params.type !== undefined) {
+            var orders = await this.open_orders(params);  
+            var results = [];
+            for (var i = 0; i < orders.length; i++) {
+                var order = orders[i];
+                var response = await this.cancel({symbol: params.symbol, id: order.id});
+                results.push(Array.isArray(response) ? response[0] : response);
+            }
+            return results;
+        } else {
+            params.id = 'all';
+            return this.cancel(params);
+        }
     }
     
     // Default leverage function (if not supported by exchange)

@@ -228,6 +228,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
     reset() {
         this.output_obj = {
             result: 'success',
+            message: null,
             type: null,
             data: null,
             stats: [],
@@ -340,6 +341,8 @@ module.exports = class frostybot_output_module extends frostybot_module {
                     'message': settings.noTrim === true ? message : message.replace(/\s+/g,' ').trim()
                 })    
             }
+            if (type == 'error' && this.output_obj.message == null) this.output_obj.message = message.replace(/\s+/g,' ').trim();
+            if (type == 'success' && this.output_obj.message == null) this.output_obj.message = message.replace(/\s+/g,' ').trim();
         }
         let dateobj = new Date(ts);
         let day = ("0" + dateobj.getDate()).slice(-2);
@@ -385,7 +388,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
             }
             if (global.hasOwnProperty('frostybot'))
                 if (global.frostybot.hasOwnProperty('wss'))
-                    global.frostybot.wss.emit('proxy', logentry)
+                    global.frostybot.wss.emit('log', logentry)
         }
 
         switch(type) {
@@ -454,7 +457,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     async parse(result) {
         this.add_data(result);
-        var output = new this.classes.output(...this.utils.extract_props(this.output_obj, ['command', 'params', 'result', 'type', 'data', 'stats', 'messages']));
+        var output = new this.classes.output(...this.utils.extract_props(this.output_obj, ['command', 'params', 'result', 'message', 'type', 'data', 'stats', 'messages']));
         this.reset();
         return await this.format_output(output);
     }
@@ -464,6 +467,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     async combine(results) {
         var result = '';
+        var message = '';
         var data = results;
         var type = 'frostybot_output[]';
         var stats = [];
@@ -472,9 +476,10 @@ module.exports = class frostybot_output_module extends frostybot_module {
             var output_result = results[i];
             if (output_result != undefined) {
                 result = (output_result.result == 'error' ? 'error' : (result == 'error' ? 'error' : 'success'));
+                message = (output_result.result == 'error' ? output_result.message : message);
             }
         }
-        var output = new this.classes.output('<multiple>', null, result, type, data, stats, messages);
+        var output = new this.classes.output('<multiple>', null, result, message, type, data, stats, messages);
         return await this.format_output(output);
     }
 

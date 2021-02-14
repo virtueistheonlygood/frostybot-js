@@ -11,18 +11,20 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         this.collateral_assets = ['USDT','BUSD'];    // Assets that are used for collateral
         this.balances_market_map = '{currency}USDT'  // Which market to use to convert non-USD balances to USD
         this.param_map = {                           // Order parameter mappings
-            limit             : 'LIMIT',
-            market            : 'MARKET',
-            stoploss_limit    : 'STOP',
-            stoploss_market   : 'STOP_MARKET',
-            takeprofit_limit  : 'TAKE_PROFIT', 
-            takeprofit_market : 'TAKE_PROFIT_MARKET',
-            trailing_stop     : 'TRAILING_STOP_MARKET', 
-            post              : null,                // TODO
-            reduce            : 'reduceOnly',
-            ioc               : null,                // TODO
-            tag               : null,                // TODO
-            trigger           : 'stopPrice',
+            limit              : 'LIMIT',
+            market             : 'MARKET',
+            stoploss_limit     : 'STOP',
+            stoploss_market    : 'STOP_MARKET',
+            takeprofit_limit   : 'TAKE_PROFIT', 
+            takeprofit_market  : 'TAKE_PROFIT_MARKET',
+            take_profit_limit  : 'TAKE_PROFIT', 
+            take_profit_market : 'TAKE_PROFIT_MARKET',
+            trailing_stop      : 'TRAILING_STOP_MARKET', 
+            post               : null,                // TODO
+            reduce             : 'reduceOnly',
+            ioc                : null,                // TODO
+            tag                : null,                // TODO
+            trigger            : 'stopPrice',
         };
     }
 
@@ -168,23 +170,26 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
 
     async cancel(params) {
         var [symbol, id] = this.utils.extract_props(params, ['symbol', 'id']);
-        var orders = await this.open_orders({symbol: symbol});
         if (id.toLowerCase() == 'all') {
+            var orders = await this.open_orders({symbol: symbol});
             let cancel = await this.ccxt('cancel_all_orders',[symbol]);
             orders.forEach((order, idx) => {
                 order.status = 'cancelled';
                 orders[idx] = order;
             })   
         } else {
-            orders = orders.filter(order => ['all',order.id].includes(id));
+            var id = order.id;
+            console.log(id);
+            let order = await this.ccxt('cancel_order',[{market: symbol, id: id}]);
+            console.log('Result: ' + order);
+            return order;
+/*            orders = orders.filter(order => ['all',order.id].includes(id));
             await orders.forEach(async (order) => {
-                var id = order.id;
-                let orders = await this.ccxt('cancel_order',[{market: symbol, id: id}]);
             });
             orders.forEach((order, idx) => {
                 order.status = 'cancelled';
                 orders[idx] = order;
-            })    
+            })   */
         }
         return orders;
     }
@@ -201,7 +206,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         const id = order.id;
         const timestamp = order.info.updateTime;
         const direction = order.side;
-        const trigger = (order.info.trailValue != undefined ? order.info.trailValue : (order.info.triggerPrice != undefined ? order.info.triggerPrice : null));
+        const trigger = (order.info.trailValue != undefined ? (order.info.trailValue * 1) : (order.info.triggerPrice != undefined ? (order.info.triggerPrice * 1) : ( order.info.stopPrice != undefined ? (order.info.stopPrice * 1) : null)));
         const market_price = (direction == 'buy' ? market.ask : market.bid);
         const price = (order.info.orderPrice != null ? order.info.orderPrice : (order.price != null ? order.price : (trigger != null ? trigger : (type == 'market' ? market_price : null))));
         const size_base = order.amount;
@@ -213,6 +218,8 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
             case 'stop'          :  type = (price != trigger ? 'stop_limit' : 'stop_market');
                                     break;
             case 'take_profit'   :  type = (price != trigger ? 'takeprofit_limit' : 'takeprofit_market');
+                                    break;
+            case 'take_profit_market'   :  type = 'takeprofit_market';
                                     break;
         }
         const status = order.status.replace('CANCELED', 'cancelled');   // Fix spelling error

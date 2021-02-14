@@ -175,17 +175,19 @@ class frostybot_order extends frostybot_base {
 // Output Object
 
 class frostybot_output extends frostybot_base {
-  constructor (command, params, result, type, data, stats, messages) {
+  constructor (command, params, result, message, type, data, stats, messages) {
     super ();
     this.command = command;
     this.params = params != null
       ? helper.censorProps (params, ['apikey', 'secret', 'password', 'oldpassword', 'newpassword'])
       : undefined;
     this.result = result;
+    this.message = message;
     this.type = type;
     this.data = data;
     this.stats = stats;
     this.messages = messages;
+    if (message == null) delete this.message;
   }
 }
 
