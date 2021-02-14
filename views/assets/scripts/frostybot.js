@@ -669,33 +669,6 @@ $( document ).ready(function() {
 
     contentHooks['tab_positions'] = function() {
 
-        $("#positionsstub").jqxDropDownList({height: 30, width: 200});
-        $("#positionsrefreshlink").on('click', function() {
-            $('#table_positions').html('<div style="margin-bottom: 10px;">Loading...</div>');
-            updateContent('table_positions');
-        });
-       
-        $("#positionsstub").on('change', function() {
-            $('#table_positions').html('<div style="margin-bottom: 10px;">Loading...</div>');
-            updateContent('table_positions');
-        });
-
-        updateContent('table_positions');
-        
-        $("#positionsclosealllink").on('click', function() {
-            var stub = $("#positionsstub").val();
-            if (confirm('Are you sure you want to close all positions on ' + stub + '?')) {
-                api('trade:closeall', { stub: stub }, function(json) {
-                    if (json.result == "success") {
-                        showSuccess('All positions closed successfully');
-                        updateContent('table_positions');
-                    } else {
-                        showFail('Failed to close all positions')
-                    }
-                });      
-            }
-        });
-     
 
     }
 

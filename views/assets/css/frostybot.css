@@ -76,10 +76,11 @@
 }
 
 .frostybot-panel-content {
-    padding-top: 10px;
+    /*padding-top: 10px;
     padding-left: 15px;
     padding-right: 15px;
-    padding-bottom: 0px;
+    padding-bottom: 0px;*/
+    /*padding: 10px !important;*/
     border-bottom-left-radius: 5px;
     border-bottom-right-radius: 5px;
 }
@@ -89,6 +90,7 @@
     border: solid 1px #c5c5c5;
     border-radius: 5x;
     padding: 0px;
+    margin: 0px;
 }
 
 .jqx-menu-item-top {
