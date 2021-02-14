@@ -8,13 +8,22 @@ function api(command, params, callback) {
     if (token != null) {
         params['token'] = token;
     }
-    $.post( "/frostybot", params)
-        .done(function( json ) {
-            callback(json);
-        })
-        .fail(function( jqxhr, textStatus, error ) {
-            var err = textStatus + ", " + error;
-        });
+    if (params.silent === true) {
+        var silent = true;
+        delete params.silent;
+    } else {
+        var silent = false;
+    }
+    $.ajax({
+        url: "/frostybot", 
+        data: params, 
+        method: 'POST',
+        global: (silent ? false : true)
+    }).done(function( json ) {
+        callback(json);
+    }).fail(function( jqxhr, textStatus, error ) {
+        var err = textStatus + ", " + error;
+    });
 }
 
 
