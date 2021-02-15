@@ -355,8 +355,11 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                                     }
                     }
 
+                    var url = await global.frostybot._modules_['core'].url();
+                    this.output.debug('loopback_url', [url]);
+
                     // Create new request for the signal processing
-                    axios.post((global.loopback != undefined ? global.loopback : 'http://localhost') + '/frostybot',  cmd).then(function (response) {
+                    axios.post(url + '/frostybot',  cmd).then(function (response) {
                         var result = response.data;
                         var data = {
                             provider: provider_uuid,
@@ -372,7 +375,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                         var output = global.frostybot._modules_['output'];
                         database.insert('signals',data);
                         output.debug('signal_exec_result', [data]);
-                    })
+                    });
 
                     //var core = global.frostybot._modules_['core'];
                     //core.execute_single(cmd, true);

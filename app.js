@@ -32,28 +32,20 @@ try {
 } catch {
   var port = (process.env.FROSTYBOT_PORT || 80);
 }
-global['loopback'] = 'http://localhost:' + port.toString();
 app.set('port', port);
 fs.writeFileSync(portfile, port.toString())
 
-// Get Reverse Proxy Address 
 
-const proxyfile = '../.proxy';
-try {
-    var proxy = fs.readFileSync(proxyfile, {encoding:'utf8', flag:'r'});
-    if (proxy.trim() == '') 
-        proxy = [];
-    else
-        proxy = (proxy + ',').split(',').filter(val => val.trim() != '');
-} catch {
-    var proxy = [];
-}
+// Reverse Proxy / Load Balancer Support
 
-
-// Trust reverse proxy if used
-// Only use this if you are configuring Frostybot behind a reverse proxy
-// Currently disabled to prevent source address spoofing using X-Forward-For headers
-// app.set('trust proxy', true); 
+app.set('trust proxy', function (ip) {
+  console.log(ip);
+  var proxies = global.frostybot._modules_['core'].get_proxies();
+  if (proxies !== false) {
+    if (proxies.includes[ip]) return true;
+  }
+  return false;
+});
 
 // Save raw buffer for command parsing
 
@@ -74,8 +66,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(context.middleware);
 app.use(function(req, res, next) {
     context.set('reqId', uuidv4());
-    var proxydetected = (Array.isArray(proxy) && proxy.includes(req.socket.remoteAddress)) ? true : false;
-    var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
+    var ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
     context.set('srcIp', ip);
     var reqId = context.get('reqId');
     next();
@@ -108,7 +99,7 @@ app.all('/', async function(req, res) {
 
 // Exception Handler
 app.use(function(err, req, res, next) {
-  res.send(500, err.message); // or whatever you want to send back
+  res.status(500).send(err.message);
 });
 
 

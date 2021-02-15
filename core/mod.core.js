@@ -3,6 +3,7 @@
 const fs = require('fs');
 var context = require('express-http-context');
 
+
 // Method exported to the API
 
 const api_methods = {
@@ -129,12 +130,53 @@ module.exports = class frostybot_core_module extends frostybot_module {
     initialize() {
     }
 
+    // Get proxies
+
+    async get_proxies() {
+        var proxy = await this.config.get('core:proxy', '');
+        return (proxy != '' ? proxy : '');
+    }
+
+    // Get port
+
+    async port() {
+        const portfile = (__dirname).replace('/core','') + '/.port';
+        var port = 80
+        try {
+          var port = fs.readFileSync(portfile, {encoding:'utf8', flag:'r'}) 
+        } catch {
+          var port = (process.env.FROSTYBOT_PORT || 80);
+        } 
+        return port;       
+    }
+
+    // Get loopback URL
+
+    async url() {
+        var port = await this.port();
+        var defval = 'http://localhost:' + port.toString();
+        var url = await this.config.get('core:url', defval);
+        return url;
+    }
+
+    // Get remote IP address
+
+    async remote_ip(req) {
+        var proxy = await this.get_proxies();
+        var proxies = proxy.split(',')
+        var proxydetected = (Array.isArray(proxies) && proxies.includes(req.socket.remoteAddress)) ? true : false;
+        var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
+        var url = "http://localhost:" + this.port();
+        context.set('loopbackURL', ip);
+        context.set('srcIp', ip);
+        this.output.debug('source_ip', [ip]);
+        return ip;
+    }
+
     // Verify if access is allowed using a valid token or whitelist
 
     async verify_access(ip, uuid, token, params) {
         var command = params != undefined && params.hasOwnProperty('body') && params.body.hasOwnProperty('command') ? params.body.command : null;
-        context.set('srcIp', ip)
-        this.output.debug('source_ip', [ip]);
         var core_uuid = await this.encryption.core_uuid();
         var token_uuid = token != null && token.hasOwnProperty('uuid') ? token.uuid : null;
         var param_uuid = uuid;
@@ -259,8 +301,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
         }
         return (commands.length == 1 ? commands[0] : commands);
     }
-
-
 
     // Parse Command Parameter Object
 

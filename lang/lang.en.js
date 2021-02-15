@@ -57,6 +57,7 @@ module.exports = {
         access_gui_token:   'Access granted using verified token',
         access_api_core:    'Access granted on API using core uuid',
         signal_exec_result: 'Result of signal execution: {0}',
+        loopback_url:       'URL Loopback: {0}',
         potential_position: 'Current position and open orders calculated to potential position: {0}',
     },
 
@@ -180,6 +181,7 @@ module.exports = {
         config_invalid_value:'Invalid value for {0} (Must be {1})',
         config_invalid_stub: 'Invalid stub supplied: {0}',
         config_invalid_symbol:'Invalid symbol supplied: {0}',
+        config_core_localonly:'Core settings can only be configured from locahost: {0}',
         config_set:          'Failed to configure setting: {0}: {1}',
 
         gui_enable:          'Failed to enable GUI',

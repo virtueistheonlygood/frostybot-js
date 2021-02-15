@@ -45,24 +45,10 @@ Object.keys(api).forEach(baseapi => {
                 body: {...command, ...req.params, ...req.query, ...body}
             }
             
-            // Get Reverse Proxy Address 
+            // Get Remote Address 
 
-            const proxyfile = '../.proxy';
-            try {
-                var proxy = fs.readFileSync(proxyfile, {encoding:'utf8', flag:'r'});
-                if (proxy.trim() == '') 
-                    proxy = [];
-                else
-                    proxy = (proxy + ',').split(',').filter(val => val.trim() != '');
-            } catch {
-                var proxy = [];
-            }
+            var ip = await global.frostybot._modules_['core'].remote_ip(req);
 
-            var proxydetected = (Array.isArray(proxy) && proxy.includes(req.socket.remoteAddress)) ? true : false;
-
-            // Get Source IP Address
-
-            var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
             var uuid = params.hasOwnProperty('uuid') ? params.uuid : (params.hasOwnProperty('body') && params.body.hasOwnProperty('uuid') ? params.body.uuid : null);
             var token = params.hasOwnProperty('token') ? params.token : (params.hasOwnProperty('body') && params.body.hasOwnProperty('token') ? params.body.token : null);
             if (command.command == 'output:status') {
