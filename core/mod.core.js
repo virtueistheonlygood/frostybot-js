@@ -168,7 +168,8 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
         var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
         context.set('srcIp', ip);
-        this.output.debug('source_ip', [ip]);
+        if (!proxies.includes(ip))
+            this.output.debug('source_ip', [ip]);
         return ip;
 
     }
