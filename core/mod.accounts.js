@@ -120,7 +120,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
 
         var schema = {
             stub: {        required: 'string', format: 'lowercase' },
-            exchange: {    required: 'string', format: 'lowercase', oneof: ['ftx', 'deribit', 'binance', 'binanceus', 'bitmex'] },
+            exchange: {    required: 'string', format: 'lowercase', oneof: ['ftx', 'ftxus', 'deribit', 'binance', 'binanceus', 'bitmex'] },
             description: { optional: 'string'  },
             apikey: {      required: 'string'  },
             secret: {      required: 'string'  },
@@ -233,10 +233,13 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
                 urls:       {},
             },   
         }
-        if ((result.exchange == 'ftx') && (subaccount != null)) {
-            result.parameters.headers = {
-                'FTX-SUBACCOUNT': subaccount
-            };
+        if (['ftx','ftxus'].includes(result.exchange)) {
+            result.parameters.hostname = result.exchange == 'ftx' ? 'ftx.com' : 'ftx.us';
+            if (subaccount != null) {
+                result.parameters.headers = {
+                    'FTX-SUBACCOUNT': subaccount
+                };
+            }
         }
         if (result.exchange == 'binance') {
             var type = (account.hasOwnProperty('type') ? account.type.replace('futures','future').replace('coinm','delivery') : 'future');
@@ -248,7 +251,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
                 };
             }
         }
-        const exchangeId = account.exchange;
+        const exchangeId = account.exchange.replace('ftxus','ftx');
         const exchangeClass = ccxtlib[exchangeId];
         const ccxtobj = new exchangeClass ();
         const ccxturls = ccxtobj.urls;
@@ -276,7 +279,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         const ccxtlib = require ('ccxt');
         var ccxtparams = await this.ccxtparams(account);
         const accountParams = ccxtparams.parameters;
-        const exchangeId = account.exchange;
+        const exchangeId = account.exchange.replace('ftxus','ftx');
         const exchangeClass = ccxtlib[exchangeId];
         const ccxtobj = new exchangeClass (accountParams);
         try {

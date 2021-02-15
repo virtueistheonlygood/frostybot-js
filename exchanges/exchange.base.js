@@ -68,9 +68,9 @@ module.exports = class frostybot_exchange_base {
         if (this.account) {
             this.shortname = await this.accounts.get_shortname_from_stub(this.stub);
             const accountParams = await this.accounts.ccxtparams(this.account);
-            const exchangeId = this.account.exchange
-            const exchangeClass = ccxtlib[exchangeId]
-            this.ccxtobj = new exchangeClass (accountParams.parameters)
+            const exchangeId = this.account.exchange.replace('ftxus','ftx');
+            const exchangeClass = ccxtlib[exchangeId];
+            this.ccxtobj = new exchangeClass (accountParams.parameters);
             this.ccxtobj.options.adjustForTimeDifference = true
             try {
                 await this.ccxtobj.loadMarkets();    

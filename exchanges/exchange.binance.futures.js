@@ -179,9 +179,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
             })   
         } else {
             var id = order.id;
-            console.log(id);
             let order = await this.ccxt('cancel_order',[{market: symbol, id: id}]);
-            console.log('Result: ' + order);
             return order;
 /*            orders = orders.filter(order => ['all',order.id].includes(id));
             await orders.forEach(async (order) => {
