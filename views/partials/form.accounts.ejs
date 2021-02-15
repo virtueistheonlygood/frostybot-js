@@ -50,6 +50,7 @@
                   if (!data.hasOwnProperty('stub')) {
                   %>
                     <option value="" disabled selected>Select Exchange...</option>
+                      <optgroup label="Binance">
                   <%
                   }
                   %>
@@ -57,28 +58,36 @@
                   <%
 
                     var exchanges = {
-                      deribit: "Deribit",
-                      ftx: "FTX",
-                      binance_spot: "Binance Spot",
-                      binance_futures: "Binance USDT Futures",
-                      binance_coinm: "Binance COIN-M Futures",
-                      binanceus: "Binance US",
-                      bitmex: "Bitmex",
-                      binance_spot: "Binance Spot",
+                      'Binance:binance_spot':     "Binance Spot",
+                      'Binance:binance_futures':  "Binance USDT Futures",
+                      'Binance:binance_coinm':    "Binance COIN-M Futures",
+                      'Binance:binanceus':        "Binance.US",
+                      'Bitmex:bitmex':            "Bitmex",
+                      'Deribit:deribit':          "Deribit",
+                      'FTX:ftx':                  "FTX",
+                      'FTX:ftxus':                "FTX.US",
                     };
 
+                    var optgroup = 'Binance';
                     for (const [exchange, description] of Object.entries(exchanges)) {
-                
+                        var [group, ex] = exchange.split(':');
+                        if (group != optgroup) {
+                          var optgroup = group;
+                          %>
+                            </optgroup>
+                            <optgroup label="<%= optgroup %>">
+                          <%
+                        }
                   %>
                   
-                  <option value="<%= exchange %>" <%= (exchange == data['exchange'] ? 'selected' : '') %>><%= description %></option>
+                          <option optgroup="<%= group %>" value="<%= ex %>" <%= (ex == data['exchange'] ? 'selected' : '') %>><%= description %></option>
                 
                   <%
 
                     }
 
                   %>
-
+                      </optgroup>
               </select>
             </div>
             <div class="col-sm-4" id="testnetfield">

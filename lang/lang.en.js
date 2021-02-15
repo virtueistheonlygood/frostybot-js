@@ -159,7 +159,7 @@ module.exports = {
         position_maxposqty: 'Maximum positions on {0} reached: {1} positions',
         position_ignoresym: 'Symbol {0} is on the ignore list for stub {1}',
 
-        balancess_retrieve: 'There was an error retrieving balances',
+        balances_retrieve:   'There was an error retrieving balances',
 
         market_retrieve:     'Could not retrieve market info for {0}',
         markets_retrieve:    'There was an error retrieving markets',

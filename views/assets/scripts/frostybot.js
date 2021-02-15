@@ -489,7 +489,7 @@ $( document ).ready(function() {
         // Dynamic Form Fields        
         function accountsFormDynamicFields() {
             var val = $( "#inputexchange").val();
-            if (['binanceus','ftx'].includes(val)) {
+            if (['binanceus','ftx','ftxus'].includes(val)) {
                 $( "#testnetfield" ).hide();
             } else {
                 $( "#testnetfield" ).show();
@@ -526,7 +526,7 @@ $( document ).ready(function() {
                 description: $("#inputdescription").val(),
             }
             var subaccount = $("#inputsubaccount").val();
-            if ((exchange == 'ftx') && (subaccount != ''))
+            if ((['ftx','ftxus'].includes(exchange)) && (subaccount != ''))
                 data['subaccount'] = subaccount; 
             if (type != undefined) data['type'] = type;
             api('accounts:add', data, function(json) {

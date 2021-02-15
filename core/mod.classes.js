@@ -34,19 +34,7 @@ class frostybot_balance extends frostybot_base {
 
 class frostybot_market extends frostybot_base {
   constructor (
-    id,
-    symbol,
-    type,
-    base,
-    quote,
-    bid,
-    ask,
-    expiration,
-    contract_size,
-    precision,
-    tvsymbol,
-    raw
-  ) {
+    id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw) {
     super ();
     this.id = id;
     this.symbol = symbol;
@@ -250,6 +238,9 @@ class frostybot_exchange extends frostybot_base {
         this.exchanges[exchange_id] = require ('../exchanges/exchange.' + exchange_id + (type != null ? '.' + type : ''));
         const exchange_class = this.exchanges[exchange_id];
         this.exhandler = new exchange_class (stub);
+        if (this.exhandler.hasOwnProperty('ccxtparams')) {
+          
+        }
         this.exhandler.interfaces.methods.forEach(method => this.load_method(method));
       }
     }
