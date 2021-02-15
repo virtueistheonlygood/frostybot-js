@@ -125,21 +125,7 @@ class frostybot_position_spot extends frostybot_position {
 // Order Object
 
 class frostybot_order extends frostybot_base {
-  constructor (
-    market,
-    id,
-    timestamp,
-    type,
-    direction,
-    price,
-    trigger,
-    size_base,
-    size_quote,
-    filled_base,
-    filled_quote,
-    status,
-    //raw = null
-  ) {
+  constructor (market, id, timestamp, type, direction, price, trigger, size_base, size_quote, filled_base, filled_quote, status, raw = null) {
     super ();
     this.symbol = market.symbol;
     this.id = id;

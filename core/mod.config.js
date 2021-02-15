@@ -2,8 +2,12 @@
 
 const frostybot_module = require('./mod.base')
 
+var context = require('express-http-context');
+
 const config_keys = {
     'dummy:unittest': 'string',                   // Dummy key for unit testing
+    'core:proxy': 'string',                       // Comma-separated list of proxies/load balances
+    'core:url': 'string',                         // The Base URL of this Frostybot (used for loopback requests) - Default: http://localhost
     'output:messages': 'oneof:none,brief,full',   // (none/brief/full) Include messages in result JSON object
     'output:debug': 'boolean',                    // (Boolean) Enable debug output
     'output:stats': 'boolean',                    // (Boolean) Enable debug output
@@ -39,6 +43,19 @@ module.exports = class frostybot_config_module extends frostybot_module {
         return await this.settings.get('config');
     }
 
+    // Split keyname into mainkey/subkey parts
+
+    splitkey(key) {
+        if (key.toLowerCase().indexOf('core:') != -1) {
+            var parts = key.split(':');
+            var mainkey = parts[0];
+            var subkey = parts.slice(1).join(':');
+        } else {
+            var mainkey = 'config';
+            var subkey = key;
+        }
+        return [mainkey, subkey];
+    }
 
     // Get config parameter
 
@@ -68,7 +85,8 @@ module.exports = class frostybot_config_module extends frostybot_module {
             var val = check[key];
             var validate = await this.validate_key(key);
             if (validate !== false) {
-                var val = await this.settings.get('config', key, null);
+                var [mainkey, subkey] = this.splitkey(key);
+                var val = await this.settings.get(mainkey, subkey, null);
                 if (val != null)
                     results[key] = this.utils.is_json(val) ? JSON.parse(val) : val;
                 else 
@@ -124,6 +142,19 @@ module.exports = class frostybot_config_module extends frostybot_module {
             }
         }
         return false;
+    }
+
+    // Validate core settings from localhost only
+
+    validatelocalonly(key) {
+        if (key.toLowerCase().indexOf('core:') != -1) {
+            var ip = context.get('srcIp');
+            if (!['127.0.0.1','::1'].includes(ip)) {
+                this.output.error('config_core_localonly', [key]);
+                return false;
+            }        
+        }
+        return true;
     }
 
     // Validate config key
@@ -228,12 +259,13 @@ module.exports = class frostybot_config_module extends frostybot_module {
             var key = check_keys[i].toLowerCase();
             var val = check[key];
             var validate = await this.validate(key, val);
-            if (validate !== false) {
+            if ((validate !== false) && (this.validatelocalonly(key))) {
+                var [mainkey, subkey] = this.splitkey(key);
                 if (val == null || val == '' || val == "null") { 
-                    await this.settings.delete('config', key);
+                    await this.settings.delete(mainkey, subkey);
                     results[key] = '(deleted)';
                 } else {
-                    if (await this.settings.set('config', key, val)) {
+                    if (await this.settings.set(mainkey, subkey, val)) {
                         this.output.success('config_set', [key, val])
                         results[key] = val;
                     } else {
@@ -255,7 +287,8 @@ module.exports = class frostybot_config_module extends frostybot_module {
     // Delete config parameter
 
     async delete(key) {
-        return await this.settings.delete('config', key.toLowerCase());
+        var [mainkey, subkey] = this.splitkey(key);
+        return await this.settings.delete(mainkey, subkey.toLowerCase());
     }
     
 };

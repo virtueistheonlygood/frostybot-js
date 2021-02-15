@@ -305,19 +305,6 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return config;
     }
 
-    // Positions Table
-
-    async content_table_positions(params) {
-        /*
-        var stub = params.stub;
-        let positions = this.data_griddata_positions(params)
-        var config = {
-            stub: stub,
-            positions: positions
-        }*/
-        return {} //config;
-    }
-
     // Position Grid Data
 
     async data_griddata_positions(params) {
@@ -333,6 +320,32 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return positions;
     }
 
+    // Orders Tab
+
+    async content_tab_orders(params) {
+        var config = this.accounts.get();
+        return config;
+    }
+
+    // Orders Grid Data
+
+    async data_griddata_orders(params) {
+        var filter = {
+            stub: params.stub
+        }
+        if (params.symbol !== undefined) filter['symbol'] = params.symbol;
+        if (params.status !== undefined) filter['status'] = params.status;
+        var stub = params.stub;
+        var classes = require('./mod.classes');
+        var exchange = new classes.exchange(stub);
+        var orders = await exchange.execute('orders', filter);
+        //var orders = (orders !== false ? orders : []).sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1);
+        for (var i =0; i < orders.length; i++) {
+            var order = orders[i];
+            order.actions = '';  //'<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
+        }
+        return orders;
+    }
 
     // Log Viewer
 
