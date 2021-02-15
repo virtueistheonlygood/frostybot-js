@@ -164,13 +164,13 @@ module.exports = class frostybot_core_module extends frostybot_module {
     async remote_ip(req) {
         var proxy = await this.get_proxies();
         var proxies = proxy.split(',')
-        var proxydetected = (Array.isArray(proxies) && proxies.includes(req.socket.remoteAddress)) ? true : false;
+        var remoteAddress = req.socket.remoteAddress.replace('::ffff:','').replace('::1, ','');
+        var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
         var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
-        var url = "http://localhost:" + this.port();
-        context.set('loopbackURL', ip);
         context.set('srcIp', ip);
         this.output.debug('source_ip', [ip]);
         return ip;
+
     }
 
     // Verify if access is allowed using a valid token or whitelist

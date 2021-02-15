@@ -161,7 +161,7 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
             return true;
         }
         this.output.notice('whitelist_disabled')
-        return result
+        return false
     }
 
     // Verify IP in whitelist
