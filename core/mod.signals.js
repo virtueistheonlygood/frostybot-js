@@ -54,8 +54,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         var providers = await this.settings.get('signalprovider');
         var result = {};
-        if (this.utils.is_array(providers)) {
-            providers.forEach(provider => {
+        var data = providers == null ? [] : (providers.hasOwnProperty('uuid') ? [providers] : Object.values(providers));
+        if (this.utils.is_array(data)) {
+            data.forEach(provider => {
                 result[provider.uuid] = provider;
             })
         } 
@@ -73,7 +74,6 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         var account = await this.accounts.get(stub);
         var result = [];
         account = account.hasOwnProperty(stub) ? account[stub] : account;
-
         if (account) {
             var exchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
             var providers = await this.get_providers();
