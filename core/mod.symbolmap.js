@@ -32,7 +32,7 @@ module.exports = class frostybot_symbolmap_module extends frostybot_module {
         var [exchange, symbol] = this.utils.extract_props(params, ['exchange', 'symbol']);
         var exchange = exchange.toLowerCase();
         var symbol = symbol != undefined ? symbol.toUpperCase() : null;
-        var result = (symbol == null ? await this.settings.get('symbolmap:' + exchange) : await this.settings.get('symbolmap:' + exchange, symbol, false));
+        var result = (symbol == null ? await this.settings.get('symbolmap:' + exchange) : await this.settings.get('symbolmap:' + exchange, symbol));
         if ((typeof result == 'string') && (symbol != null)) {
             var mapping = result;
             result = {};
