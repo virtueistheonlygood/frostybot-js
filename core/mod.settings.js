@@ -4,7 +4,7 @@ const frostybot_module = require('./mod.base')
 var context = require('express-http-context');
 md5 = require('md5');
 
-const global_keys = ['core', 'whitelist', 'signalprovider'];
+const global_keys = ['core', 'whitelist', 'signalprovider', 'symbolmap'];
 
 module.exports = class frostybot_settings_module extends frostybot_module {
 
@@ -17,7 +17,8 @@ module.exports = class frostybot_settings_module extends frostybot_module {
     // Get settings(s)
 
     async get(mainkey = null, subkey = null, defval = null) {
-        var uuid = global_keys.includes(mainkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
+        var globalkey = mainkey.indexOf(':') == -1 ? mainkey : mainkey.split(':')[0];
+        var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
         //if (result = this.cache.get(cachekey)) {
@@ -56,7 +57,8 @@ module.exports = class frostybot_settings_module extends frostybot_module {
     // Set Settings(s)
 
     async set(mainkey, subkey, value) {
-        var uuid = global_keys.includes(mainkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
+        var globalkey = mainkey.indexOf(':') == -1 ? mainkey : mainkey.split(':')[0];
+        var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
         //var query = this.database.type == 'mysql' ? { uuid: uuid } : {};
@@ -75,15 +77,16 @@ module.exports = class frostybot_settings_module extends frostybot_module {
             var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
             this.cache.set(cachekey, value, 60);
             return true;
-        }    
+        }
         return false;
     }
 
-    
+
     // Delete Settings(s)
 
     async delete(mainkey, subkey) {
-        var uuid = global_keys.includes(mainkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
+        var globalkey = mainkey.indexOf(':') == -1 ? mainkey : mainkey.split(':')[0];
+        var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
         this.cache.set(cachekey, undefined, 60);
@@ -93,7 +96,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var result = await this.database.delete('settings', query);
         if (result.changes > 0) {
             return true;
-        }    
+        }
         return false;
     }
 
