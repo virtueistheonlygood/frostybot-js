@@ -155,8 +155,8 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
     // Check if whitelist is enabled
 
     async is_enabled() {
-        var result = await this.settings.get('whitelist', 'enabled');
-        if ((result === null) || (result == true)) {
+        var result = await this.settings.get('whitelist', 'enabled', true);
+        if (result == true) {
             this.output.notice('whitelist_enabled')
             return true;
         }
@@ -167,9 +167,9 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
     // Verify IP in whitelist
 
     async verify(ip) {
-        if (this.utils.is_object(ip) && (ip.hasOwnProperty('ip') || ip.hasOwnProperty('ipaddress'))) 
-            ip = ip.ip != undefined ? ip.ip : ip.ipaddress;
-        if (this.is_enabled()) {
+        if (await this.is_enabled()) {
+            if (this.utils.is_object(ip) && (ip.hasOwnProperty('ip') || ip.hasOwnProperty('ipaddress')))
+              ip = ip.ip != undefined ? ip.ip : ip.ipaddress;
             var acl = await this.settings.get('whitelist', ip);
             if (acl) {
                 this.output.notice('whitelist_verify', ip);
@@ -177,10 +177,11 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
             }
             return this.output.error('whitelist_verify', ip);
         } else {
-            this.output.notice('whitelist_disabled')
+            //this.output.notice('whitelist_disabled')
             return true
         }
     }
+
 
 
 
