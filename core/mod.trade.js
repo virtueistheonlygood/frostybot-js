@@ -1362,7 +1362,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 if (this.is_relative(params.profittrigger)) {
                     params.profittrigger = this.get_relative_price(market, params.profittrigger, this.round_price(market,potential.price));
                 }
-                params['profit' + potential.sizing] = potential.amount;
+                params['profit' + potential.sizing] = (params.profitsize.indexOf('%') != '' ? potential.amount * ((params.profitsize.replace('%','') * 1) / 100) : potential.amount);
                 // Cancel existing TP orders
                 if (params.cancelall != undefined && String(params.cancelall) == 'true') {
                     await this.exchange[stub].execute('cancel_all', {symbol: symbol, type: 'takeprofit_limit'});
