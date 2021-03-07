@@ -164,6 +164,7 @@ $( document ).ready(function() {
 
     function loadPage(key) {
         document.location.href = key;
+        setTimeout(function () { updateContent('menu_main'); }, 2000);
     }
 
 
@@ -359,9 +360,9 @@ $( document ).ready(function() {
             grecaptcha.ready(function() {
                 grecaptcha.execute(recaptchasite, {action: 'login'}).then(function(response) {
                     api('gui:verify_recaptcha', {response: response}, function(json) {
-                        if (json.result == "success") 
+                        if (json.result == "success") {
                             submitLoginForm();
-                        else
+                        } else
                             showError('reCaptcha Failure');
                     });
                 });
@@ -371,33 +372,38 @@ $( document ).ready(function() {
 
 
     // ---------------------------------------------------------
-    //   Main Menu
+    //   Main Content
     // ---------------------------------------------------------
 
-    $(".frostybot-tab-main").each(function( index, element ) {
-        if (!$(this).is( "#tab_accounts")) {
-            $(this).hide();
-        }
-    });
+    contentHooks['menu_main'] = function() {
 
-    $('#mainmenu').on('itemclick', function (event) {
-        // get the clicked LI element.
-        var element = event.args;
-        var tab_id = $('#' + element.id).data('content');
         $(".frostybot-tab-main").each(function( index, element ) {
-            if ($(this).is( "#" + tab_id)) {
-                $(this).show();
-            } else {
+            if (!$(this).is( "#tab_accounts")) {
                 $(this).hide();
             }
         });
-        updateContent(tab_id, {}, function() {
-            $("#" + tab_id).show();
-            //if (tab_id == 'tab_accounts') {
-            //    updateContent('table_accounts', {});
-            //}
+
+        $('#mainmenu').on('itemclick', function (event) {
+            // get the clicked LI element.
+            var element = event.args;
+            var tab_id = $('#' + element.id).data('content');
+            $(".frostybot-tab-main").each(function( index, element ) {
+                if ($(this).is( "#" + tab_id)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+            updateContent(tab_id, {}, function() {
+                $("#" + tab_id).show();
+                //if (tab_id == 'tab_accounts') {
+                //    updateContent('table_accounts', {});
+                //}
+            });
         });
-    });
+
+    }
+
 
     // ---------------------------------------------------------
     //   Accounts Tab : Accounts Table
@@ -406,7 +412,7 @@ $( document ).ready(function() {
     updateContent('tab_accounts');
 
     // Accounts Tab Default Content
-    defaultContent['tab_accounts'] = ['table_accounts'];
+    defaultContent['tab_accounts'] = ['table_accounts', 'menu_main'];
 
     // Account Table Content Hooks
     contentHooks['table_accounts'] = function() {
@@ -564,6 +570,11 @@ $( document ).ready(function() {
         $( "#accountsnavbar" ).hide();
         $( "#form_config" ).show();
 
+        var formLoaded = false;
+        setTimeout(function() {
+            formLoaded = true;
+        }, 1000);
+
         // Set title
         $( "#accountstitle" ).html('Configuration Options');
 
@@ -635,21 +646,21 @@ $( document ).ready(function() {
         $( "#inputdefstoptrigger").on('change', function() {
             var stub = $( "#inputproviderstub" ).val();
             var val = $( "#inputdefstoptrigger" ).val();
-            update(stub + ':defstoptrigger', val);
+            if (formLoaded) update(stub + ':defstoptrigger', val);
         });
 
         // Default Take Profit Update
         $( "#inputdefprofittrigger").on("change", function() {
             var stub = $( "#inputproviderstub" ).val();
             var val = $( "#inputdefprofittrigger" ).val();
-            update(stub + ':defprofittrigger', val);
+            if (formLoaded) update(stub + ':defprofittrigger', val);
         });
 
         // Default Profit Size Update
         $( "#inputdefprofitsize").on("change", function() {
             var stub = $( "#inputproviderstub" ).val();
             var val = $( "#inputdefprofitsize" ).val();
-            update(stub + ':defprofitsize', val);
+            if (formLoaded) update(stub + ':defprofitsize', val);
         });
 
         // Cancel Button
