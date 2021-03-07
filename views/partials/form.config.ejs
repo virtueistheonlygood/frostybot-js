@@ -114,7 +114,8 @@ if (typeof(form_config) != undefined) {
             <div class="row mb-2 flex-nowrap">
               <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Stoploss</label>
               <div class="col">
-                <select  id="inputdefstoptrigger" class="">
+                <div  id="inputdefstoptrigger" class=""></div>
+                <!--select  id="inputdefstoptrigger" class="">
                   <option value=""></option>
                   <%
                     for (var i=1; i<=20; i++) {
@@ -123,14 +124,15 @@ if (typeof(form_config) != undefined) {
                   <%
                     }
                   %>
-                </select>
+                </select-->
               </div>
             </div>
       
             <div class="row mb-2 flex-nowrap">
               <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Take&nbsp;Profit</label>
               <div class="col">
-                <select id="inputdefprofittrigger" class="">
+                <div id="inputdefprofittrigger" class=""></div>
+                <!--select id="inputdefprofittrigger" class="">
                   <option value=""></option>
                   <%
                     for (var i=5; i<=100; i+=5) {
@@ -139,14 +141,15 @@ if (typeof(form_config) != undefined) {
                   <%
                     }
                   %>
-                </select>
+                </select-->
               </div>
             </div>
       
             <div class="row mb-2 flex-nowrap">
               <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Take Profit Size</label>
               <div class="col">
-                <select id="inputdefprofitsize" class="">
+                <div id="inputdefprofitsize" class=""></div>
+                <!--select id="inputdefprofitsize" class="">
                   <option value=""></option>
                   <%
                     for (var i=5; i<=100; i+=5) {
@@ -155,7 +158,7 @@ if (typeof(form_config) != undefined) {
                   <%
                     }
                   %>
-                </select>
+                </select-->
               </div>
             </div>
   
@@ -249,6 +252,19 @@ $(document).ready(function () {
   var stoptriggeradapter = new $.jqx.dataAdapter(stoptriggersource, {autoBind: true});
   var profittriggeradapter = new $.jqx.dataAdapter(profittriggersource, {autoBind: true});
   var profitsizeadapter = new $.jqx.dataAdapter(profitsizesource, {autoBind: true});
+
+
+  $('#inputdefstoptrigger').jqxComboBox({ source: stoptriggeradapter, displayMember: 'label', valueMember: 'value' });
+  var defstoptrigger = '<%= defstoptrigger %>';
+  $('#inputdefstoptrigger').val(defstoptrigger);
+
+  $('#inputdefprofittrigger').jqxComboBox({ source: profittriggeradapter, displayMember: 'label', valueMember: 'value' });
+  var defprofittrigger = '<%= defprofittrigger %>';
+  $('#inputdefprofittrigger').val(defprofittrigger);
+  
+  $('#inputdefprofitsize').jqxComboBox({ source: profitsizeadapter, displayMember: 'label', valueMember: 'value' });
+  var defprofitsize = '<%= defprofitsize %>';
+  $('#inputdefprofitsize').val(defprofitsize);
 
   var gridsource = {
     localdata: griddata,
