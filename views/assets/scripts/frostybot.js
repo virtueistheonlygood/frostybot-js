@@ -704,6 +704,10 @@ $( document ).ready(function() {
                 showError('New password and confirm password do not match');
                 return false;
             }
+            if (newpassword == "") {
+                showError('New password cannot be blank');
+                return false;
+            }
             var uuid = getUUID();
             var data = {
                 uuid: uuid,
