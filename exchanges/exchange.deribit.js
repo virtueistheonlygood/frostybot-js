@@ -65,7 +65,7 @@ module.exports = class frostybot_exchange_deribit extends frostybot_exchange_bas
                 var price = this.get_usd_price(currency)
                 const balance = new this.classes.balance(currency, price, free, used, total);
                 if (this.utils.is_object(balance)) {
-                    return Math.floor(balance.usd.free);
+                    return Math.floor(balance.usd.total);
                 }
             }    
         }

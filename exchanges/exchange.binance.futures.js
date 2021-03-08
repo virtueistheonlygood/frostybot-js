@@ -62,7 +62,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
     // Get available equity in USD for placing an order on a specific symbol using size as a factor of equity (size=1x)
 
     async available_equity_usd(symbol) {
-        return await this.free_balance_usd();
+        return await this.total_balance_usd();
     }
 
     // Get list of current positions
