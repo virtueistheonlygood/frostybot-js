@@ -111,12 +111,13 @@
 }
 
 .frostybot-nav-left {
-    width : 120px;
+    width : 90px;
 }
-
-#mainmen {
+/*
+#mainmenu {
     border: none !important;
 }
+*/
 
 .tab-content {
     background-color: #EEEEEE;

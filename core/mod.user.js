@@ -449,6 +449,28 @@ module.exports = class frostybot_user_module extends frostybot_module {
         }
     }
 
+    // Get User Log
+
+    async log(params) {
+
+        if (!params.hasOwnProperty('uuid'))
+            params.uuid = context.get('uuid');
+ 
+        var schema = {
+            uuid: {
+                required: 'string',
+            },
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        var uuid = params.uuid;
+        var result = await this.database.select('logs', {uuid: uuid}, 500);
+        if (result.length > 1) {
+            return result;
+        }  
+        return this.output.error('log_retrieve', [uuid]);  
+    }
   
 
 };
