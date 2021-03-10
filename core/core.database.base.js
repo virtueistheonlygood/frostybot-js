@@ -12,13 +12,13 @@ module.exports = class frostybot_database_base_module extends frostybot_module {
 
     // Select data from the database
 
-    async select(table, where = {}) {
+    async select(table, where = {}, limit = null) {
         var sql = '';
         var whereList = [];
         for (var key in where) {
             whereList.push("`" + key + "` = ?");
         }
-        var sql = "SELECT * FROM `" + table + "`" + (whereList.length > 0 ? " WHERE " + whereList.join(" AND ") : "") + ";";
+        var sql = (limit != null ? "SELECT * FROM (" : "") + "SELECT * FROM `" + table + "`" + (whereList.length > 0 ? " WHERE " + whereList.join(" AND ") : "") + (limit != null ? " ORDER BY uid DESC LIMIT " + limit + ") sub ORDER BY uid ASC" : "") + ";";
         return await this.query(sql, Object.values(where));
     }
 

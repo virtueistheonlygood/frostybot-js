@@ -10,6 +10,7 @@ module.exports = class frostybot_exchange_base {
     constructor(stub) {
         this.load_modules();
         this.data = {
+            symbols: [],
             markets: null,
             balances: null,
             markets_by_id: {},
@@ -41,6 +42,7 @@ module.exports = class frostybot_exchange_base {
                 'balances' : 5,
                 'position' : 2,
                 'market' : 60,
+                'symbols' : 300,
                 'fetch_markets' : 60,
                 'fetch_orders' : 5,
                 'fetch_open_orders' : 5,
@@ -196,16 +198,26 @@ module.exports = class frostybot_exchange_base {
         return null;
     }
 
+    // Get symbol list
+
+    async symbols() {
+        if (this.data.markets == null) {
+            await this.markets();
+        }
+        return this.data.symbols.sort((a, b) => (a > b) ? 1 : -1);
+    }
 
     // Index markets by ID and symbol
 
     async index_markets() {
         if (this.data.markets != null) {
+            this.data.symbols = [];
             this.data.markets_by_id = {};
             this.data.markets_by_symbol = {};
             this.data.markets.forEach(market => {
                 var id = market.id;
                 var symbol = market.symbol;
+                this.data.symbols.push(symbol);
                 this.data.markets_by_id[id] = market;
                 this.data.markets_by_symbol[symbol] = market;
             });

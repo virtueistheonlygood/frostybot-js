@@ -96,7 +96,11 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var [res, req] = this.extract_request(params);
         if (!(await this.gui_is_enabled()))
             return this.render_error(res, 'GUI is not enabled.');
-        return this.render_page(res, "pages/main", { pageTitle: 'Configuration' });
+        var is_provider_admin = false;
+        if (params.uuid != undefined) {
+            is_provider_admin = this.signals.is_provider_admin(uuid);
+        }
+        return this.render_page(res, "pages/main", { pageTitle: 'Configuration', providerAdmin: is_provider_admin });
         //} else {
         //    return this.render_page(res, "pages/main", { pageTitle: 'Configuration', uuid: uuid });
         //} 
@@ -193,6 +197,21 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                 return res.send({'error' : 'invalid_key'});
             }
         }
+    }
+
+    // Main Menu
+
+    async content_menu_main(params) {
+        var config = {
+            isSignalAdmin: false
+        };
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        if (uuid != null) {
+            if (await this.signals.is_signal_admin(uuid)) {
+                config['isSignalAdmin'] = true;
+            }
+        }
+        return config;
     }
 
     // 2FA Form
@@ -323,28 +342,61 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Orders Tab
 
     async content_tab_orders(params) {
-        var config = this.accounts.get();
+        var accounts = await this.accounts.get();
+        var stubs = Object.keys(accounts).sort((a, b) => (a > b) ? 1 : -1);
+        var stub = stubs[0];
+        var symbols = await this.data_symbols(stub);
+        var config = {
+            stubs: stubs,
+            symbols: symbols
+        }
         return config;
+    }
+
+    // Get symbols by account stub
+
+    async data_symbols(params) {
+        params = (typeof(params) == 'string' ? {stub: params} : params);
+        var stub = params.stub;
+        var classes = require('./mod.classes');
+        var exchange = new classes.exchange(stub);
+        var symbols = await exchange.execute('symbols', stub);
+        return symbols;
     }
 
     // Orders Grid Data
 
     async data_griddata_orders(params) {
         var filter = {
-            stub: params.stub
+            stub: params.stub,
+            symbol: params.symbol
         }
-        if (params.symbol !== undefined) filter['symbol'] = params.symbol;
         if (params.status !== undefined) filter['status'] = params.status;
         var stub = params.stub;
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
         var orders = await exchange.execute('orders', filter);
+        console.log(orders);
         //var orders = (orders !== false ? orders : []).sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1);
         for (var i =0; i < orders.length; i++) {
             var order = orders[i];
             order.actions = '';  //'<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
         }
         return orders;
+    }
+
+    // Signal Admin Tab
+
+    async content_tab_provider(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        var providers = false;
+        if (uuid !== false) {
+            var signaladmins = await this.signals.get_signal_admins();
+            console.log(signaladmins)
+            providers = signaladmins.hasOwnProperty(uuid) ? signaladmins[uuid] : false;
+        }
+        console.log(providers)
+        return {uuid : uuid, providers: providers};
     }
 
     // Log Viewer
@@ -355,6 +407,22 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             return {uuid : uuid};
         }
         return {};
+    }
+
+
+    // Log Data
+
+    async data_logdata(params) {
+        var log = [];
+        var result = await this.user.log(params);
+        if ((result !== false) && (result.length > 0)) {
+            for (var i = 0; i < result.length; i++) {
+                var entry = result[i];
+                console.log(entry)
+                log.push([entry.timestamp, entry.type.toUpperCase().padEnd(7, ' '), entry.message].join(' │ '));
+            }
+        }
+        return log;
     }
 
     // Logout

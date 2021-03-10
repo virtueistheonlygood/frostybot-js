@@ -18,6 +18,9 @@ if (typeof(tab_positions) !== 'undefined') {
     <div class="col text-right">
       <div class="float-right" id="positionsnavbar" style="width: 500px; vertical-align: middle; display: none;">
         <span>
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;"><span class="fa fa-columns"></span> Columns</button>
+        </span>
+        <span>
           <select id="positionsstub" style="width: 200px; display: inline-block; font-weight: normal; border-radius: 5px;">
             <%
               stubs.forEach(stub => {
@@ -158,12 +161,12 @@ if (typeof(tab_positions) !== 'undefined') {
   
       var positionsAdapter = new $.jqx.dataAdapter(positionsSource);
   
-      var gridheight = $(window).height() - 400;
-      if (gridheight < 326) gridheight = 326;
+      var gridheight = $(window).height() - 420;
+      if (gridheight < 300) gridheight = 300;
   
   
       $("#positionsgrid").jqxGrid({
-        width: 1070,
+        width: '100%',
         height: gridheight,
         source: positionsAdapter,
         columnsresize: true,
@@ -176,18 +179,19 @@ if (typeof(tab_positions) !== 'undefined') {
         rowsheight: 20,
         theme: 'dark',
         showemptyrow: false,
+        columnsmenu: true,
         columns: [
           { text: 'Symbol', datafield: 'symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
-          { text: 'Type', datafield: 'type', filtertype: 'checkedlist', width: 75 },
-          { text: 'Direction', datafield: 'direction', width: 80, cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" }  },
-          { text: 'Base Size', datafield: 'base_size', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
-          { text: 'Quote Size', datafield: 'quote_size', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
-          { text: 'USD Size', datafield: 'usd_size', width: 100, align: 'right', cellsalign: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>' + value +'</b></div>'; }); return renderstring; }, cellsformat: 'c2', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
-          { text: 'Entry Price', datafield: 'entry_price', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
-          { text: 'Mark Price', datafield: 'current_price', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
-          { text: 'Est Liq Price', datafield: 'liquidation_price', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
+          { text: 'Type', datafield: 'type', hideable: true, filtertype: 'checkedlist', width: 75 },
+          { text: 'Direction', datafield: 'direction', hideable: true, width: 80, cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" }  },
+          { text: 'Base Size', datafield: 'base_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
+          { text: 'Quote Size', datafield: 'quote_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
+          { text: 'USD Size', datafield: 'usd_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>' + value +'</b></div>'; }); return renderstring; }, cellsformat: 'c2', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
+          { text: 'Entry Price', datafield: 'entry_price', hideable: true, hidden: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
+          { text: 'Mark Price', datafield: 'current_price', hideable: true, hidden: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
+          { text: 'Est Liq Price', datafield: 'liquidation_price', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
           //{ text: 'Current Value ($)', datafield: 'usd_size', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return data.pnl < 0 ? "red" : "green" }, aggregates: ['sum'] },
-          { text: 'PNL', datafield: 'pnl', width: 100, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
+          { text: 'PNL', datafield: 'pnl', hideable: true, width: 100, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
           { text: 'Actions', datafield: 'actions', align: 'center', cellsalign: 'center', width: 75 },
         ]
       });
@@ -245,7 +249,10 @@ if (typeof(tab_positions) !== 'undefined') {
       getGridData(true);
       $('#positionsnavbar').show();
 
-
+      $("#columnchooser").jqxButton();
+      $("#columnchooser").on('click', function () {
+          $("#positionsgrid").jqxGrid('openColumnChooser');
+      });
   
     });
     

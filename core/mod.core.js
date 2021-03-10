@@ -78,7 +78,8 @@ const api_methods = {
         'add',
         'delete',
         'change_password',
-        'reset'
+        'reset',
+        'log',
     ],
 
     websocket: [
@@ -103,9 +104,12 @@ const api_methods = {
         'get_providers',
         'add_exchange',
         'remove_exchange',
+        'add_admin',
+        'remove_admin',
         'add_ip',
         'remove_ip',
         'send',
+        'is_provider_admin',
     ],
 
     output: [

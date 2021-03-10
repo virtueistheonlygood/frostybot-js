@@ -1,13 +1,23 @@
 <div id="mainmenu">
-    <ul>
-        <li data-content="tab_accounts"><a href="#">Accounts</a></li>
-        <li data-content="tab_positions"><a href="#">Positions</a></li>
-        <li data-content="tab_security"><a href="#">Security</a></li>
-        <!--li data-content="tab_logs"><a href="#">Logs</a></li-->
-        <li data-content="tab_logout"><a href="#">Logout</a></li>
-    </ul>
 </div>
 
 <script type="text/javascript">
-    $("#mainmenu").jqxMenu({ width: '180', mode: 'vertical'});
+    //var signaladmin = <%= menu_main['isSignalAdmin'] %>;
+    var menu = [
+         { id: 'tab_accounts', name: 'Accounts',      enabled: true, visible: true },
+         { id: 'tab_positions',name: 'Positions',     enabled: true, visible: true  },
+         //{ id: 'tab_orders',   name: 'Orders',        enabled: true, visible: true },
+         //{ id: 'tab_provider', name: 'Signal Admin',  enabled: true, visible: signaladmin },
+         { id: 'tab_security', name: 'Security',      enabled: true, visible: true },
+         { id: 'tab_logs',     name: 'Logs',          enabled: true, visible: true },
+         { id: 'tab_logout',   name: 'Logout',        enabled: true, visible: true },
+    ]; 
+
+    var content = '<ul>';
+    menu.forEach(item => {
+        if (item.visible) content += '<li data-content="' + item.id + '"><a href="#">' + item.name + '</a></li>';
+    });
+    content += '</ul>';
+    $("#mainmenu").html(content);
+    $("#mainmenu").jqxMenu({ width: '160', mode: 'vertical', theme: 'dark'});
 </script>

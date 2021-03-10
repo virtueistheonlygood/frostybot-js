@@ -197,6 +197,10 @@ module.exports = {
         invalid_user:        'Invalid user UUID: {0}',
         exch_not_supported:  'Signal provider does not support exchange: {0}',
         no_accounts:         'No {0} accounts configured: Provider: {1}, User: {2}',
+        add_signal_admin:    'Failed to add user {1} as an admin for provider {0}',
+        del_signal_admin:    'Failed to remove user {1} as an admin for provider {0}',
+
+        log_retrieve:        'Failed to retrieve log for user {0}',
         
     },
 
@@ -252,6 +256,8 @@ module.exports = {
         del_provider_exch:   'Successfully removed {1} exchange from signal provider: {0}',
         del_provider_ip:     'Successfully removed whitelisted IP {1} from signal provider: {0}',
         signal_queued:       'Signal Queued: Provider: {0}, User: {1}',
+        add_signal_admin:    'Added user {1} as an admin for provider {0}',
+        del_signal_admin:    'Removed user {1} as an admin for provider {0}',
 
     }
     
