@@ -207,9 +207,9 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         };
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
         if (uuid != null) {
-            if (await this.signals.is_signal_admin(uuid)) {
-                config['isSignalAdmin'] = true;
-            }
+            //if (await this.signals.is_signal_admin(uuid)) {
+            //    config['isSignalAdmin'] = true;
+            //}
         }
         return config;
     }
