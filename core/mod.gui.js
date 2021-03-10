@@ -376,7 +376,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
         var orders = await exchange.execute('orders', filter);
-        console.log(orders);
+        //console.log(orders);
         //var orders = (orders !== false ? orders : []).sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1);
         for (var i =0; i < orders.length; i++) {
             var order = orders[i];
@@ -418,7 +418,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         if ((result !== false) && (result.length > 0)) {
             for (var i = 0; i < result.length; i++) {
                 var entry = result[i];
-                console.log(entry)
+                //console.log(entry)
                 log.push([entry.timestamp, entry.type.toUpperCase().padEnd(7, ' '), entry.message].join(' │ '));
             }
         }
