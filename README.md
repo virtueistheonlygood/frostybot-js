@@ -48,17 +48,14 @@ While it may seem a little complicated to setup and configure for novices, the p
 Frostybot can be deployed in 3 supported ways. Depending on your personal deployment preference, you will need the following:
 
 #### Option 1 - Run Your Own Server (Like Amazon Lightsail VPS)
+
 * A Linux server, preferably running Ubuntu 20.04 LTS  (we recommend Amazon Lightsail for this purpose)
 * A public static IP address
 
 #### Option 2 - Use Docker
 
 * A Docker Server
-
-#### Option 3 - Microsoft Azure (Easiest)
-
-* A [Microsoft Azure](https://portal.azure.com) account 
-* [Putty client](https://the.earth.li/~sgtatham/putty/latest/w64/putty-64bit-0.74-installer.msi) to connect to your Frostybot console
+* A public static IP address
 
 ## Installation
 
@@ -84,14 +81,6 @@ The following Docker environment variables are available:
 | SSH_PORT  |  The port that SSH should listen on  |  22   |
 | SSH_USER  |  SSH Username |  frostybot  |
 | SSH_PASS  |  SSH Password **(NEVER leave this as default)**  |  \_\_frostybot123\_\_  |
-
-#### Option 3 - Microsoft Azure (Easiest)
-
-If you would like to use Azure, click the Deploy to Azure button below to easily deploy the Docker container to your Azure account.
-
-[![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FCryptoMF%2Ffrostybot-js%2Fstable%2Fdeploy-azure.json)
-
-**Important:** Do not use the word "frostybot" in your Azure server name, as this will make your bot easier to find.
 
 ## Post-Install Configuration
 
