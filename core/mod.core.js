@@ -97,6 +97,7 @@ const api_methods = {
         'verify_recaptcha',
         'content',
         'data',
+        'chart',
     ],
 
     signals: [
@@ -198,6 +199,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
             'gui:register',
             'gui:verify_recaptcha',
             'gui:content',
+            'gui:chart',
             'user:register',
             'user:login',
             'signals:send',

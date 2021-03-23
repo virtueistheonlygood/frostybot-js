@@ -199,6 +199,15 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
     }
 
+    // Get chart from TradingView
+
+    async chart(params) {
+        var [res, req] = this.extract_request(params);
+        var symbol = params.symbol;
+        return this.render_page(res, "pages/chart", { symbol: symbol });
+
+    }
+
     // Main Menu
 
     async content_menu_main(params) {
@@ -469,7 +478,6 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     render_error(res, message) {
         return res.render("pages/error", { pageTitle: 'Error', errorMsg: message });
     }
-
 
 
 }
