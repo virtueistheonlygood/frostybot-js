@@ -1,8 +1,17 @@
 #!/bin/bash
 
-PID=`sudo ps ax | grep "frostybot-js" | grep -v grep | awk '{print $1}'`
 CURRENTPATH=`pwd`
 SCRIPTPATH=`dirname "$(readlink -f "$0")"`
+ROOTPATH=`dirname "$SCRIPTPATH"`
+PORTCFG="$ROOTPATH/.port"
+
+if [ -f "$PORTCFG" ]; then
+    PORT=`cat $PORTCFG`
+else
+    PORT=80
+fi
+
+PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
 BRANCH=`echo "$@"`
 
 cd "$SCRIPTPATH" &
@@ -13,7 +22,7 @@ if [ ! "$PID" == "" ]; then
   ./scripts/stop
   while [ ! "$PID" == "" ]; do
     sleep 2
-    PID=`sudo ps ax | grep "frostybot-js" | grep -v grep | awk '{print $1}'`
+    PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
   done
   echo "Frostybot server stopped"
   cd "$CURRENTPATH" &
@@ -48,7 +57,7 @@ if [ "$DOSTART" == "true" ]; then
   ./scripts/start
   while [ "$PID" == "" ]; do
     sleep 2
-    PID=`sudo ps ax | grep "frostybot-js" | grep -v grep | awk '{print $1}'`
+    PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
   done
   echo "Frostybot server started"
 fi

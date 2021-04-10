@@ -12,7 +12,7 @@ else
 fi
 
 
-PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
 
 if [ ! "$PID" == "" ]; then
         echo "Frostybot server is already running on port $PORT (PID: $PID)"
@@ -26,7 +26,7 @@ else
 	sudo npm start > /dev/null 2>&1 &
         while [ "$PID" == "" ]; do
                 sleep 2
-                PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+                PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
         done
         echo "Frostybot server started on port $PORT"        
 	cd "$CURRENTPATH" &

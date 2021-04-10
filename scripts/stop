@@ -11,7 +11,7 @@ else
     PORT=80
 fi
 
-PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
 
 if [ ! "$PID" == "" ]; then
         echo "Stopping Frostybot server on port $PORT (PID: $PID)..."

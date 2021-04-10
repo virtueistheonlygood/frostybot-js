@@ -1,6 +1,5 @@
 #!/bin/bash
 
-PID=`sudo ps ax | grep "frostybot-js" | grep -v grep | awk '{print $1}'`
 CURRENTPATH=`pwd`
 SCRIPTPATH=`dirname "$(readlink -f "$0")"`
 ROOTPATH=`dirname "$SCRIPTPATH"`
@@ -12,7 +11,7 @@ else
     PORT=80
 fi
 
-PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
 
 cd "$SCRIPTPATH" &
 cd ../ &
@@ -30,7 +29,7 @@ else
     ./scripts/stop
     while [ ! "$PID" == "" ]; do
       sleep 2
-      PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+      PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
     done
     cd "$CURRENTPATH" &
     DOSTART="true"
@@ -65,7 +64,7 @@ else
     ./scripts/start
     while [ "$PID" == "" ]; do
       sleep 2
-      PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+      PID=`sudo ps -ax | grep "fb-$PORT" | grep -v "grep" | awk '{print $1}'`
     done
     echo "Frostybot server started"
   fi
