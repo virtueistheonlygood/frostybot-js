@@ -500,7 +500,7 @@ $( document ).ready(function() {
             } else {
                 $( "#testnetfield" ).show();
             }
-            if (['ftx'].includes(val)) {
+            if (['ftx','ftxus'].includes(val)) {
                 $( "#subaccountfield" ).show();
             } else {
                 $( "#subaccountfield" ).hide();
