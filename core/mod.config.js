@@ -12,6 +12,8 @@ const config_keys = {
     'output:debug': 'boolean',                    // (Boolean) Enable debug output
     'output:stats': 'boolean',                    // (Boolean) Enable debug output
     'debug:noexecute': 'boolean',                 // (Boolean) Do not process order queue and execute orders on the exchange
+    'gui:logfilters': 'string',                   // GUI Log Viewer message type filters
+    'gui:showspotpositions': 'boolean',           // Show spot "positions" in the GUI
     'trade:require_maxsize': 'boolean',           // (Boolean) Whether or not to require the maxsize parameter when using relative pricing
     '{stub}:provider': 'string',                  // (UUID) Signal provider configured for stub
     '{stub}:defsize': 'string',                   // Default order size for orders on this stub

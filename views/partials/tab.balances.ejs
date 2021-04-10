@@ -16,11 +16,11 @@ if (typeof(tab_balances) !== 'undefined') {
   <div class="row">
     <div class="col "><p class="m-0" id="balancestitle">Balances</p></div>
     <div class="col text-right">
-      <div class="float-right" id="balancesnavbar" style="width: 500px; vertical-align: middle; display: none;">
+      <div class="float-right" id="balancesnavbar" style="vertical-align: middle; float: right; margin-right: 10px; display: none;">
         <!--span>
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;"><span class="fa fa-columns"></span> Columns</button>
         </span-->
-        <span>
+        <span style="display: inline-block;">
           <select id="balancesstub" style="width: 200px; display: inline-block; font-weight: normal; border-radius: 5px;">
             <%
               stubs.forEach(stub => {
@@ -31,7 +31,7 @@ if (typeof(tab_balances) !== 'undefined') {
             %>
           </select>  
         </span>
-        <span>
+        <span style="display: inline-block;">
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="balancesrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
         </span>
       </div>
@@ -175,7 +175,7 @@ if (typeof(tab_balances) !== 'undefined') {
         ],
       });
     
-      $("#balancesstub").jqxDropDownList({height: 30, width: 200});
+      $("#balancesstub").jqxDropDownList({height: 30, width: 150});
 
       if (localStorage) {
         var balancesstubselected = localStorage.getItem("balancesstubselected");

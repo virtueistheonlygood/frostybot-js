@@ -1,12 +1,15 @@
 <%
 
 if (typeof(tab_positions) !== 'undefined') {
-  var accounts = Object.values(tab_positions);
+  console.log(tab_positions);
+  var accounts = tab_positions.hasOwnProperty('accounts') ? tab_positions.accounts : [];
+  var showspot = tab_positions.hasOwnProperty('showspot') ? tab_positions.showspot : false;
   var stubs = [];
-  accounts.forEach(account => {
+  Object.values(accounts).forEach(account => {
     stubs.push(account.stub);
   })
 } else {
+  var showspot = false;
   var stubs = [];
 }
 
@@ -16,11 +19,12 @@ if (typeof(tab_positions) !== 'undefined') {
   <div class="row">
     <div class="col "><p class="m-0" id="positionstitle">Positions</p></div>
     <div class="col text-right">
-      <div class="float-right" id="positionsnavbar" style="width: 500px; vertical-align: middle; display: none;">
-        <span>
-          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;"><span class="fa fa-columns"></span> Columns</button>
+      <div class="float-right" id="positionsnavbar" style="width: 600px; vertical-align: middle; float: right; margin-right: 10px; display: none;">
+        <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;">
+          <span class="fa fa-columns" style="display: inline-block;"></span> Columns</button>
         </span>
-        <span>
+        <span style="display: inline-block; white-space: nowrap;">
           <select id="positionsstub" style="width: 200px; display: inline-block; font-weight: normal; border-radius: 5px;">
             <%
               stubs.forEach(stub => {
@@ -31,7 +35,10 @@ if (typeof(tab_positions) !== 'undefined') {
             %>
           </select>  
         </span>
-        <span>
+        <span style="display: inline-block; white-space: nowrap;">
+          <div id="positionsshowspot" style='margin-left: 10px; font-weight: normal'><span>Show Spot</span></div>
+        </span>
+        <span style="display: inline-block; white-space: nowrap;">
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsclosealllink" style="margin-bottom: 20px; width: 100px; color: red"><span class="fa fa-close"></span> Close All</button>
         </span>
@@ -103,13 +110,15 @@ if (typeof(tab_positions) !== 'undefined') {
       function refreshCache(stub = null) {
         if (stub == null)
           stub = $("#positionsstub").val();
+        var showspot = $("#positionsshowspot").jqxCheckBox('val');
         var token = null;
         if (localStorage) {
           var token = localStorage.getItem("token");
           if (token != null) {
             var params = {
               token: JSON.parse(token),
-              stub: stub
+              stub: stub,
+              showspot: showspot,
             };
             setGridData([]);
             jQuery.getJSON({
@@ -209,7 +218,7 @@ if (typeof(tab_positions) !== 'undefined') {
         });            
       }
     
-      $("#positionsstub").jqxDropDownList({height: 30, width: 200});
+      $("#positionsstub").jqxDropDownList({height: 30, width: 150});
 
       if (localStorage) {
         var positionsstubselected = localStorage.getItem("positionsstubselected");
@@ -218,6 +227,10 @@ if (typeof(tab_positions) !== 'undefined') {
         }
       }
 
+      $("#positionsshowspot").jqxCheckBox({ height: 30, width: 100, checked: <%= showspot %>});
+      $("#positionsshowspot").on('change', function() {
+          refreshCache();
+      });
   
       $("#positionsrefreshlink").on('click', function() {
         getGridData(false);

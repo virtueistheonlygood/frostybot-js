@@ -465,14 +465,18 @@ module.exports = class frostybot_user_module extends frostybot_module {
         if (!(params = this.utils.validator(params, schema))) return false; 
 
         var uuid = params.uuid;
-        var result = await this.database.select('logs', {uuid: uuid}, 500);
+        var filterstr = (params.hasOwnProperty('filters') ? params.filters : 'debug,notice,warning,error,success') + ',_';
+        var filters = filterstr.split(',');
+        if (!Array.isArray(filters) && typeof(filters) == 'string') { filters = [ filters ]; }
+        var result = await this.database.select('logs', {uuid: uuid}, 1000);
         var output = [];
         if (result.length > 1) {
             for (var i = 0; i < result.length; i++) {
                 var row = result[i];
                 var date = new Date(row.timestamp);
                 row.timestamp = date.toISOString()
-                output.push(row);
+                if (filters.includes(row.type)) 
+                    output.push(row);
             }
             return output;
             //return result;

@@ -8,7 +8,8 @@ const ccxt = require('ccxt');       // CCXT Error Messages
 const context = require('express-http-context'); // HTTP Context
 const path = require('path')        // Path Module
 
-const frostybot_module = require('./mod.base')
+const frostybot_module = require('./mod.base');
+const { indexOf } = require('cli-color/beep');
 
 module.exports = class frostybot_output_module extends frostybot_module {
 
@@ -82,7 +83,10 @@ module.exports = class frostybot_output_module extends frostybot_module {
     // Output log message to the database
     outdb(uuid, type, message) {
         try {
-            return this.database.insert('logs', {uuid: uuid, type: type, message: message});
+            // Dont log GUI commands to the database
+            var command = context.get('command');
+            if (command.toLowerCase().indexOf('gui:') == -1)
+                return this.database.insert('logs', {uuid: uuid, type: type, message: message});
         } catch(error) {
             return false;
         }

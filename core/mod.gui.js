@@ -1,6 +1,7 @@
 const frostybot_module = require('./mod.base');
 var context = require('express-http-context');
 var axios = require('axios');
+const { config } = require('yargs');
 
 module.exports = class frostybot_gui_module extends frostybot_module {
 
@@ -349,8 +350,13 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Positions Tab
 
     async content_tab_positions(params) {
-        var config = this.accounts.get();
-        return config;
+        var accounts = await this.accounts.get();
+        var showspot = await this.config.get('gui:showspotpositions', false);
+        
+        return {
+            accounts: accounts,
+            showspot: showspot
+        }
     }
 
     // Balance Grid Data
@@ -380,10 +386,15 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async data_griddata_positions(params) {
         var stub = params.stub;
+        var showspot = params.hasOwnProperty('showspot') ? params.showspot : 'false';
+        this.config.set({'gui:showspotpositions': showspot});
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
         var positions = await exchange.execute('positions');
         var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1);
+        if (String(showspot) == 'false') {
+            positions = positions.filter(position => position.type.toLowerCase() != "spot");
+        }
         for (var i =0; i < positions.length; i++) {
             var position = positions[i];
             position.actions = '<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
@@ -452,17 +463,22 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async content_tab_logs(params) {
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
-        if (uuid !== false) {
-            return {uuid : uuid};
+        var logfilters = await this.config.get('gui:logfilters', '"debug,notice,warning,error,success"');
+        var config = {
+            logfilters: logfilters
         }
-        return {};
+        if (uuid !== false) config['uuid'] = uuid;
+        return config;
     }
-
 
     // Log Data
 
     async data_logdata(params) {
         var log = [];
+        console.log(params);
+        if (params.hasOwnProperty('filters')) {
+            this.config.set({'gui:logfilters': '"'+String(params.filters)+'"'});
+        }
         var result = await this.user.log(params);
         if ((result !== false) && (result.length > 0)) {
             for (var i = 0; i < result.length; i++) {
