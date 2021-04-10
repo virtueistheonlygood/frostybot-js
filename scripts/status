@@ -1,9 +1,19 @@
 #/bin/bash
 
-PID=`sudo ps ax | grep "frostybot-js" | grep -v grep | awk '{print $1}'`
+SCRIPTPATH=`dirname "$(readlink -f "$0")"`
+ROOTPATH=`dirname "$SCRIPTPATH"`
+PORTCFG="$ROOTPATH/.port"
+
+if [ -f "$PORTCFG" ]; then
+    PORT=`cat $PORTCFG`
+else
+    PORT=80
+fi
+
+PID=`sudo ps -C "frostybot-js-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
 
 if [ ! "$PID" == "" ]; then
-        echo "Frostybot server is running (PID: $PID)"
+        echo "Frostybot server is running on port $PORT (PID: $PID)"
 else
         echo "Frostybot server is not running"
 fi

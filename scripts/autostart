@@ -1,10 +1,13 @@
 #!/bin/bash
 
-sudo crontab -l | grep -iv frostybot | grep -iv "no crontab" > /tmp/tmpcron
+CURRENTPATH=`pwd`
+SCRIPTPATH=`dirname "$(readlink -f "$0")"`
+ROOTPATH=`dirname "$SCRIPTPATH"`
+STARTSCRIPT="$ROOTPATH/frostybot"
+
+sudo crontab -l | grep -iv "$STARTSCRIPT" | grep -iv "no crontab" > /tmp/tmpcron
 sudo sed -i -e :a -e '/^\n*$/{$d;N;ba' -e '}' /tmp/tmpcron
-sudo echo "" >> /tmp/tmpcron
-sudo echo "# Automatically start Frostybot when server reboots" >> /tmp/tmpcron
-sudo echo "@reboot frostybot start > /dev/null 2>&1" >> /tmp/tmpcron
+sudo echo "@reboot $STARTSCRIPT start > /dev/null 2>&1" >> /tmp/tmpcron
 sudo crontab /tmp/tmpcron
 sudo rm /tmp/tmpcron 
 

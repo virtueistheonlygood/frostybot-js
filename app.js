@@ -5,10 +5,6 @@ const { v4: uuidv4 } = require('uuid');
 var context = require('express-http-context');
 const cookieParser = require('cookie-parser');
 
-// Set App Title
-
-process.title = "frostybot-js";
-
 // Load Modules
 
 const loader      = require('./core/core.loader');
@@ -34,6 +30,10 @@ try {
 }
 app.set('port', port);
 fs.writeFileSync(portfile, port.toString())
+
+// Set App Title
+
+process.title = "frostybot-js-" + port.toString();
 
 
 // Reverse Proxy / Load Balancer Support

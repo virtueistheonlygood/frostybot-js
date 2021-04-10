@@ -1,13 +1,22 @@
 #/bin/bash
 
-PID=`sudo ps ax | grep "frostybot-js" | grep -v grep | awk '{print $1}'`
 CURRENTPATH=`pwd`
 SCRIPTPATH=`dirname "$(readlink -f "$0")"`
+ROOTPATH=`dirname "$SCRIPTPATH"`
+PORTCFG="$ROOTPATH/.port"
+
+if [ -f "$PORTCFG" ]; then
+    PORT=`cat $PORTCFG`
+else
+    PORT=80
+fi
+
+PID=`sudo ps -C "frostybot-js-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
 
 if [ ! "$PID" == "" ]; then
-        echo "Frostybot server is already running (PID: $PID)"
+        echo "Frostybot server is already running on port $PORT (PID: $PID)"
 else
-        echo "Starting Frostybot Server in DEBUG mode..."
+        echo "Starting Frostybot Server on port $PORT in DEBUG mode..."
         cd "$SCRIPTPATH" &
         cd ../ &
 	sudo npm start
