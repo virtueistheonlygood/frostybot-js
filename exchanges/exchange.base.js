@@ -297,6 +297,7 @@ module.exports = class frostybot_exchange_base {
     // Get account balances
 
     async balances() {
+        await this.update_markets_usd_price();
         if (this.data.balances != null) {
             return this.data.balances;
         }
