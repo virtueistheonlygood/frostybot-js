@@ -54,10 +54,10 @@ class frostybot_market extends frostybot_base {
     this.type = type;
     this.base = base;
     this.quote = quote;
-    this.bid = bid;
-    this.ask = ask;
+    this.bid = bid != null ? parseFloat(bid) : null;
+    this.ask = ask != null ? parseFloat(ask) : null;
     this.usd = null;
-    this.avg = bid != null && ask != null ? (bid + ask) / 2 : null;
+    this.avg = bid != null && ask != null ? parseFloat((bid + ask) / 2) : null;
     this.expiration = expiration;
     this.contract_size = contract_size;
     this.precision = precision;
