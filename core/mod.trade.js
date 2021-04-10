@@ -1290,7 +1290,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             }
             if (potential != false) {
                 if (this.is_relative(params.stoptrigger)) {
-                    params.stoptrigger = this.get_relative_price(market, params.stoptrigger, this.round_price(market,potential.price));
+                    if (isNaN(potential.price)) {
+                        var price = this.round_price(market, market.avg);
+                        this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                    } else {
+                        var price = this.round_price(market, potential.price);
+                        this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
+                    }
+                    params.stoptrigger = this.get_relative_price(market, params.stoptrigger, price);
                 }
                 params['stop' + potential.sizing] = potential.amount;
                 // Cancel existing SL orders
@@ -1402,7 +1409,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             }
             if (potential != false) {
                 if (this.is_relative(params.profittrigger)) {
-                    params.profittrigger = this.get_relative_price(market, params.profittrigger, this.round_price(market,potential.price));
+                    if (isNaN(potential.price)) {
+                        var price = this.round_price(market, market.avg);
+                        this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                    } else {
+                        var price = this.round_price(market, potential.price);
+                        this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
+                    }
+                    params.profittrigger = this.get_relative_price(market, params.profittrigger, price);
                 }
                 params['profit' + potential.sizing] = (params.profitsize.indexOf('%') != '' ? potential.amount * ((params.profitsize.replace('%','') * 1) / 100) : potential.amount);
                 // Cancel existing TP orders
@@ -1526,7 +1540,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         this.initialize_exchange(params);
         let filter = {};
         const stub = params.stub
-        const filterkeys = ['id', 'symbol'];
+        const filterkeys = ['id', 'status', 'symbol'];
         filterkeys.forEach(key => {
             if (params[key] != undefined) {
                 filter[key] = params[key];
