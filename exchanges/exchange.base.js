@@ -1,6 +1,6 @@
 // Exchange Base Class
 
-const ccxtlib = require ('ccxt')
+const ccxtlib = require ('ccxt');
 md5 = require('md5')
 
 // Normalizer base class
@@ -8,6 +8,7 @@ md5 = require('md5')
 module.exports = class frostybot_exchange_base {
 
     constructor(stub) {
+        this.doublecheck = false;                    // When order is submitted, double check that it exists on the exchange
         this.load_modules();
         this.data = {
             symbols: [],
@@ -461,16 +462,21 @@ module.exports = class frostybot_exchange_base {
         if (params == undefined) {
             params = { id: 'all'};
         }
-        var [status, type, dir] = this.utils.extract_props(params, ['status', 'type', 'direction']);
+        var status = this.utils.extract_props(params, ['status']);
         if (status == 'open') {
             var orders = await this.open_orders(params);    
         } else {
             var orders = await this.all_orders(params);
         }
-        return orders
-            .filter(order => (status == null || order.status == status))
-            .filter(order => (type == null || order.type == type))
-            .filter(order => (dir == null || order.direction == dir));
+        var filterkeys = ['status', 'type', 'direction', 'id'];
+        for (var i = 0; i < filterkeys.length; i++) {
+            var key = filterkeys[i];
+            if (params[key] != undefined) {
+                orders = orders.filter(order => order[key] == params[key]);
+            }
+            
+        }
+        return orders;
     }
 
 

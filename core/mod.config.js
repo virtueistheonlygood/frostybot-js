@@ -20,6 +20,8 @@ const config_keys = {
     '{stub}:defprofitsize': 'string',             // Default take profit size on this stub
     '{stub}:maxposqty': 'string',                 // Maximum number oif allowed positions on this stub
     '{stub}:ignored': 'string',                   // List of market symbols ignored from signals
+    '{stub}:maxretry': 'string',                  // Number of times an order will be retried until it fails (default: 5)
+    '{stub}:retrywait': 'string',                 // Number of seconds to wait before retrying an order (default: 10)
     '{stub}:{symbol}:ignored': 'boolean',         // (Boolean) Market symbol is ignored
     '{stub}:{symbol}:defsize': 'string',          // Default order size for orders on this stub and symbol
     '{stub}:{symbol}:defstoptrigger': 'string',   // Default trigger for stoploss on this stub and symbol
@@ -40,7 +42,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
     // Get all config parameters for a user
     
     async getall() {
-        return await this.settings.get('config');
+        return await this.settings.get('config', null, null, true);
     }
 
     // Split keyname into mainkey/subkey parts

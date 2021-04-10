@@ -66,6 +66,56 @@ module.exports = class frostybot_queue_module extends frostybot_module {
         return this.queue[uuid][stub][symbol];
     }
 
+    // Check if order exists (ensure that it was successfully created on the exchange)
+
+    async check(stub, symbol, id) {
+        var exchange = new this.classes.exchange(stub);
+        let result = await exchange.execute('orders', {id: id, symbol: symbol});
+        if ((Array.isArray(result)) && (result.length == 1) && (String(result[0].id) == String(id))) {
+            return true;
+        } 
+        return false;
+    }
+
+    // Submit an order to the exchange
+
+    async submit(stub, order) {
+        var exchange = new this.classes.exchange(stub);
+        let result = await exchange.execute('create_order', order);
+            
+        if (result.result == 'success') {
+            var id = result.order.id;
+            this.output.debug('order_submitted', [id]);
+        
+            let doublecheck = exchange.get('doublecheck');
+            
+            if (doublecheck == true) {
+                this.output.debug('order_check_enabled', [id]);
+                var check = await this.check(stub, symbol, id);
+                if (check == true) {
+                    // Doublecheck successful
+                    this.output.notice('order_check', [id]);
+                    return result;
+                } else {
+                    // Doublecheck failed
+                    //this.output.error('order_check', [id]);
+                    this.output.warning('order_submit', ['DoubleCheckError: Doublecheck failed for ID: ' + id] ); 
+                    return false;
+                }
+
+            } else {
+
+                // Doublecheck disabled and order successful
+                this.output.debug('order_check_disabled');
+                return result;
+            }
+
+        }  
+        var message = result.error.type + ': ' + (this.utils.is_object(result.error.message) ? this.utils.serialize_object(result.error.message) : result.error.message);
+        this.output.warning('order_submit', [message] ); 
+        return false;
+
+    }
 
     // Process order queue (submit orders to the exchange)
 
@@ -73,6 +123,8 @@ module.exports = class frostybot_queue_module extends frostybot_module {
         var uuid = context.get('reqId')
         this.create(stub, symbol)
         var noexecute = await this.config.get('debug:noexecute', false);
+        var maxretry = parseInt(await this.config.get(stub + ':maxretry', 5));
+        var retrywait = parseInt(await this.config.get(stub + ':retrywait', 10));
         if (noexecute == true) {
             this.output.debug('debug_noexecute');
             var result = this.queue[uuid][stub][symbol];
@@ -85,19 +137,29 @@ module.exports = class frostybot_queue_module extends frostybot_module {
             var success = 0;
             this.output.subsection('processing_queue', total);
             this.output.notice('processing_queue', total); 
-            var exchange = new this.classes.exchange(stub);
+            
             for (const order of this.queue[uuid][stub][symbol]) {
-                let result = await exchange.execute('create_order', order);
-                if (result.result == 'success') {
+
+                var result = null;
+        
+                for (var retry = 1; retry <= maxretry; retry++) {
+                    result = await this.submit(stub, order);
+                    if (result === false) {
+                        this.output.warning('order_retry_wait', [retrywait])
+                        await this.utils.sleep(retrywait)
+                        this.output.warning('order_retry_num', [retry, maxretry])                
+                    } else break
+                }
+                
+                
+                if (result == false) {
+                    //output.set_exitcode(-1);
+                    this.output.error('order_submit', { ...{stub: stub}, ...order}); 
+                } else {
                     success++;
                     this.output.success('order_submit', { ...{stub: stub}, ...order}); 
-                } else {
-                    //output.set_exitcode(-1);
-                    var message = result.error.type + ': ' + (this.utils.is_object(result.error.message) ? this.utils.serialize_object(result.error.message) : result.error.message);
-                    var params = this.utils.serialize(result.params);
-                    var info = message + ': ' + params;
-                    this.output.error('order_submit', { ...{error: result.error}, ...{stub: stub}, ...order} ); 
                 }
+        
                 this.results[uuid][stub][symbol].push(result);
             };
             var results = this.results[uuid][stub][symbol];

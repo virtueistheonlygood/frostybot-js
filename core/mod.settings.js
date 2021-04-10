@@ -16,7 +16,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
 
     // Get settings(s)
 
-    async get(mainkey = null, subkey = null, defval = null) {
+    async get(mainkey = null, subkey = null, defval = null, retobj = false) {
         var globalkey = mainkey.indexOf(':') == -1 ? mainkey : mainkey.split(':')[0];
         var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
@@ -29,7 +29,6 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         if (mainkey != null) query['mainkey'] = mainkey;
         if (subkey != null)  query['subkey'] = subkey;
         var result = await this.database.select('settings', query);
-
         switch (result.length) {
             case 0      :   if (defval != undefined) {
                                 this.set(mainkey, subkey, defval);
@@ -39,6 +38,12 @@ module.exports = class frostybot_settings_module extends frostybot_module {
                             val = this.utils.is_json(val) ? JSON.parse(val) : val;
                             val = ['true','false','"true"','"false"'].includes(val) ? (String(val.replace(/"/g,"")) == 'true' ? true : false)  : val;
                             this.cache.set(cachekey, val, 60);
+                            if (retobj == true) {
+                                var obj = {};
+                                var subkey = result[0].subkey
+                                obj[subkey] = val
+                                return obj;
+                            }
                             return val;
             default     :   var obj = {};
                             for (var i=0; i < result.length; i++) {

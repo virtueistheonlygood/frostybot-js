@@ -240,10 +240,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var amount = null;
         switch (this.order_sizing) {
             case  'base'    :   amount = (basesize != null ? basesize : quotesize / price);
-                                this.output.debug('exchange_size_base', market.base)
+                                this.output.debug('exchange_size_base', [market.base, amount])
                                 break;
             case  'quote'   :   amount = (quotesize != null ? quotesize : basesize * price) / market.contract_size;
-                                this.output.debug('exchange_size_quote', market.quote)
+                                this.output.debug('exchange_size_quote', [market.quote, amount])
                                 break;
         }
 
@@ -347,11 +347,20 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (order_type == 'close') {
             var base = Math.abs(position_size)
             operator = '';  // Ignore operator on close orders
+            var basetype = 'position'
         } else {
-            var base = operator == '' ? Math.abs(balance_size) : Math.abs(position_size);  // If sizing is relative, make it relative to position size, else make it a factor of equity size
+            if (operator == '') {  // If sizing is relative, make it relative to position size, else make it a factor of equity size
+                var base = Math.abs(balance_size)
+                var basetype = 'balance'
+            } else {
+                var base = Math.abs(position_size)
+                var basetype = 'position'
+            }
         }
-        size = operator + String(this.round_num(base * factor, 0.05)); 
-        return size
+        var info = '$' + Math.floor(base) + ' ' + basetype + ' x ' + factor;
+        var newsize = operator + String(this.round_num(base * factor, 0.05)); 
+        this.output.debug('order_size_factor', [size, newsize, info])
+        return newsize
     }
 
 
@@ -374,6 +383,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             this.output.error('market_retrieve', symbol)
             return false
         }
+
+        var position_size = await this.position_size_usd(stub, symbol);
+        var balance_size = await this.exchange[stub].execute('available_equity_usd',symbol);
+        this.output.debug('position_size', [Math.round(position_size * 100) / 100])
+        this.output.debug('balance_avail', [Math.round(balance_size * 100) / 100])
 
         var side = null;
         var is_close = false;   // Report this order will result in position closure
@@ -407,7 +421,6 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (size != undefined) {
             if (this.is_factor(size)) {
                 usd = await this.get_factored_size(type, params)
-                this.output.debug('order_size_factor', [size, usd])
             } else {
                 usd = size
             }
@@ -668,12 +681,23 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             return level_params;
         }
 
+        // Get market info
+
+        const market = await this.exchange[stub].execute('get_market_by_id_or_symbol',symbol);
+
         // Base order params object
+
+        var amount = await this.get_amount(params, type);
+
+        if (Math.abs(amount) < (market.precision.amount * 1)) {
+            return this.output.error('order_too_small')
+        }
+
         var order_params = {
             symbol  :   symbol.toUpperCase(),
             type    :   this.param_map[(price == undefined ? 'market' : 'limit')],
             side    :   side,
-            amount  :   await this.get_amount(params),
+            amount  :   amount,
             price   :   (price != undefined ? price : null),
             params  :   {}
         }
@@ -753,7 +777,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         this.order_sizing = this.exchange[stub].get('order_sizing');
         this.stablecoins = this.exchange[stub].get('stablecoins');
 
-        // Get marker info
+        // Get market info
         const market = await this.exchange[stub].execute('get_market_by_id_or_symbol',symbol);
 
         //Check if stoptrigger or stopprice is relative and convert if necessary
@@ -785,7 +809,13 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             }
         }
 
+        // Base order params object
+
         var amount = await this.get_amount(params, type);
+
+        if (Math.abs(amount) < (market.precision.amount * 1)) {
+            return this.output.error('order_too_small')
+        }
 
         // Base order params object
         var order_params = {
@@ -1480,6 +1510,36 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         return true;
 
+    }
+
+    // Get a specific order
+    
+    async order(params) {
+
+        var schema = {
+            stub:   { required: 'string', format: 'lowercase', },
+            id:     { required: 'string',  },
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        this.initialize_exchange(params);
+        let filter = {};
+        const stub = params.stub
+        const filterkeys = ['id', 'symbol'];
+        filterkeys.forEach(key => {
+            if (params[key] != undefined) {
+                filter[key] = params[key];
+            }
+        })
+        let result = await this.exchange[stub].execute('orders', filter);
+        if (this.utils.is_array(result)) {
+            this.output.success('orders_retrieve', result.length)
+            return result;        
+        } else {
+            this.output.error('orders_retrieve')
+            return false;
+        }
     }
 
     // Get list of orders

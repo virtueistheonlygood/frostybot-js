@@ -87,6 +87,27 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         return result;
     }
 
+    // Provider selected
+
+    async is_provider_selected(provider, exchange, except) {
+        var accounts = await this.accounts.get();
+        accounts = Object.values(accounts);
+        for (var i = 0; i< accounts.length; i++) {
+            var account = accounts[i]
+            var stub = account.stub;
+            if (stub != except) {
+                var accexchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
+                if (exchange == accexchange) {
+                    var check = await this.config.get(stub+':provider');
+                    if (check == provider) {
+                        return true;
+                    }
+                }
+            }
+        }   
+        return false;
+    }
+
     // Get symbol ignore list for stub
 
     async get_ignore_list(stub) {

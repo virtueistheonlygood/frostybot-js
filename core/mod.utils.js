@@ -467,6 +467,12 @@ module.exports = class frostybot_utils_module extends frostybot_module {
         return global.frostybot.command.module + ':' + global.frostybot.command.method;
     }
 
+    // Sleep function
+
+    async sleep(seconds) {
+        return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
+    } 
+
     // Method parameter validator
 
     validator(params, schema) {
