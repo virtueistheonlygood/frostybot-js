@@ -15,17 +15,29 @@ class frostybot_base {
 class frostybot_balance extends frostybot_base {
   constructor (currency, price, free, used, total) {
     super ();
+    total = total * 1;
+    if (used == false && free != false && total != false) {
+      used = total - (free * 1);
+      //console.log('Used balance calculated using available and total balances')
+    }
+    if (free == false && used != false && total != false) {
+      free = total - (used * 1);
+      //console.log('Available balance calculated using used and total balances')
+    }
+    //console.log('used: ' + typeof(used) + ': ' + used)
+    //console.log('free: ' + typeof(free) + ': ' + free)
+    //console.log('total: ' + typeof(total) + ': ' + total)
     this.currency = currency;
     this.price = price;
     this.base = {
-      free: free,
-      used: used,
-      total: total,
+      free: parseFloat(free),
+      used: parseFloat(used),
+      total: parseFloat(total),
     };
     this.usd = {
-      free: free * price,
-      used: used * price,
-      total: total * price,
+      free: parseFloat(free * price),
+      used: parseFloat(used * price),
+      total: parseFloat(total * price),
     };
   }
 }
