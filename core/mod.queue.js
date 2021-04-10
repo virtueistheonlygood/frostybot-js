@@ -79,7 +79,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
 
     // Submit an order to the exchange
 
-    async submit(stub, order) {
+    async submit(stub, symbol, order) {
         var exchange = new this.classes.exchange(stub);
         let result = await exchange.execute('create_order', order);
             
@@ -143,7 +143,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
                 var result = null;
         
                 for (var retry = 1; retry <= maxretry; retry++) {
-                    result = await this.submit(stub, order);
+                    result = await this.submit(stub, symbol, order);
                     if (result === false) {
                         this.output.warning('order_retry_wait', [retrywait])
                         await this.utils.sleep(retrywait)
