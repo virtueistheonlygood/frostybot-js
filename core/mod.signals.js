@@ -9,7 +9,14 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     // Get signal provider by UUID
 
     async get_provider(uuid) {
-        return await this.settings.get('signalprovider', uuid, false);
+        var data = await this.settings.get('signalprovider', uuid, false);
+        if (data != false) {
+            if (!data.hasOwnProperty('admins')) data['admins'] = [];
+            if (!data.hasOwnProperty('exchanges')) data['exchanges'] = [];
+            if (!data.hasOwnProperty('whitelist')) data['whitelist'] = [];
+            return data;
+        }
+        return false;
     }
 
     // Set signal provider data by UUID
@@ -202,6 +209,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         var [provider, exchange] = this.utils.extract_props(params, ['provider', 'exchange'])
 
         var data = await this.get_provider(provider);
+        if (!data.hasOwnProperty('exchanges')) data['exchanges'] = [];
 
         if (!data.exchanges.includes(exchange))
             data.exchanges.push(exchange);
@@ -228,6 +236,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         var [provider, exchange] = this.utils.extract_props(params, ['provider', 'exchange'])
 
         var data = await this.get_provider(provider);
+        if (!data.hasOwnProperty('exchanges')) data['exchanges'] = [];
 
         if (data.exchanges.includes(exchange))
             data.exchanges = data.exchanges.filter(exch => exch != exchange);
@@ -238,6 +247,72 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             return this.output.error('del_provider_exch', [provider, exchange]);
         }
 
+    }
+
+    // Add administrator for signal provider
+
+    async add_admin(params) {
+
+        var schema = {
+            provider: { required: 'string', format: 'lowercase' },
+            user: { required: 'string', format: 'lowercase' },
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        var [provider, user] = this.utils.extract_props(params, ['provider', 'user'])
+
+        var data = await this.get_provider(provider);
+        if (!data.hasOwnProperty('admins')) data['admins'] = [];
+        if (!data.admins.includes(user))
+            data.admins.push(user);
+
+        if (await this.set_provider(provider, data)) {
+            return this.output.success('add_provider_admin', [provider, user]);
+        } else {
+            return this.output.error('add_provider_admin', [provider, user]);
+        }
+
+    }
+
+    // Remove adminiatrator for signal provider
+
+    async remove_admin(params) {
+
+        var schema = {
+            provider: { required: 'string', format: 'lowercase' },
+            user: { required: 'string', format: 'lowercase' },
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        var [provider, user] = this.utils.extract_props(params, ['provider', 'user'])
+
+        var data = await this.get_provider(provider);
+        if (!data.hasOwnProperty('admins')) data['admins'] = [];
+
+        if (data.admins.includes(user))
+            data.admins = data.admins.filter(admin => admin != user);
+
+        if (await this.set_provider(provider, data)) {
+            return this.output.success('del_provider_admin', [provider, user]);
+        } else {
+            return this.output.error('del_provider_admin', [provider, admin]);
+        }
+
+    }
+
+    // Check if user is a signal provider admin
+
+    async is_admin(provider, user) {
+
+        var data = await this.get_provider(provider);
+        if (!data.hasOwnProperty('admins')) data['admins'] = [];
+
+        if (data.admins.includes(user))
+            return true;
+        
+        return false;
     }
 
     // Add whitelisted IP for signal provider
@@ -255,6 +330,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         var data = await this.get_provider(provider);
 
+        if (!data.hasOwnProperty('whitelist')) data['whitelist'] = [];
         if (!data.whitelist.includes(ip))
             data.whitelist.push(ip);
 
@@ -280,6 +356,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         var [provider, ip] = this.utils.extract_props(params, ['provider', 'ip'])
 
         var data = await this.get_provider(provider);
+        if (!data.hasOwnProperty('whitelist')) data['whitelist'] = [];
 
         if (data.whitelist.includes(ip))
             data.whitelist = data.whitelist.filter(address => address != ip);

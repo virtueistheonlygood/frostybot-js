@@ -71,7 +71,7 @@ if (typeof(tab_positions) !== 'undefined') {
     $(document).ready(function () {
         
       var griddata = {};
-
+      var showspot = '<%=showspot%>' == 'true' ? true : false;
   
       function setGridData(data) {
         positionsSource.localdata = data;
@@ -227,7 +227,7 @@ if (typeof(tab_positions) !== 'undefined') {
         }
       }
 
-      $("#positionsshowspot").jqxCheckBox({ height: 30, width: 100, checked: <%= showspot %>});
+      $("#positionsshowspot").jqxCheckBox({ height: 30, width: 100, checked: showspot});
       $("#positionsshowspot").on('change', function() {
           refreshCache();
       });

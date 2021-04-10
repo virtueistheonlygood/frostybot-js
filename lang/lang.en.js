@@ -199,8 +199,10 @@ module.exports = {
         gui_recaptcha:       'Recaptcha verification failed: Score: {0}',
 
         add_provider:        'Failed to add signal provider: {0}',
+        add_provider_admin:  'Failed to add admin {1} to signal provider: {0}',
         add_provider_exch:   'Failed to add {1} exchange to signal provider: {0}',
         add_provider_ip:     'Failed to whitelist IP {1} for signal provider: {0}',
+        del_provider_admin:  'Failed to remove admin {1} from signal provider: {0}',
         del_provider_exch:   'Failed to remove {1} exchange from signal provider: {0}',
         del_provider_ip:     'Failed to remove whitelisted IP {1} from signal provider: {0}',
         invalid_provider:    'Invalid provider UUID: {0}',
@@ -261,8 +263,10 @@ module.exports = {
         gui_recaptcha:       'Recaptcha verification succeeded: Score: {0}',
 
         add_provider:        'Successfully added signal provider: {0}',
+        add_provider_admin:  'Successfully added admin {1} to signal provider: {0}',
         add_provider_exch:   'Successfully added {1} exchange to signal provider: {0}',
         add_provider_ip:     'Successfully whitelisted IP {1} for signal provider: {0}',
+        del_provider_admin:  'Successfully removed admin {1} from signal provider: {0}',
         del_provider_exch:   'Successfully removed {1} exchange from signal provider: {0}',
         del_provider_ip:     'Successfully removed whitelisted IP {1} from signal provider: {0}',
         signal_queued:       'Signal Queued: Provider: {0}, User: {1}',

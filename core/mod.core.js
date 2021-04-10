@@ -316,7 +316,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
     parse_obj(params) {
         params = this.utils.clean_object(params);      
-        var command = this.utils.extract_props(params, 'command');
+        var command = this.utils.extract_props(params, 'command').toLowerCase();
         if (command == undefined) 
             return this.output.error('required_param', ['command']);
         if (command.indexOf(':') < 0) 

@@ -322,10 +322,12 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             if (account) {
                 var exchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
             }
+            var uuid = context.get('uuid')
             for (var i = 0; i < providers.length; i++) {
                 var provider = providers[i]
-                var check = await this.signals.is_provider_selected(provider.uuid, exchange, stub)
-                if (check == false) {
+                var is_admin = await this.signals.is_admin(provider.uuid, uuid)
+                var in_use = await this.signals.is_provider_selected(provider.uuid, exchange, stub)
+                if ((in_use == false) || (is_admin == true)) {
                     filtered.push(provider)
                 }
             }
