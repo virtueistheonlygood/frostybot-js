@@ -1291,7 +1291,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (potential != false) {
                 if (this.is_relative(params.stoptrigger)) {
                     if (isNaN(potential.price)) {
-                        var price = (market.bid + market.ask) / 2;
+                        var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
                         if (isNaN(price)) {
                             this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
                             this.output.debug(market);
@@ -1416,7 +1416,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (potential != false) {
                 if (this.is_relative(params.profittrigger)) {
                     if (isNaN(potential.price)) {
-                        var price = (market.bid + market.ask) / 2;
+                        var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
                         if (isNaN(price)) {
                             this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
                             this.output.debug(market);
