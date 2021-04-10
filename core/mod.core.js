@@ -40,6 +40,7 @@ const api_methods = {
         'balances', 
         'position', 
         'positions', 
+        'order', 
         'orders', 
         'cancel', 
         'cancelall',
@@ -491,7 +492,13 @@ module.exports = class frostybot_core_module extends frostybot_module {
                     if (params.hasOwnProperty('uuid')) delete params.uuid;
                     if (raw !== null) 
                         params['_raw_'] = raw;
-                    let result = await global.frostybot._modules_[module][method](params);
+                    var result = null;
+                    try {
+                        result = await global.frostybot._modules_[module][method](params);
+                    } catch (e) {
+                        this.output.exception(e);
+                        result = false;
+                    }
                     var end = (new Date).getTime();
                     var duration = (end - start) / 1000;            
                     this.output.notice('command_completed', duration);

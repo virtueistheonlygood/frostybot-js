@@ -6,6 +6,7 @@ const fs  = require('fs');          // Filesystem
 const eol = require('os').EOL;      // Operating system end of line character(s)
 const ccxt = require('ccxt');       // CCXT Error Messages
 const context = require('express-http-context'); // HTTP Context
+const path = require('path')        // Path Module
 
 const frostybot_module = require('./mod.base')
 
@@ -193,7 +194,13 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     exception(e) {
         var type = e.constructor.name;
-        var message = e.message;
+        var stack = e.stack.split('\n')[1].trim(' ');
+        var fileinfo = stack.split('(')[1].replace(')','')
+        var funcname = stack.split('(')[0];
+        var [filename, line, col] = fileinfo.split(':');
+        var basename = path.basename(filename);
+        var message = [e.message, funcname, '('+[basename, line, col].join(':')+')'].join(' ');
+        //console.log(stack)
         /*if (e instanceof ccxt.ExchangeError) {
             var testmessage = JSON.parse(e.message.error.message);
             console.log(testmessage);

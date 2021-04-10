@@ -298,7 +298,6 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                                     obj[filterkey] = allconfig[filterkey];
                                     return obj;
                                 }, {});
-
             var griddata = [];
             symbols.forEach(symbol => {
                 var lowersymbol = symbol.toLowerCase();
@@ -315,14 +314,35 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             var gridstring = JSON.stringify(griddata);
             let buff = new Buffer.from(gridstring);
             let base64grid = buff.toString('base64');
+            let providers = await this.signals.get_providers_by_stub(stub); 
+            let filtered = [];
+            var account = await this.accounts.get(stub);
+            account = account.hasOwnProperty(stub) ? account[stub] : account;
+            if (account) {
+                var exchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
+            }
+            for (var i = 0; i < providers.length; i++) {
+                var provider = providers[i]
+                var check = await this.signals.is_provider_selected(provider.uuid, exchange, stub)
+                if (check == false) {
+                    filtered.push(provider)
+                }
+            }
             config = {
                 stub: stub,
                 symbols: symbols,
-                providers: await this.signals.get_providers_by_stub(stub),
+                providers: filtered,
                 config: stubconfig,
                 griddata: base64grid,
             }
         }
+        return config;
+    }
+
+    // Balances Tab
+
+    async content_tab_balances(params) {
+        var config = this.accounts.get();
         return config;
     }
 
@@ -331,6 +351,29 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async content_tab_positions(params) {
         var config = this.accounts.get();
         return config;
+    }
+
+    // Balance Grid Data
+
+    async data_griddata_balances(params) {
+        var stub = params.stub;
+        var classes = require('./mod.classes');
+        var exchange = new classes.exchange(stub);
+        var balances = await exchange.execute('balances');
+        var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
+        for (var i =0; i < balances.length; i++) {
+            var balance = balances[i];
+            balance['base_free'] = balance.base.free;
+            balance['base_used'] = balance.base.used;
+            balance['base_total'] = balance.base.total;
+            balance['usd_free'] = balance.usd.free;
+            balance['usd_used'] = balance.usd.used;
+            balance['usd_total'] = balance.usd.total;
+            delete balance.base
+            delete balance.usd
+            balances[i] = balance;
+        }
+        return balances;
     }
 
     // Position Grid Data
@@ -385,7 +428,6 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
         var orders = await exchange.execute('orders', filter);
-        //console.log(orders);
         //var orders = (orders !== false ? orders : []).sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1);
         for (var i =0; i < orders.length; i++) {
             var order = orders[i];
@@ -401,10 +443,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var providers = false;
         if (uuid !== false) {
             var signaladmins = await this.signals.get_signal_admins();
-            console.log(signaladmins)
             providers = signaladmins.hasOwnProperty(uuid) ? signaladmins[uuid] : false;
         }
-        console.log(providers)
         return {uuid : uuid, providers: providers};
     }
 
@@ -427,8 +467,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         if ((result !== false) && (result.length > 0)) {
             for (var i = 0; i < result.length; i++) {
                 var entry = result[i];
-                //console.log(entry)
-                log.push([entry.timestamp, entry.type.toUpperCase().padEnd(7, ' '), entry.message].join(' │ '));
+                log.push([entry.timestamp, entry.type.toUpperCase().padEnd(7, ' '), entry.message.replace('??','>>')].join(' │ '));
             }
         }
         return log;
