@@ -209,6 +209,13 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     }
 
+    // Brancing
+
+    async content_logo(params) {
+        var logo = await this.settings.get('core', 'gui:logo', 'frostybot.png');
+        return logo;
+    }
+
     // Main Menu
 
     async content_menu_main(params) {
