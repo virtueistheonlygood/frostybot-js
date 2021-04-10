@@ -284,10 +284,10 @@ module.exports = class frostybot_exchange_base {
                 if (this.data.markets_by_symbol.hasOwnProperty(mapsymbol)) {
                     var market = this.data.markets_by_symbol[mapsymbol];
                     if (market != null) {
-                        price = (market.bid + market.ask) / 2;
+                        price = ((market.bid * 1) + (market.ask * 1)) / 2;
                         return price;
                     }        
-                }    
+                }
             };
         }
         return false;
