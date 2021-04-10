@@ -475,7 +475,6 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async data_logdata(params) {
         var log = [];
-        console.log(params);
         if (params.hasOwnProperty('filters')) {
             this.config.set({'gui:logfilters': String(params.filters)});
         }

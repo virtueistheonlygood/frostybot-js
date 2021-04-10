@@ -106,8 +106,8 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
                 const type = raw_market.info.type;
                 const base = raw_market.base;
                 const quote = raw_market.quote;
-                const bid = raw_market.info.bid;
-                const ask = raw_market.info.ask;
+                const bid = parseFloat(raw_market.info.bid);
+                const ask = parseFloat(raw_market.info.ask);
                 const expiration = (raw_market.expiration != null ? raw_market.expiration : null);
                 const contract_size = (raw_market.info.contractSize != null ? raw_market.info.contractSize : 1);
                 const precision = raw_market.precision;

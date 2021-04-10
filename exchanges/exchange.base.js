@@ -262,6 +262,7 @@ module.exports = class frostybot_exchange_base {
                     market.usd.base = market.usd.quote * market.avg;
                 }    
             } else {
+                if (isNaN(market.avg) || market.avg == null) market.avg = (market.bid + market.ask) / 2;
                 market.usd = market.avg;
             }
             this.data.markets[index] = market;
