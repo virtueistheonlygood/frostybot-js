@@ -463,7 +463,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async content_tab_logs(params) {
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
-        var logfilters = await this.config.get('gui:logfilters', '"debug,notice,warning,error,success"');
+        var logfilters = await this.config.get('gui:logfilters', 'debug,notice,warning,error,success');
         var config = {
             logfilters: logfilters
         }
@@ -477,7 +477,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var log = [];
         console.log(params);
         if (params.hasOwnProperty('filters')) {
-            this.config.set({'gui:logfilters': '"'+String(params.filters)+'"'});
+            this.config.set({'gui:logfilters': String(params.filters)});
         }
         var result = await this.user.log(params);
         if ((result !== false) && (result.length > 0)) {
