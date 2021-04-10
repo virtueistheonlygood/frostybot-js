@@ -26,15 +26,14 @@ var port = 80
 try {
   var port = fs.readFileSync(portfile, {encoding:'utf8', flag:'r'}) 
 } catch {
-  var port = (process.env.FROSTYBOT_PORT || 80);
+  var port = 80;
 }
 app.set('port', port);
 fs.writeFileSync(portfile, port.toString())
 
 // Set App Title
 
-process.title = "frostybot-js-" + port.toString();
-
+process.title = "fb-" + port.toString();
 
 // Reverse Proxy / Load Balancer Support
 

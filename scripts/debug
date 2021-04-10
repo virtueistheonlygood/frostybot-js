@@ -11,7 +11,7 @@ else
     PORT=80
 fi
 
-PID=`sudo ps -C "frostybot-js-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
+PID=`sudo ps -C "fb-$PORT" | grep -v "grep\|PID" | awk '{print $1}'`
 
 if [ ! "$PID" == "" ]; then
         echo "Frostybot server is already running on port $PORT (PID: $PID)"
