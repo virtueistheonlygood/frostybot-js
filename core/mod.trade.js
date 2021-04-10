@@ -1254,11 +1254,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var defstoptriggerstub = await this.config.get(stub + ':defstoptrigger');
             var defstoptriggersymbol = await this.config.get(stub + ':' + symbol + ':defstoptrigger');
             if (defstoptriggersymbol !== false) {
-                this.output.debug('order_sl_default', [(stub + ':' + symbol + ':defstoptrigger').toLowerCase()]);
+                this.output.debug('order_sl_default', [(stub + ':' + symbol + ':defstoptrigger').toLowerCase() + '=' + defstoptriggersymbol]);
                 params.stoptrigger = defstoptriggersymbol;
             } else {
                 if (defstoptriggerstub !== false) {
-                    this.output.debug('order_sl_default', [(stub + ':defstoptrigger').toLowerCase()]);
+                    this.output.debug('order_sl_default', [(stub + ':defstoptrigger').toLowerCase() + '=' + defstoptriggerstub]);
                     params.stoptrigger = defstoptriggerstub;
                 }
             }
@@ -1291,13 +1291,18 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (potential != false) {
                 if (this.is_relative(params.stoptrigger)) {
                     if (isNaN(potential.price)) {
-                        var price = this.round_price(market, market.avg);
-                        this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        var price = (market.bid + market.ask) / 2;
+                        if (isNaN(price)) {
+                            this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
+                            this.output.debug(market);
+                        } else {
+                            this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        }
                     } else {
-                        var price = this.round_price(market, potential.price);
+                        var price = potential.price;
                         this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
                     }
-                    params.stoptrigger = this.get_relative_price(market, params.stoptrigger, price);
+                    params.stoptrigger = this.get_relative_price(market, params.stoptrigger, this.round_price(market, price));
                 }
                 params['stop' + potential.sizing] = potential.amount;
                 // Cancel existing SL orders
@@ -1356,29 +1361,30 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var defprofitsizestub = await this.config.get(stub + ':defprofitsize');
             var defprofitsizesymbol = await this.config.get(stub + ':' + symbol + ':defprofitsize');
             if (defprofitsizesymbol !== false) {
-                this.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase()]);
+                this.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase() + '=' + defprofitsizesymbol]);
                 params.profitsize = defprofitsizesymbol;
             } else {
                 if (defprofitsizestub !== false) {
-                    this.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase()]);
+                    this.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase() + '=' + defprofitsizestub]);
                     params.profitsize = defprofitsizestub;
                 } else {
+                    this.output.debug('order_tpsize_default', ['default=100%']);
                     params.profitsize = '100%';
                 }
             }
         }
 
         // If profittrigger not given, check if default exists and use that
-        if ((params.profittrigger == undefined) && (side != null)) {
+        if ((params.profittrigger == undefined)) {
             var operator = side == 'sell' ? '+' : '-';
             var defprofittriggerstub = await this.config.get(stub + ':defprofittrigger');
             var defprofittriggersymbol = await this.config.get(stub + ':' + symbol + ':defprofittrigger');
             if (defprofittriggersymbol !== false) {
-                this.output.debug('order_tp_default', [(stub + ':' + symbol + ':defprofittrigger').toLowerCase()]);
+                this.output.debug('order_tp_default', [(stub + ':' + symbol + ':defprofittrigger').toLowerCase() + '=' + defprofittriggersymbol]);
                 params.profittrigger = operator + defprofittriggersymbol;
             } else {
                 if (defprofittriggerstub !== false) {
-                    this.output.debug('order_tp_default', [(stub + ':defprofittrigger').toLowerCase()]);
+                    this.output.debug('order_tp_default', [(stub + ':defprofittrigger').toLowerCase() + '=' + defprofittriggerstub]);
                     params.profittrigger = operator + defprofittriggerstub;
                 }
             }
@@ -1410,13 +1416,18 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (potential != false) {
                 if (this.is_relative(params.profittrigger)) {
                     if (isNaN(potential.price)) {
-                        var price = this.round_price(market, market.avg);
-                        this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        var price = (market.bid + market.ask) / 2;
+                        if (isNaN(price)) {
+                            this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
+                            this.output.debug(market);
+                        } else {
+                            this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        }
                     } else {
-                        var price = this.round_price(market, potential.price);
+                        var price = potential.price;
                         this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
                     }
-                    params.profittrigger = this.get_relative_price(market, params.profittrigger, price);
+                    params.profittrigger = this.get_relative_price(market, params.profittrigger, this.round_price(market, price));
                 }
                 params['profit' + potential.sizing] = (params.profitsize.indexOf('%') != '' ? potential.amount * ((params.profitsize.replace('%','') * 1) / 100) : potential.amount);
                 // Cancel existing TP orders
@@ -1533,6 +1544,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var schema = {
             stub:   { required: 'string', format: 'lowercase', },
             id:     { required: 'string',  },
+            symbol: { optional: 'string',  },
         }
 
         if (!(params = this.utils.validator(params, schema))) return false; 
@@ -1540,20 +1552,19 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         this.initialize_exchange(params);
         let filter = {};
         const stub = params.stub
-        const filterkeys = ['id', 'status', 'symbol'];
+        const filterkeys = ['id', 'symbol'];
         filterkeys.forEach(key => {
             if (params[key] != undefined) {
                 filter[key] = params[key];
             }
         })
-        let result = await this.exchange[stub].execute('orders', filter);
-        if (this.utils.is_array(result)) {
-            this.output.success('orders_retrieve', result.length)
+        let result = await this.exchange[stub].execute('order', filter);
+        if (result != false) {
+            this.output.success('orders_retrieve', 1)
             return result;        
-        } else {
-            this.output.error('orders_retrieve')
-            return false;
         }
+        this.output.error('orders_retrieve')
+        return false;
     }
 
     // Get list of orders

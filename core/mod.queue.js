@@ -69,12 +69,10 @@ module.exports = class frostybot_queue_module extends frostybot_module {
     // Check if order exists (ensure that it was successfully created on the exchange)
 
     async check(stub, symbol, id) {
+        await this.utils.sleep(3);
         var exchange = new this.classes.exchange(stub);
-        let result = await exchange.execute('orders', {id: id, symbol: symbol});
-        if ((Array.isArray(result)) && (result.length == 1) && (String(result[0].id) == String(id))) {
-            return true;
-        } 
-        return false;
+        let result = await exchange.execute('order', {id: id, symbol: symbol}, true);
+        return (result !== false ? true : false);
     }
 
     // Submit an order to the exchange

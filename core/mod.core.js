@@ -33,6 +33,7 @@ const api_methods = {
         'stoploss', 
         'takeprofit', 
         'trailstop', 
+        'tpsl',
         'close', 
         'closeall',
         'market', 
