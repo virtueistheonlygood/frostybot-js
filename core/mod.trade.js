@@ -116,10 +116,8 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async position_size_usd(stub, symbol) {
         var filter = {symbol: symbol}
         var position = await this.exchange[stub].execute('position',filter);
-        if (!this.utils.is_empty(position)) {
-            return position['usd_size'];
-        }
-        return 0;  
+        var size = !this.utils.is_empty(position) ? position['usd_size'] : 0;
+        return (!isNaN(size) ? size : 0);  
     }
 
 
