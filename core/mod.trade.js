@@ -1774,5 +1774,69 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
     }
 
+    // Get PNL from order history
+
+    async pnl(params) {
+
+        var schema = {
+            stub:        { required: 'string', format: 'lowercase', },
+            symbol:      { required: 'string', format: 'uppercase', },
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        this.initialize_exchange(params);
+        const stub = params.stub
+        const symbol = params.symbol
+        var position = await this.exchange[stub].execute('position',params);
+        var orders =  await this.exchange[stub].execute('orders',params);
+
+        if (this.utils.is_array(orders)) {
+            // Sort in reverse order and filter out orders where no fills took place
+            orders = orders.sort((a, b) => a.timestamp > b.timestamp ? -1 : 1)
+                           .filter(order => order.filled_base > 0)
+        }
+
+        // Check if currently in a position, if so use the position balance for unrealized PNL calc
+        var bal_base = this.utils.is_object(position) && position.hasOwnProperty('base_size') ? position.base_size : 0;
+        var bal_quote = this.utils.is_object(position) && position.hasOwnProperty('quote_size') ? position.quote_size : 0;
+    
+        // Cycle backwards through orders and reconstruct balance and group orders for the same position together
+        var groups = [];
+        var current = [];
+ 
+        for(var n = 0; n < orders.length; n++) {
+            var order = orders[n];
+            var entry = order;
+            delete entry.trigger;
+            delete entry.status;
+            entry.balance_base = bal_base;
+            entry.balance_quote = bal_base * order.price,
+            current.push(entry);
+            bal_base = (order.direction == 'sell' ? bal_base + order.filled_base : bal_base - order.filled_base);
+            bal_quote = (order.direction == 'sell' ? bal_quote + order.filled_quote : bal_quote - order.filled_quote);
+            if (bal_base == 0) {
+                var start = order.timestamp;
+                var end = [undefined, start].includes(current[0]) || current.length < 2 ? null : current[0].timestamp;
+                var group = {
+                    start: start,
+                    end: end,
+                    pnl: bal_quote,
+                    orders: current.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+                }
+                groups.push(group);
+                current = [];
+                bal_quote = 0
+            }
+        }
+
+        // Sort order groups cronologically
+        groups.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+
+
+        return new this.classes.pnl(stub, symbol, groups); 
+
+    }
+
     
 }

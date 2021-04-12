@@ -158,6 +158,19 @@ class frostybot_order extends frostybot_base {
   }
 }
 
+// PNL Object
+
+class frostybot_pnl extends frostybot_base {
+
+  constructor(stub, symbol, groups) {
+    super();
+    this.stub = stub,
+    this.symbol = symbol,
+    this.groups = groups
+  }
+
+}
+
 // Output Object
 
 class frostybot_output extends frostybot_base {
@@ -363,6 +376,7 @@ module.exports = {
   position_spot: frostybot_position_spot,
   market: frostybot_market,
   order: frostybot_order,
+  pnl: frostybot_pnl,
   metric: frostybot_metric,
   output: frostybot_output,
   exchange: frostybot_exchange,

@@ -439,11 +439,31 @@ module.exports = class frostybot_exchange_base {
         return null;
     }
 
+    // Dump position debug data
+
+    position_debug(positions) {
+        var data = {};
+        for(var i = 0; i < positions.length; i++) {
+            var position = positions[i];
+            var info = 
+            data[position.symbol] = {
+                direction: position.direction,
+                size: position.base_size
+            }
+        }
+        this.output.debug(data);
+        
+    }
+
     // Get position for specific filter
     
     async position(filter) {
         let positions = await this.execute('positions');
+        this.output.debug('custom_object', ['Positions before filter ('+this.utils.serialize(filter)+')', positions]);
+        this.position_debug(positions);
         let result = this.utils.filter_objects(positions, filter);
+        this.output.debug('custom_object', ['Positions atfer filter ('+this.utils.serialize(filter)+')', result]);
+        this.position_debug(result);
         if (this.utils.is_array(result) && result.length == 1) {
             return result[0];
         }

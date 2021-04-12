@@ -46,6 +46,7 @@ const api_methods = {
         'cancel', 
         'cancelall',
         'leverage',
+        'pnl',
     ],
 
     settings: [
