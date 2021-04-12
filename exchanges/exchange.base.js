@@ -462,8 +462,12 @@ module.exports = class frostybot_exchange_base {
         this.output.debug('custom_object', ['Positions before filter ('+this.utils.serialize(filter)+')', positions]);
         this.position_debug(positions);
         let result = this.utils.filter_objects(positions, filter);
-        this.output.debug('custom_object', ['Positions atfer filter ('+this.utils.serialize(filter)+')', result]);
-        this.position_debug(result);
+        this.output.debug('custom_object', ['Positions after filter ('+this.utils.serialize(filter)+')', result]);
+        try {
+            this.position_debug(result);
+        } catch (e) {
+            this.output.debug('custom_object', ['Error outputting debug info', e])
+        }
         if (this.utils.is_array(result) && result.length == 1) {
             return result[0];
         }
