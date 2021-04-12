@@ -20,7 +20,8 @@
 
 #contentmain {
     min-width: 950px;
-    max-width: 1000px;
+    max-width: 950px;
+    width: 950px;
 }
 
 #mainmenu {
