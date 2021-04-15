@@ -47,6 +47,7 @@ const api_methods = {
         'cancelall',
         'leverage',
         'pnl',
+        'order_history',
     ],
 
     settings: [

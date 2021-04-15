@@ -519,8 +519,9 @@ module.exports = class frostybot_utils_module extends frostybot_module {
                 // Check param type
 
                 switch(expected_type) {
-                    case    'boolean'   :   var actual_type = this.is_bool(val) ? 'boolean' : typeof val; break;
-                    case    'ip'        :   var actual_type = this.is_ip(val)   ? 'ip'      : typeof val; break;
+                    case    'boolean'   :   var actual_type = this.is_bool(val)     ? 'boolean' : typeof val; break;
+                    case    'ip'        :   var actual_type = this.is_ip(val)       ? 'ip'      : typeof val; break;
+                    case    'number'    :   var actual_type = this.is_numeric(val)  ? 'number'  : typeof val; break;
                     default             :   var actual_type = typeof val;
                 }
 

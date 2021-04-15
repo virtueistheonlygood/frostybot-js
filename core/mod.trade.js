@@ -453,6 +453,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var current = 0; 
         }
 
+        if (isNaN(current)) current = 0;
         var target = null
 
         // Convert relative size
@@ -1863,7 +1864,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
         var schema = {
             stub:        { required: 'string', format: 'lowercase', },
-            //symbol:      { required: 'string', format: 'uppercase', },
+            symbol:      { optional: 'string', format: 'uppercase', },
             days:        { required: 'number' },
         }
 
