@@ -30,6 +30,7 @@ module.exports = class frostybot_exchange_base {
                 'available_equity_usd',
                 'balances',
                 'orders',
+                'order_history',
                 'cancel',
                 'cancel_all',
                 'get_market_by_id',
@@ -467,11 +468,9 @@ module.exports = class frostybot_exchange_base {
             this.position_debug(result);
         } catch (e) {
             this.output.debug('custom_object', ['Error outputting debug info', e])
+        } finally {
+            return this.utils.is_array(result) ? (result.length == 1 ? result[0] : result) : [];
         }
-        if (this.utils.is_array(result) && result.length == 1) {
-            return result[0];
-        }
-        return result;
     }
 
     // Create new order
@@ -538,6 +537,11 @@ module.exports = class frostybot_exchange_base {
         return orders;
     }
 
+    // Get order history
+
+    async order_history(params) {
+        return await this.all_orders(params);
+    }
 
     // Cancel all orders
     
