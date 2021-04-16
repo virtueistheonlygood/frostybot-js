@@ -1162,7 +1162,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var levels = [];
         // Get current position
         var position = await this.get_position(stub, symbol);
-        if (position != false) {    // Currently in a position
+        if (![false, undefined].includes(position)) {    // Currently in a position
             if (!side && position.direction !== false) side = dirmap[position.direction.toLowerCase()];
             levels.push({
                 price: position.entry_price,
@@ -1295,15 +1295,15 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 if (this.is_relative(params.stoptrigger)) {
                     if (isNaN(potential.price)) {
                         var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
-                        if (isNaN(price)) {
-                            this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
-                            this.output.debug(market);
-                        } else {
-                            this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
-                        }
+                        //if (isNaN(price)) {
+                        //    this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
+                        //    this.output.debug(market);
+                        //} else {
+                        //    this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        //}
                     } else {
                         var price = potential.price;
-                        this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
+                        //this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
                     }
                     params.stoptrigger = this.get_relative_price(market, params.stoptrigger, this.round_price(market, price));
                 }
@@ -1420,15 +1420,15 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 if (this.is_relative(params.profittrigger)) {
                     if (isNaN(potential.price)) {
                         var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
-                        if (isNaN(price)) {
-                            this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
-                            this.output.debug(market);
-                        } else {
-                            this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
-                        }
+                        //if (isNaN(price)) {
+                        //    this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
+                        //    this.output.debug(market);
+                        //} else {
+                        //    this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        //}
                     } else {
                         var price = potential.price;
-                        this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
+                        //this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
                     }
                     params.profittrigger = this.get_relative_price(market, params.profittrigger, this.round_price(market, price));
                 }

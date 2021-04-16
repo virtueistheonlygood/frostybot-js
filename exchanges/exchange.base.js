@@ -446,7 +446,6 @@ module.exports = class frostybot_exchange_base {
         var data = {};
         for(var i = 0; i < positions.length; i++) {
             var position = positions[i];
-            var info = 
             data[position.symbol] = {
                 direction: position.direction,
                 size: position.base_size
@@ -460,17 +459,17 @@ module.exports = class frostybot_exchange_base {
     
     async position(filter) {
         let positions = await this.execute('positions');
-        this.output.debug('custom_object', ['Positions before filter ('+this.utils.serialize(filter)+')', positions]);
-        this.position_debug(positions);
+        //this.output.debug('custom_object', ['Positions before filter ('+this.utils.serialize(filter)+')', positions]);
+        //this.position_debug(positions);
         let result = this.utils.filter_objects(positions, filter);
-        this.output.debug('custom_object', ['Positions after filter ('+this.utils.serialize(filter)+')', result]);
-        try {
-            this.position_debug(result);
-        } catch (e) {
-            this.output.debug('custom_object', ['Error outputting debug info', e])
-        } finally {
-            return this.utils.is_array(result) ? (result.length == 1 ? result[0] : result) : [];
-        }
+        //this.output.debug('custom_object', ['Positions after filter ('+this.utils.serialize(filter)+')', result]);
+        //try {
+        //    this.position_debug(result);
+        //} catch (e) {
+        //    this.output.debug('custom_object', ['Error outputting debug info', e])
+        //} finally {
+        return this.utils.is_array(result) ? (result.length == 1 ? result[0] : result) : [];
+        //}
     }
 
     // Create new order
