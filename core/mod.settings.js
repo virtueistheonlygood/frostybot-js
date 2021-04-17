@@ -2,6 +2,7 @@
 
 const frostybot_module = require('./mod.base')
 var context = require('express-http-context');
+const { cache } = require('ejs');
 md5 = require('md5');
 
 const global_keys = ['core', 'whitelist', 'signalprovider', 'symbolmap'];
@@ -21,10 +22,10 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
-        //if (result = this.cache.get(cachekey)) {
-        //    return result;
-        //}
-        //var query = this.database.type == 'mysql' ? { uuid: uuid } : {};
+        var cacheresult = this.cache.get(cachekey)
+        if (cacheresult != undefined) {
+            return cacheresult;
+        }
         var query = { uuid: uuid };
         if (mainkey != null) query['mainkey'] = mainkey;
         if (subkey != null)  query['subkey'] = subkey;
@@ -32,18 +33,20 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         switch (result.length) {
             case 0      :   if (defval != undefined) {
                                 this.set(mainkey, subkey, defval);
+                                this.cache.set(cachekey, defval, 60);
                                 return defval
                             } else return null;
             case 1      :   var val = result[0].value
                             val = this.utils.is_json(val) ? JSON.parse(val) : val;
                             val = ['true','false','"true"','"false"'].includes(val) ? (String(val.replace(/"/g,"")) == 'true' ? true : false)  : val;
-                            this.cache.set(cachekey, val, 60);
                             if (retobj == true) {
                                 var obj = {};
                                 var subkey = result[0].subkey
                                 obj[subkey] = val
+                                this.cache.set(cachekey, obj, 60);
                                 return obj;
                             }
+                            this.cache.set(cachekey, val, 60);
                             return val;
             default     :   var obj = {};
                             for (var i=0; i < result.length; i++) {
@@ -53,7 +56,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
                                 val = ['true','false','"true"','"false"'].includes(val) ? (String(val.replace(/"/g,"")) == 'true' ? true : false) : val;
                                 obj[subkey] = val;
                             }
-                            this.cache.set(cachekey, obj, 5);
+                            this.cache.set(cachekey, obj, 60);
                             return obj;
         }
     }
