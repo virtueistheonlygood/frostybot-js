@@ -68,7 +68,11 @@ module.exports = class frostybot_exchange_base {
     // Set method cache time
 
     set_cache_time(method, sec) {
-        this.interfaces.cache[method] = sec;
+        if (this.interfaces.cache.hasOwnProperty(method)) {
+            this.interfaces.cache[method].time = sec
+        } else {
+            this.interfaces.cache[method] = {time: sec, global: false};
+        }
     }
 
     // Load account
