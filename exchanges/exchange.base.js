@@ -1,8 +1,8 @@
 // Exchange Base Class
 
 const ccxtlib = require ('ccxt');
-const { order } = require('../core/mod.classes');
-md5 = require('md5')
+const md5 = require('md5');
+var context = require('express-http-context');
 
 // Normalizer base class
 
@@ -42,17 +42,22 @@ module.exports = class frostybot_exchange_base {
                 'symbols',
             ],
             cache: {
-                'balances' : 5,
-                'position' : 2,
-                'market' : 60,
-                'symbols' : 300,
-                'fetch_markets' : 60,
-                'fetch_orders' : 2,
-                'fetch_open_orders' : 2,
-                'fetch_closed_orders' : 2,
-                'get_market_by_id' : 5,
-                'get_market_by_symbol' : 5,
-                'get_market_by_id_or_symbol' : 5,
+                'balances' : {time: 10, global: false},
+                'positions' : {time: 10, global: false},
+                'position' : {time: 10, global: false},
+                'markets' : {time: 60, global: true},
+                'market' : {time: 60, global: true},
+                'symbols' : {time: 300, global: true},
+                'fetch_markets' : {time: 60, global: true},
+                'fetch_orders' : {time: 2, global: false},
+                'fetch_open_orders' : {time: 2, global: false},
+                'fetch_closed_orders' : {time: 2, global: false},
+                'get_market_by_id' : {time: 10, global: true},
+                'get_market_by_symbol' : {time: 10, global: true},
+                'get_market_by_id_or_symbol' : {time: 10, global: true},
+                'private_get_positions' : {time: 10, global: false},
+                'fapiPublic_get_ticker_bookticker' : {time: 60, global: true},
+                'fapiPrivate_get_positionrisk': {time: 10, global: false}
             }
         }
         this.stub = stub;
@@ -123,10 +128,14 @@ module.exports = class frostybot_exchange_base {
         if (this.ccxtobj == undefined) await this.load_account();
         try {
             this.shortname = await this.accounts.get_shortname_from_stub(this.stub);
-            var stat = new this.classes.metric([this.shortname, this.stub, type, method].join(':'));
+            var uuid = params.hasOwnProperty('uuid') ? params.uuid : context.get('uuid');
+            var cachetime = this.interfaces.cache.hasOwnProperty(method) ? this.interfaces.cache[method].time : null;
+            var isglobal = this.interfaces.cache.hasOwnProperty(method) ? this.interfaces.cache[method].global : false;
+            var req = context.get('reqId')
+            var stat = new this.classes.metric([(isglobal ? 'global' : 'context'), type, this.shortname, method].join(':'));
             stat.start();
-            var cachetime = this.interfaces.cache.hasOwnProperty(method) ? this.interfaces.cache[method] : null;
-            var key = md5([this.shortname, this.stub, type, method, this.utils.serialize(params)].join('|'));
+            var keyparts = isglobal ? [type, this.shortname, method, this.utils.serialize(params)] : [req, uuid, this.shortname, this.stub, type, method, this.utils.serialize(params)];
+            var key = md5(keyparts.join('|'));
             var value = cachetime == null || nocache ? undefined : this.cache.get( key );
             if ( value == undefined ) {
                 var result = null;
@@ -310,8 +319,8 @@ module.exports = class frostybot_exchange_base {
             return this.data.balances;
         }
         let results = await this.execute('fetch_balance');
-        this.output.debug('custom_object', ['Balance response from CCXT', results])
-        this.output.debug(results)
+        //this.output.debug('custom_object', ['Balance response from CCXT', results])
+        //this.output.debug(results)
         await this.markets();
         if (results.result != 'error') {
             var raw_balances = results.hasOwnProperty('data') ? results.data : results;
@@ -324,17 +333,17 @@ module.exports = class frostybot_exchange_base {
                 .forEach(currency => {
                     var raw_balance = raw_balances[currency];
                     if (raw_balance.total != false) {
-                        this.output.debug('custom_object', ['Calculating USD value for currency', currency])
+                        //this.output.debug('custom_object', ['Calculating USD value for currency', currency])
                         //this.output.debug('custom_object', ['Input balance object', raw_balance])
                         //this.output.debug(raw_balance)
                         const used = raw_balance.used;
                         const free = raw_balance.free;
                         const total = raw_balance.total;
                         var price = this.get_usd_price(currency)
-                        this.output.debug('custom_object', ['Conversion price detected', price])
+                        //this.output.debug('custom_object', ['Conversion price detected', price])
                         const balance = new this.classes.balance(currency, price, free, used, total);
-                        this.output.debug('custom_object', ['Output balance object', balance])
-                        this.output.debug(balance)
+                        //this.output.debug('custom_object', ['Output balance object', balance])
+                        //this.output.debug(balance)
                         if (total != 0) {
                             balances.push(balance);
                         }
