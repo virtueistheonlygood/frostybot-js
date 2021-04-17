@@ -236,9 +236,10 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         if (['ftx','ftxus'].includes(result.exchange)) {
             result.parameters.hostname = result.exchange == 'ftx' ? 'ftx.com' : 'ftx.us';
             if (subaccount != null) {
-                result.parameters.headers = {
-                    'FTX-SUBACCOUNT': subaccount
-                };
+                switch (result.exchange) {
+                    case 'ftx'      :   result.parameters.headers = { 'FTX-SUBACCOUNT': subaccount }; break;
+                    case 'ftxus'    :   result.parameters.headers = { 'FTXUS-SUBACCOUNT': subaccount }; break;
+                }
             }
         }
         if (result.exchange == 'binance') {
