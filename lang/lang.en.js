@@ -66,6 +66,9 @@ module.exports = {
         potential_position: 'Current position and open orders calculated to potential position: {0}',
         permission_granted: 'Execute permission granted using {0} permission set: {1} => {2}',
         permission_denied:  'Execute permission denied using {0} permission set: {1} => {2}',
+        cache_flush:        'Successfully flushed cache: {0} items deleted',
+        cache_stats:        'Sucessfully retrieved cache stats: {0}',
+
     },
 
     notice: {

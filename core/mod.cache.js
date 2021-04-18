@@ -45,11 +45,14 @@ module.exports = class frostybot_cache_module extends frostybot_module {
     
     // Flush cache
 
-    flush() {
+    flush(quiet = false) {
         var stats = cache.getStats()
         var total = stats.hits + stats.misses;
         cache.flushAll();
-        this.output.success('cache_flush', total)
+        if (quiet === true)
+            this.output.debug('cache_flush', total)
+        else
+            this.output.success('cache_flush', total)
         return total;
     }
 
