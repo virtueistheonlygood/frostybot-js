@@ -85,9 +85,11 @@ module.exports = class frostybot_exchange_base {
         var accounts = await this.database.select('settings', {uuid: this.uuid, mainkey: 'accounts', subkey: this.stub});
         var encaccount = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
         this.account = await this.utils.decrypt_values( this.utils.lower_props(encaccount), ['apikey', 'secret'])
-
+        console.log(this.uuid)
+        console.log(this.stub)
+        console.log(this.account)
         if (this.account) {
-            this.shortname = await this.accounts.get_shortname_from_stub(this.stub);
+            this.shortname = this.account.exchange + (this.account.hasOwnProperty('type') ? '_' + this.account.type : '')
             const accountParams = await this.accounts.ccxtparams(this.account);
             const exchangeId = this.account.exchange.replace('ftxus','ftx');
             const exchangeClass = ccxtlib[exchangeId];
