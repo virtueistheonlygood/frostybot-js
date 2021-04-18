@@ -665,37 +665,6 @@ const default_perm = {
 
 module.exports = class frostybot_permissions_module extends frostybot_module {
 
-
-    // Extract uuid from parameters
-
-    async uuid(params) {
-        var multiuser = await this.user.multiuser_isenabled();
-        var core_uuid = await this.encryption.core_uuid();
-        var params_uuid = params.hasOwnProperty('uuid') ? params.uuid : (multiuser ? undefined : core_uuid);
-        var token_uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : undefined) : undefined
-        if (token_uuid != undefined) {
-            return {
-                type: 'token',
-                uuid: token_uuid
-            }
-        } else {
-            if (params_uuid != undefined) {
-                if (params_uuid == core_uuid) {
-                    return { 
-                        type: 'core',
-                        uuid: params_uuid
-                    }
-                } else {
-                    return {
-                        type: 'user',
-                        uuid: params_uuid
-                    }
-                }
-            }            
-        }
-        return false;
-    }
-
     // Check permissions for the command for the specified lockdown type
 
     async check(type, params) {
@@ -704,16 +673,13 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         var ip = context.get('srcIp');
 
         var acl = {};
-        acl['ip'] = ip;
+        //acl['ip'] = ip;
         
-        var uuidparams = await this.uuid(params);
+        var uuidparams = await this.user.uuid_from_params(params);
         if (uuidparams != false) {
-            var uuid = uuidparams.uuid;
             acl['core']  = uuidparams.type == 'core'  ? true : false;
             acl['user']  = uuidparams.type == 'user'  ? true : false;
             acl['token'] = uuidparams.type == 'token' ? true : false;
-        //} else {
-        //    return this.output.error('required_param', ['uuid']);
         }
 
         acl['local'] = ['127.0.0.1','::1','<cluster>'].includes(ip) ? true : false;

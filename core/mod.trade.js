@@ -10,37 +10,43 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
     constructor() {
         super()
+        this.connpool = {};
     }
 
-    // Initialize exchange handler
+    // Initialize connection pool
 
-    /*
-    initialize_exchange(params) {
-        if (!this.hasOwnProperty('exchange')) this.exchange = {};
-        const uuid = params.hasOwnProperty('uuid') ? params.uuid : context.get('uuid');
-        const stub = params.stub;
-        if (uuid == undefined) return this.output.error('init_exchange_nouuid');
-        if (stub == undefined) return this.output.error('init_exchange_nostub');
-        if (params.stub != undefined && uuid != undefined) {
-            if (!this.exchange.hasOwnProperty(uuid)) this.exchange[uuid] = {};
-            this.exchange[uuid][stub] = new this.classes.exchange(stub);
+    async exchange_init(stub) {
+        var uuid = context.get('uuid');
+        if (!this.hasOwnProperty('connpool')) this['connpool'] = {};
+        if (!this.connpool.hasOwnProperty(uuid)) this.connpool[uuid] = {};
+        if (!this.connpool[uuid].hasOwnProperty(stub)) this.connpool[uuid][stub] = new this.classes.exchange(stub);
+        if (typeof(this.connpool[uuid][stub]) == 'object' && this.connpool[uuid][stub].constructor.name == 'frostybot_exchange') {
+            return true;
         }
+        return false;
     }
-    */
 
     // Execute exchange method
 
     async exchange_execute(stub, method, params) {
-        var exchange = new this.classes.exchange(stub);
-        return exchange.execute(stub, method, params);
+        //var exchange = new this.classes.exchange(stub);
+        var uuid = context.get('uuid');
+        if (await this.exchange_init(stub)) {
+            return await this.connpool[uuid][stub].execute(stub, method, params);
+        }
+        return false;
     }
 
 
     // Get exchange setting
 
-    exchange_get(stub, setting) {
-        var exchange = new this.classes.exchange(stub);
-        return exchange.get(stub, setting);
+    async exchange_get(stub, setting) {
+        //var exchange = new this.classes.exchange(stub);
+        var uuid = context.get('uuid');
+        if (await this.exchange_init(uuid, stub)) {
+            return await this.connpool[uuid][stub].get(stub, setting);
+        }
+        return undefined;
     }
 
 
