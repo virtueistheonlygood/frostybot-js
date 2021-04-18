@@ -702,7 +702,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
             acl['user']  = uuidparams.type == 'user'  ? true : false;
             acl['token'] = uuidparams.type == 'token' ? true : false;
         } else {
-            return this.output.error('permission_check', [type, command]);
+            return this.output.error('required_param', ['uuid']);
         }
 
         acl['local'] = ['127.0.0.1','::1'].includes(ip) ? true : false;
