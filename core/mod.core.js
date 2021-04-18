@@ -173,14 +173,14 @@ module.exports = class frostybot_core_module extends frostybot_module {
             this.settings = global.frostybot._modules_['settings'];
         }
         try {
-            var nodes = await this.settings.get('core','nodes',[]);
+            var nodes = JSON.parse(await this.settings.get('core','nodes','[]'));
         } catch {
             var nodes = [];
         }
         if (!Array.isArray(nodes)) nodes = [];
         nodes = nodes.filter((v) => (v.ts > ts - 300000 && v.hostname != hostinfo.hostname))
         nodes.push(hostinfo);
-        await this.settings.set('core', 'nodes', nodes);
+        await this.settings.set('core', 'nodes', JSON.stringify(nodes));
     }
 
     // Check if IP address is local to the cluster
