@@ -64,6 +64,8 @@ module.exports = {
         signal_exec_result: 'Result of signal execution: {0}',
         loopback_url:       'URL Loopback: {0}',
         potential_position: 'Current position and open orders calculated to potential position: {0}',
+        permission_granted: 'Execute permission granted using {0} permission set: {1} => {2}',
+        permission_denied:  'Execute permission denied using {0} permission set: {1} => {2}',
     },
 
     notice: {
@@ -95,6 +97,7 @@ module.exports = {
 
     warning: {
 
+        unhandled_exception: 'Unhandled Exception: {0}: {1}',
         testnet_not_avail:  'The exchange {0} does not have a testnet, using mainnet instead.',
         order_over_maxsize: 'The order size of {0} would exceed maxsize. Adjusting order size to {1}.',
         order_rel_close:    'The relative decrease requested is greater than your current position, closing position.',
@@ -120,6 +123,10 @@ module.exports = {
         unknown_market:     'Unknown Market: {0}. Please ensure that the market symbol is listed in \'trade:<stub>:markets\'.',      
         local_only:         'This command can only be executed from the CLI.',
         unhandled_exception: 'Unhandled Exception: {0}: {1}',
+
+        permissions_check:  'Permission denied for command using {0} permission set: {1}',
+        permissions_add:    'Failed to add permissions: {0}:{1} => {2}',
+        permissions_delete: 'Failed to delete permissions: {0}:{1} => {2}',
 
         account_retrieve:   'Failed to retrieve account(s): {0}',
         account_create:     'Failed to create account: {0}',
@@ -213,6 +220,9 @@ module.exports = {
         del_signal_admin:    'Failed to remove user {1} as an admin for provider {0}',
 
         log_retrieve:        'Failed to retrieve log for user {0}',
+
+        init_exchange_nouuid: 'Cannot initialize exchange: Undefined UUID.',
+        init_exchange_nostub: 'Cannot initialize exchange: Undefined stub.',
         
     },
 
@@ -223,6 +233,9 @@ module.exports = {
         account_update:     'Account updated successfully: {0}',
         account_delete:     'Account deleted successfully: {0}',
         account_test:       'Successfully tested account settings',
+
+        permissions_add:    'Permissions added successfully: {0}:{1} => {2}',
+        permissions_delete: 'Permissions removed successfully: {0}:{1} => {2}',
 
         cache_flush:        'Successfully flushed cache: {0} items deleted',
         cache_stats:        'Sucessfully retrieved cache stats: {0}',

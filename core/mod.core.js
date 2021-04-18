@@ -4,7 +4,7 @@ const fs = require('fs');
 var context = require('express-http-context');
 
 
-// Method exported to the API
+// Methods exported to the API
 
 const api_methods = {
     
@@ -75,7 +75,7 @@ const api_methods = {
         'multiuser_disable',
         'enable_2fa',
         'disable_2fa',
-        'verify_2fa',
+        //'verify_2fa',
         'register',
         'login',
         'logout',
@@ -114,12 +114,18 @@ const api_methods = {
         'add_ip',
         'remove_ip',
         'send',
-        'is_provider_admin',
+        //'is_provider_admin',
     ],
 
     output: [
         'status',
     ],
+
+    permissions: [
+        'add',
+        'delete',
+        'get',
+    ]
 
 }
 
@@ -418,6 +424,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
             this.output.notice('executing_command', [module, method]);
             //this.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...(this.utils.remove_props(params,['_raw_'])) }]);
             this.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...params }]);
+            var checkpermissions = this.permissions.check('standard', { ...{ command: module + ":" + method}, ...params })
             if (this.load_module(module)) {
                 //this.output.debug('loaded_module', module)    
                 var method = this.utils.is_array(method.split(':')) ? method.split(':')[0] : method;
@@ -464,7 +471,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                                 // Check if TradingView syminfo.tickerid supplied in tvsymbol parameter
                                 var tvsymbol = !params.hasOwnProperty('symbol') && params.hasOwnProperty('tvsymbol') ? params.tvsymbol : null;
                                 if (tvsymbol !== null) {
-                                    let result = await exchange.execute('market', {tvsymbol: tvsymbol.toUpperCase()});
+                                    let result = await exchange.execute(stub, 'market', {tvsymbol: tvsymbol.toUpperCase()});
                                     if (result instanceof this.classes.market) {
                                         var symbol = result.symbol;
                                         this.output.notice('tvsymbolmap_map', [exchangeid, tvsymbol, symbol]);
@@ -485,7 +492,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                             
                                 // Check that market symbol is valid
 
-                                let result = await exchange.execute('market', {symbol: params.symbol});
+                                let result = await exchange.execute(stub, 'market', {symbol: params.symbol});
                                 if (this.utils.is_empty(result)) {
                                     return await this.output.parse(this.output.error('unknown_market', params.symbol));
                                 }

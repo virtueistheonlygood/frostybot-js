@@ -278,8 +278,8 @@ class frostybot_exchange extends frostybot_base {
 
     // Normalizer and CCXT Execution Handler
 
-    async execute (method, params = []) {
-      if (this.exhandler == undefined) await this.load_handler (params == undefined ? this.stub : params.stub);
+    async execute (stub, method, params = []) {
+      if (this.exhandler == undefined) await this.load_handler (stub);
       if (this.exhandler != undefined) {
           return await this.exhandler.execute (method, params);
       }
@@ -288,7 +288,8 @@ class frostybot_exchange extends frostybot_base {
 
     // Get Exchange property
 
-    get (property) {
+    async get (stub, property) {
+      if (this.exhandler == undefined) await this.load_handler (stub);
       return this.exhandler[property];
     }
 
