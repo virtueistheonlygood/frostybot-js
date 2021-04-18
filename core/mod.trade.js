@@ -15,6 +15,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
     // Initialize connection pool
 
+    /*
     async exchange_init(stub) {
         var uuid = context.get('uuid');
         if (uuid == undefined) uuid = this.encryption.uuid();
@@ -30,11 +31,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         return false;
     }
+    */
 
     // Execute exchange method
 
     async exchange_execute(stub, method, params) {
-        //var exchange = new this.classes.exchange(stub);
+        var exchange = new this.classes.exchange(stub);
+        return await exchange.execute(stub, method, params);
+        /*
         var uuid = context.get('uuid');
         var exchange = await this.exchange_init(stub);
         if (exchange !== false) {
@@ -42,13 +46,16 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             return await this.connpool[uuid][stub].execute(stub, method, params);
         }
         return false;
+        */
     }
 
 
     // Get exchange setting
 
     async exchange_get(stub, setting) {
-        //var exchange = new this.classes.exchange(stub);
+        var exchange = new this.classes.exchange(stub);
+        return await exchange.get(stub, setting);
+        /*
         var uuid = context.get('uuid');
         var exchange = await this.exchange_init(stub);
         if (exchange !== false) {
@@ -56,6 +63,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             return await this.connpool[uuid][stub].get(stub, setting);
         }
         return undefined;
+        */
     }
 
 
