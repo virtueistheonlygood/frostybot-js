@@ -313,9 +313,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:cancel': {
     'standard': [
@@ -324,7 +322,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:cancelall': {
@@ -334,7 +332,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:close': {
@@ -344,7 +342,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:closeall': {
@@ -354,7 +352,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:leverage': {
@@ -364,7 +362,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:long': {
@@ -374,7 +372,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:market': {
@@ -383,9 +381,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:markets': {
     'standard': [
@@ -393,9 +389,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:order': {
     'standard': [
@@ -403,9 +397,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:order_history': {
     'standard': [
@@ -413,9 +405,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:orders': {
     'standard': [
@@ -423,9 +413,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:pnl': {
     'standard': [
@@ -433,9 +421,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:position': {
     'standard': [
@@ -443,9 +429,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:positions': {
     'standard': [
@@ -453,9 +437,7 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': [
-      'token'
-    ]
+    'provider': []
   },
   'trade:sell': {
     'standard': [
@@ -464,7 +446,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:short': {
@@ -474,7 +456,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:stoploss': {
@@ -484,7 +466,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:takeprofit': {
@@ -494,7 +476,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:tpsl': {
@@ -504,7 +486,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'trade:trailstop': {
@@ -514,7 +496,7 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'user:add': {
