@@ -387,19 +387,21 @@ $( document ).ready(function() {
             // get the clicked LI element.
             var element = event.args;
             var tab_id = $('#' + element.id).data('content');
-            $(".frostybot-tab-main").each(function( index, element ) {
-                if ($(this).is( "#" + tab_id)) {
-                    $(this).show();
-                } else {
-                    $(this).hide();
-                }
-            });
             updateContent(tab_id, {}, function() {
                 $("#" + tab_id).show();
+            
+                $(".frostybot-tab-main").each(function( index, element ) {
+                    if ($(this).is( "#" + tab_id)) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
                 //if (tab_id == 'tab_accounts') {
                 //    updateContent('table_accounts', {});
                 //}
             });
+            
         });
 
     }
