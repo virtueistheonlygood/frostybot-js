@@ -125,6 +125,7 @@ const api_methods = {
         'add',
         'delete',
         'get',
+        'reset',
     ]
 
 }
