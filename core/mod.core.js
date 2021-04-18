@@ -424,7 +424,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
             this.output.notice('executing_command', [module, method]);
             //this.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...(this.utils.remove_props(params,['_raw_'])) }]);
             this.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...params }]);
-            var checkpermissions = this.permissions.check('standard', { ...{ command: module + ":" + method}, ...params })
             if (this.load_module(module)) {
                 //this.output.debug('loaded_module', module)    
                 var method = this.utils.is_array(method.split(':')) ? method.split(':')[0] : method;
@@ -433,6 +432,16 @@ module.exports = class frostybot_core_module extends frostybot_module {
                 }
 
                 if (this.method_exists(module, method)) {
+
+                    // Check permissions to execute 
+                    var permissionset = await this.settings.get('core', 'permissionset', 'standard');
+                    if (!['standard','provider'].includes(permissionset))
+                        permissionset = 'standard';
+                    var checkpermissions = this.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
+                    if (!checkpermissions)
+                        return this.output.error('permissions_denied', [permissionset, module + ":" + method]);
+
+                    // Start execution
                     var start = (new Date).getTime();
                     global.frostybot['command'] = {
                         module: module,

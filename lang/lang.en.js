@@ -127,6 +127,7 @@ module.exports = {
         permissions_check:  'Permission denied for command using {0} permission set: {1}',
         permissions_add:    'Failed to add permissions: {0}:{1} => {2}',
         permissions_delete: 'Failed to delete permissions: {0}:{1} => {2}',
+        permissions_denied: 'Execute permission denied using {0} permission set: {1}',
 
         account_retrieve:   'Failed to retrieve account(s): {0}',
         account_create:     'Failed to create account: {0}',
