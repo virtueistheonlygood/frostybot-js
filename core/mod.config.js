@@ -125,7 +125,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
     async validatesymbol(stub, symbol) {
         if (stub != undefined) {
             var exchange = new this.classes.exchange(stub);
-            var market = await exchange.execute('get_market_by_symbol',symbol.toUpperCase());
+            var market = await exchange.execute(stub, 'get_market_by_symbol',symbol.toUpperCase());
             if (market !== null) return symbol.toUpperCase();
         }
         return false;

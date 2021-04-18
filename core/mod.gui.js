@@ -1,7 +1,6 @@
 const frostybot_module = require('./mod.base');
 var context = require('express-http-context');
 var axios = require('axios');
-const { config } = require('yargs');
 
 module.exports = class frostybot_gui_module extends frostybot_module {
 
@@ -290,7 +289,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             var shortname = await this.accounts.get_shortname_from_stub(stub);
             var classes = require('./mod.classes');
             var exchange = new classes.exchange(stub);
-            var markets = await exchange.execute('markets');
+            var markets = await exchange.execute(stub, 'markets');
             if (this.utils.is_array(markets)) {
                 var symbols = [];
                 markets.forEach(market => {
@@ -368,13 +367,22 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
     }
 
+    // Reports Tab
+
+    async content_tab_reports(params) {
+        var accounts = await this.accounts.get();
+        return {
+            accounts: accounts
+        }
+    }
+
     // Balance Grid Data
 
     async data_griddata_balances(params) {
         var stub = params.stub;
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
-        var balances = await exchange.execute('balances');
+        var balances = await exchange.execute(stub, 'balances');
         var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
         for (var i =0; i < balances.length; i++) {
             var balance = balances[i];
@@ -399,7 +407,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         this.config.set({'gui:showspotpositions': showspot});
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
-        var positions = await exchange.execute('positions');
+        var positions = await exchange.execute(stub, 'positions');
         var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1);
         if (String(showspot) == 'false') {
             positions = positions.filter(position => position.type.toLowerCase() != "spot");
@@ -432,7 +440,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var stub = params.stub;
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
-        var symbols = await exchange.execute('symbols', stub);
+        var symbols = await exchange.execute(stub, 'symbols', stub);
         return symbols;
     }
 
@@ -447,7 +455,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var stub = params.stub;
         var classes = require('./mod.classes');
         var exchange = new classes.exchange(stub);
-        var orders = await exchange.execute('orders', filter);
+        var orders = await exchange.execute(stub, 'orders', filter);
         //var orders = (orders !== false ? orders : []).sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1);
         for (var i =0; i < orders.length; i++) {
             var order = orders[i];

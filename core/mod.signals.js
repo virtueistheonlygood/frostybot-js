@@ -170,7 +170,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     async add_provider(params) {
 
         var schema = {
-            name: { required: 'string', format: 'lowercase' }
+            name: { required: 'string' }
         }
 
         if (!(params = this.utils.validator(params, schema))) return false; 
@@ -183,7 +183,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             uuid:   provider_uuid,
             name:   name,
             whitelist: [],
-            exchanges:  []
+            exchanges: []
         }
 
         var result = await this.settings.set('signalprovider', provider_uuid, data);
@@ -193,6 +193,38 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         }
         return this.output.error('add_provider', [name]);
 
+    }
+
+    // Add provider configuration
+
+    async add_provider_config(params) {
+
+        var schema = {
+            provider: { required: 'string', format: 'lowercase' },
+            store: { required: 'string' }
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        var [provider, store, val, key] = this.utils.extract_props(params, ['provider', 'store', 'val', 'key'])
+
+        var data = await this.get_provider(provider);
+        if (data == false) {
+            return false;
+        }
+
+        if (!data.hasOwnProperty(store)) data[store] = this.utils.is_object(val);
+
+        if (!data[type].hasOwnProperty(key))
+            data[type][key] = {};
+
+        if (await this.set_provider(provider, data)) {
+            return this.output.success('add_provider_exch', [provider, exchange]);
+        } else {
+            return this.output.error('add_provider_exch', [provider, exchange]);
+        }
+
+        
     }
 
     // Add exchange for signal provider
@@ -369,6 +401,19 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
     }
 
+    // Check if IP is in any signal provider whitelist
+
+    async check_ip(uuid, ip) {
+        var provider = await this.get_provider(uuid);
+        if (provider !== false) {
+            var whitelist = provider.whitelist;
+            if (whitelist.includes(ip)) {
+              return true;
+            }
+        };
+        return false;
+    }
+
     // Send provider signal
 
     async send(params) {
@@ -402,6 +447,10 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         }
 
         var user = user.filter(onlyUnique);
+
+        // Flish the cache before we start
+
+        this.cache.flush();
 
         user.forEach(async (user_uuid) => {
 
@@ -486,10 +535,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
 
         });
-
-        //if (!user)
-        //    return this.output.error('invalid_user', [user_uuid]);
-
+        
         return true;
 
     }

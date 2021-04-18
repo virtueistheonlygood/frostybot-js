@@ -483,6 +483,36 @@ module.exports = class frostybot_user_module extends frostybot_module {
         }  
         return this.output.error('log_retrieve', [uuid]);  
     }
+
+    // Extract UUID from params
+
+    async uuid_from_params(params) {
+        var multiuser = await this.multiuser_isenabled();
+        var core_uuid = await this.encryption.core_uuid();
+        var params_uuid = params.hasOwnProperty('uuid') ? params.uuid : (multiuser ? undefined : core_uuid);
+        var token_uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : undefined) : undefined
+        if (token_uuid != undefined) {
+            return {
+                type: 'token',
+                uuid: token_uuid
+            }
+        } else {
+            if (params_uuid != undefined) {
+                if (params_uuid == core_uuid) {
+                    return { 
+                        type: 'core',
+                        uuid: params_uuid
+                    }
+                } else {
+                    return {
+                        type: 'user',
+                        uuid: params_uuid
+                    }
+                }
+            }            
+        }
+        return false;
+    }
   
 
 };

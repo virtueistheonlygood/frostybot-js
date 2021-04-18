@@ -211,8 +211,8 @@ module.exports = class frostybot_output_module extends frostybot_module {
         }
         console.log(message);
         */
-       this.add_data(false);
-        return this.error('unhandled_exception', [type, message]);
+        this.add_data(false);
+        this.warning('unhandled_exception', [type, message]);
     }
 
 

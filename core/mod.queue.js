@@ -71,7 +71,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
     async check(stub, symbol, id) {
         await this.utils.sleep(3);
         var exchange = new this.classes.exchange(stub);
-        let result = await exchange.execute('order', {id: id, symbol: symbol}, true);
+        let result = await exchange.execute(stub, 'order', {id: id, symbol: symbol}, true);
         return (result !== false ? true : false);
     }
 
@@ -79,13 +79,13 @@ module.exports = class frostybot_queue_module extends frostybot_module {
 
     async submit(stub, symbol, order) {
         var exchange = new this.classes.exchange(stub);
-        let result = await exchange.execute('create_order', order);
+        let result = await exchange.execute(stub, 'create_order', order);
             
         if (result.result == 'success') {
             var id = result.order.id;
             this.output.debug('order_submitted', [id]);
         
-            let doublecheck = exchange.get('doublecheck');
+            let doublecheck = await exchange.get(stub, 'doublecheck');
             
             if (doublecheck == true) {
                 this.output.debug('order_check_enabled', [id]);
@@ -104,7 +104,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
             } else {
 
                 // Doublecheck disabled and order successful
-                this.output.debug('order_check_disabled');
+                //this.output.debug('order_check_disabled');
                 return result;
             }
 

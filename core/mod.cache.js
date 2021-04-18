@@ -47,7 +47,7 @@ module.exports = class frostybot_cache_module extends frostybot_module {
 
     flush() {
         var stats = cache.getStats()
-        total = stats.hits + stats.misses;
+        var total = stats.hits + stats.misses;
         cache.flushAll();
         this.output.success('cache_flush', total)
         return total;
@@ -57,8 +57,8 @@ module.exports = class frostybot_cache_module extends frostybot_module {
     // Cache auto flush (garbage collection)
 
     gc() {
-        cachegcpct = 20;
-        randomgc = Math.random() * 100;
+        var cachegcpct = 20;
+        var randomgc = Math.random() * 100;
         if (randomgc >= (100 - cachegcpct)) {
             this.flush();
         }

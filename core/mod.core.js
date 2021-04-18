@@ -4,7 +4,7 @@ const fs = require('fs');
 var context = require('express-http-context');
 
 
-// Method exported to the API
+// Methods exported to the API
 
 const api_methods = {
     
@@ -75,7 +75,7 @@ const api_methods = {
         'multiuser_disable',
         'enable_2fa',
         'disable_2fa',
-        'verify_2fa',
+        //'verify_2fa',
         'register',
         'login',
         'logout',
@@ -114,12 +114,20 @@ const api_methods = {
         'add_ip',
         'remove_ip',
         'send',
-        'is_provider_admin',
+        //'is_provider_admin',
     ],
 
     output: [
         'status',
     ],
+
+    permissions: [
+        'add',
+        'delete',
+        'get',
+        'reset',
+        'set_type',
+    ]
 
 }
 
@@ -132,11 +140,58 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
     constructor() {
         super()
+        setInterval(this.update_node_status, 10000);
     }
 
     // Initalize
 
     initialize() {
+    }
+
+    // Update node status
+
+    async update_node_status() {
+        const os = require('os');
+        const host = os.hostname().toLowerCase();
+        const nets = os.networkInterfaces();
+        const ips = [];
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name]) {
+                // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+                if (net.family === 'IPv4' && !net.internal) {
+                    ips.push(net.address);
+                }
+            }
+        }
+        var d = new Date();
+        var ts = d.getTime();
+        var hostinfo = {
+            hostname: host,
+            ip: ips,
+            timestamp: ts
+        }
+        if (this.settings == undefined && global.frostybot._modules_.hasOwnProperty('settings')) {
+            this.settings = global.frostybot._modules_['settings'];
+        }
+        await this.settings.set('node', host, hostinfo);
+    }
+
+    // Check if IP address is local to the cluster
+
+    async is_cluster_local_ip(ip) {
+
+        var nodes = await this.settings.get('node');
+        if (this.utils.is_object(nodes)) {
+            nodes = [nodes];
+        }
+        if (!Array.isArray(nodes)) nodes = [];
+        var ips = [];
+        nodes.forEach(node => {
+            node.ip.forEach(nodeip => {
+                ips.push(nodeip);
+            })
+        })
+        return ips.includes(ip);        
     }
 
     // Get proxies
@@ -176,11 +231,13 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var remoteAddress = req.socket.remoteAddress.replace('::ffff:','').replace('::1, ','');
         var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
         var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
+        if (await this.is_cluster_local_ip(ip)) {
+            var ip = '<cluster>';
+        }
         context.set('srcIp', ip);
         if (!proxies.includes(ip))
             this.output.debug('source_ip', [ip]);
         return ip;
-
     }
 
     // Verify if access is allowed using a valid token or whitelist
@@ -191,7 +248,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var core_uuid = await this.encryption.core_uuid();
         var token_uuid = token != null && token.hasOwnProperty('uuid') ? token.uuid : null;
         var param_uuid = uuid;
-        var localhost = ['127.0.0.1','::1'].includes(ip);
+        var localhost = ['127.0.0.1','::1','<cluster>'].includes(ip);
         var isgui = token != null;
         var isapi = !isgui;
         var multiuser = await this.user.multiuser_isenabled();
@@ -426,6 +483,16 @@ module.exports = class frostybot_core_module extends frostybot_module {
                 }
 
                 if (this.method_exists(module, method)) {
+
+                    // Check permissions to execute 
+                    var permissionset = await this.settings.get('core', 'permissionset', 'standard');
+                    if (!['standard','provider'].includes(permissionset))
+                        permissionset = 'standard';
+                    var checkpermissions = await this.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
+                    if (!checkpermissions)
+                        return await this.output.parse(this.output.error('permissions_denied', [permissionset, module + ":" + method]));
+
+                    // Start execution
                     var start = (new Date).getTime();
                     global.frostybot['command'] = {
                         module: module,
@@ -464,7 +531,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                                 // Check if TradingView syminfo.tickerid supplied in tvsymbol parameter
                                 var tvsymbol = !params.hasOwnProperty('symbol') && params.hasOwnProperty('tvsymbol') ? params.tvsymbol : null;
                                 if (tvsymbol !== null) {
-                                    let result = await exchange.execute('market', {tvsymbol: tvsymbol.toUpperCase()});
+                                    let result = await exchange.execute(stub, 'market', {tvsymbol: tvsymbol.toUpperCase()});
                                     if (result instanceof this.classes.market) {
                                         var symbol = result.symbol;
                                         this.output.notice('tvsymbolmap_map', [exchangeid, tvsymbol, symbol]);
@@ -485,7 +552,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                             
                                 // Check that market symbol is valid
 
-                                let result = await exchange.execute('market', {symbol: params.symbol});
+                                let result = await exchange.execute(stub, 'market', {symbol: params.symbol});
                                 if (this.utils.is_empty(result)) {
                                     return await this.output.parse(this.output.error('unknown_market', params.symbol));
                                 }
