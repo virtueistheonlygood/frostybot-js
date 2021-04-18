@@ -22,10 +22,10 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
-        var cacheresult = this.cache.get(cachekey)
-        if (cacheresult != undefined) {
-            return cacheresult;
-        }
+        //var cacheresult = this.cache.get(cachekey)
+        //if (cacheresult != undefined) {
+        //    return cacheresult;
+        //}
         var query = { uuid: uuid };
         if (mainkey != null) query['mainkey'] = mainkey;
         if (subkey != null)  query['subkey'] = subkey;
