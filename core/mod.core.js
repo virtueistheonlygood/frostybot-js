@@ -139,11 +139,65 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
     constructor() {
         super()
+        setInterval(this.update_node_status, 10000);
     }
 
     // Initalize
 
     initialize() {
+    }
+
+    // Update node status
+
+    async update_node_status() {
+        const os = require('os');
+        const host = os.hostname().toLowerCase();
+        const nets = os.networkInterfaces();
+        const ips = [];
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name]) {
+                // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+                if (net.family === 'IPv4' && !net.internal) {
+                    ips.push(net.address);
+                }
+            }
+        }
+        var d = new Date();
+        var ts = d.getTime();
+        var hostinfo = {
+            hostname: host,
+            ip: ips,
+            timestamp: ts
+        }
+        if (this.settings == undefined && global.frostybot._modules_.hasOwnProperty('settings')) {
+            this.settings = global.frostybot._modules_['settings'];
+        }
+        try {
+            var nodes = await this.settings.get('core','nodes',[]);
+        } catch {
+            var nodes = [];
+        }
+        if (!Array.isArray(nodes)) nodes = [];
+        nodes = nodes.filter((v) => (v.ts > ts - 300000 && v.hostname != hostinfo.hostname))
+        nodes.push(hostinfo);
+        await this.settings.set('core', 'nodes', nodes);
+    }
+
+    // Check if IP address is local to the cluster
+
+    async is_cluster_local_ip(ip) {
+
+        var nodes =  await this.settings.get('core','nodes',[]);
+        if (!Array.isArray(nodes)) nodes = [];
+        var ips = [];
+        nodes.forEach(node => {
+            node.ip.forEach(nodeip => {
+                if (nodeip == ip) return true;
+            })
+        })
+
+        return false;
+        
     }
 
     // Get proxies
@@ -183,11 +237,13 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var remoteAddress = req.socket.remoteAddress.replace('::ffff:','').replace('::1, ','');
         var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
         var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
+        if (await this.is_cluster_local_ip(ip)) {
+            var ip = '<cluster>';
+        }
         context.set('srcIp', ip);
         if (!proxies.includes(ip))
             this.output.debug('source_ip', [ip]);
         return ip;
-
     }
 
     // Verify if access is allowed using a valid token or whitelist
@@ -198,7 +254,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var core_uuid = await this.encryption.core_uuid();
         var token_uuid = token != null && token.hasOwnProperty('uuid') ? token.uuid : null;
         var param_uuid = uuid;
-        var localhost = ['127.0.0.1','::1'].includes(ip);
+        var localhost = ['127.0.0.1','::1','<cluster>'].includes(ip);
         var isgui = token != null;
         var isapi = !isgui;
         var multiuser = await this.user.multiuser_isenabled();

@@ -167,6 +167,7 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
     // Verify IP in whitelist
 
     async verify(ip) {
+        if (ip == '<cluster>') return true;
         if (await this.is_enabled()) {
             if (this.utils.is_object(ip) && (ip.hasOwnProperty('ip') || ip.hasOwnProperty('ipaddress')))
               ip = ip.ip != undefined ? ip.ip : ip.ipaddress;

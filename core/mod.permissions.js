@@ -702,7 +702,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         params = params.hasOwnProperty('body') ? params.body : params;
         var command = params.hasOwnProperty('command') ? params.command : undefined;
         var ip = context.get('srcIp');
-        
+
         var acl = {};
         acl['ip'] = ip;
         
@@ -716,7 +716,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         //    return this.output.error('required_param', ['uuid']);
         }
 
-        acl['local'] = ['127.0.0.1','::1'].includes(ip) ? true : false;
+        acl['local'] = ['127.0.0.1','::1','<cluster>'].includes(ip) ? true : false;
         acl['remote'] = !acl.local;
         acl['multiuser'] = await this.user.multiuser_isenabled();
         acl['singleuser'] = !acl.multiuser;
