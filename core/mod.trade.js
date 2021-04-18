@@ -19,7 +19,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var uuid = context.get('uuid');
         if (uuid == undefined) uuid = this.encryption.uuid();
         if (!this.connpool.hasOwnProperty(uuid)) this.connpool[uuid] = {};
-        this.connpool[uuid][stub] = new this.classes.exchange(stub);
+        if (!this.connpool[uuid].hasOwnProperty(stub)) this.connpool[uuid][stub] = new this.classes.exchange(stub);
+        if (!(typeof(this.connpool[uuid][stub]) == 'object' && this.connpool[uuid][stub].constructor.name == 'frostybot_exchange')) {
+            console.log('reinit')
+            this.connpool[uuid][stub] = new this.classes.exchange(stub);
+        }
         if (typeof(this.connpool[uuid][stub]) == 'object' && this.connpool[uuid][stub].constructor.name == 'frostybot_exchange') {
             console.log('Connection Pool Size: ' + Object.values(this.connpool[uuid]).length);
             return [uuid, stub];
