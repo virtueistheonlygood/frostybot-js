@@ -104,7 +104,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
             } else {
 
                 // Doublecheck disabled and order successful
-                this.output.debug('order_check_disabled');
+                //this.output.debug('order_check_disabled');
                 return result;
             }
 
