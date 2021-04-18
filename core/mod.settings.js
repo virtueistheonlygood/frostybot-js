@@ -83,7 +83,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var result = await this.database.insertOrReplace('settings', query);
         if (result.changes > 0) {
             var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
-            this.cache.set(cachekey, value, 60);
+            this.cache.set(cachekey, undefined, 60);
             return true;
         }
         return false;

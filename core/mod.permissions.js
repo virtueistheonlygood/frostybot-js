@@ -66,7 +66,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'token',
+      'local'
     ]
   },
   'config:set': {
@@ -76,7 +77,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'token'
+      'token',
+      'local'
     ]
   },
   'gui:chart': {
@@ -344,7 +346,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'token'
     ]
   },
   'trade:closeall': {
@@ -354,7 +357,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'token'
     ]
   },
   'trade:leverage': {
