@@ -437,7 +437,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                     var permissionset = await this.settings.get('core', 'permissionset', 'standard');
                     if (!['standard','provider'].includes(permissionset))
                         permissionset = 'standard';
-                    var checkpermissions = this.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
+                    var checkpermissions = await this.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
                     if (!checkpermissions)
                         return this.output.error('permissions_denied', [permissionset, module + ":" + method]);
 
