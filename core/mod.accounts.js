@@ -14,14 +14,10 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
 
     // Get account silently (no log output, used internally)
 
-    async getaccount(stub, uuid) {
-        //var account = await this.settings.get('accounts', stub);
-        if (uuid == undefined) uuid = context.get('uuid');
-        var accounts = await this.database.select('settings', {uuid: uuid, mainkey: 'accounts', subkey: stub});
-        var account = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
-        if (![null, false, undefined].includes(account)) {
-            var decrypted = await this.utils.decrypt_values( this.utils.lower_props(account), ['apikey', 'secret'], uuid)
-            return decrypted;
+    async getaccount(stub) {
+        var account = await this.settings.get('accounts', stub);
+        if (account !== null) {
+            return await this.utils.decrypt_values( this.utils.lower_props(account), ['apikey', 'secret'])
         }
         return false;
     }

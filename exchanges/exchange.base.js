@@ -80,7 +80,12 @@ module.exports = class frostybot_exchange_base {
     // Load account
 
     async load_account() {
-        this.account = await this.accounts.getaccount(this.stub, this.uuid);
+        //this.account = await this.accounts.getaccount(this.stub, this.uuid);
+        if (this.uuid == undefined) this.uuid = context.get('uuid');
+        var accounts = await this.database.select('settings', {uuid: this.uuid, mainkey: 'accounts', subkey: this.stub});
+        var encaccount = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
+        this.account = await this.utils.decrypt_values( this.utils.lower_props(encaccount), ['apikey', 'secret'])
+
         if (this.account) {
             this.shortname = await this.accounts.get_shortname_from_stub(this.stub);
             const accountParams = await this.accounts.ccxtparams(this.account);
