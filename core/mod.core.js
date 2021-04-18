@@ -187,12 +187,10 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var ips = [];
         nodes.forEach(node => {
             node.ip.forEach(nodeip => {
-                if (nodeip == ip) return true;
+                ips.push(nodeip);
             })
         })
-
-        return false;
-        
+        return ips.includes(ip);        
     }
 
     // Get proxies
