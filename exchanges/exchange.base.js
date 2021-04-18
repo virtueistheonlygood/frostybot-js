@@ -9,6 +9,8 @@ var context = require('express-http-context');
 module.exports = class frostybot_exchange_base {
 
     constructor(stub, uuid) {
+        this.uuid = uuid;
+        this.stub = stub;
         this.doublecheck = false;                    // When order is submitted, double check that it exists on the exchange
         this.load_modules();
         this.data = {
@@ -60,8 +62,6 @@ module.exports = class frostybot_exchange_base {
                 'fapiPrivate_get_positionrisk': {time: 10, global: false}
             }
         }
-        this.uuid = uuid;
-        this.stub = stub;
         this.load_account();
         this.orders_symbol_required = true;  // When getting order history, is the symbol required?
   
@@ -85,9 +85,6 @@ module.exports = class frostybot_exchange_base {
         var accounts = await this.database.select('settings', {uuid: this.uuid, mainkey: 'accounts', subkey: this.stub});
         var encaccount = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
         this.account = await this.utils.decrypt_values( this.utils.lower_props(encaccount), ['apikey', 'secret'])
-        console.log(this.uuid)
-        console.log(this.stub)
-        console.log(this.account)
         if (this.account) {
             this.shortname = this.account.exchange + (this.account.hasOwnProperty('type') ? '_' + this.account.type : '')
             const accountParams = await this.accounts.ccxtparams(this.account);
