@@ -6,8 +6,8 @@ module.exports = class frostybot_exchange_deribit extends frostybot_exchange_bas
 
     // Class constructor
 
-    constructor(stub) {
-        super(stub);
+    constructor(stub, uuid) {
+        super(stub, uuid);
         this.stablecoins = ['USD', 'USDT'];  // Stablecoins supported on this exchange
         this.order_sizing = 'quote';         // Exchange requires quote size for orders
         this.collateral_assets = ['BTC','ETH'];   // Assets that are used for collateral

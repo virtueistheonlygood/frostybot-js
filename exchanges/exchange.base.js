@@ -8,7 +8,7 @@ var context = require('express-http-context');
 
 module.exports = class frostybot_exchange_base {
 
-    constructor(stub) {
+    constructor(stub, uuid) {
         this.doublecheck = false;                    // When order is submitted, double check that it exists on the exchange
         this.load_modules();
         this.data = {
@@ -60,6 +60,7 @@ module.exports = class frostybot_exchange_base {
                 'fapiPrivate_get_positionrisk': {time: 10, global: false}
             }
         }
+        this.uuid = uuid;
         this.stub = stub;
         this.load_account();
         this.orders_symbol_required = true;  // When getting order history, is the symbol required?
@@ -79,7 +80,7 @@ module.exports = class frostybot_exchange_base {
     // Load account
 
     async load_account() {
-        this.account = await this.accounts.getaccount(this.stub);
+        this.account = await this.accounts.getaccount(this.stub, this.uuid);
         if (this.account) {
             this.shortname = await this.accounts.get_shortname_from_stub(this.stub);
             const accountParams = await this.accounts.ccxtparams(this.account);

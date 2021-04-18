@@ -2,7 +2,6 @@
 
 const frostybot_module = require('./mod.base')
 var context = require('express-http-context');
-const { cache } = require('ejs');
 md5 = require('md5');
 
 const global_keys = ['core', 'whitelist', 'signalprovider', 'symbolmap', 'permissions', 'node'];

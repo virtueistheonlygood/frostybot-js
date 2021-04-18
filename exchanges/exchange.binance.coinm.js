@@ -4,8 +4,8 @@ module.exports = class frostybot_exchange_binance_coinm extends frostybot_exchan
 
     // Class constructor
 
-    constructor(stub) {
-        super(stub);
+    constructor(stub, uuid) {
+        super(stub, uuid);
         this.stablecoins = ['USD'];                  // Stablecoins supported on this exchange
         this.order_sizing = 'quote';                  // Exchange requires base size for orders
         this.collateral_assets = ['BTC','BNB'];      // Assets that are used for collateral

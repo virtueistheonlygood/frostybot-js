@@ -4,8 +4,8 @@ module.exports = class frostybot_exchange_ftxus extends frostybot_exchange_ftx {
 
     // Class constructor
 
-    constructor(stub) {
-        super(stub);
+    constructor(stub, uuid) {
+        super(stub, uuid);
     }
 
 
