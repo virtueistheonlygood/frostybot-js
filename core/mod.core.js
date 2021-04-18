@@ -182,15 +182,20 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
         var nodes = await this.settings.get('node');
         if (this.utils.is_object(nodes)) {
-            nodes = [nodes];
+            nodes = nodes.hasOwnProperty('hostname') ? [nodes] : Object.values(nodes);
         }
+
         if (!Array.isArray(nodes)) nodes = [];
         var ips = [];
-        nodes.forEach(node => {
-            node.ip.forEach(nodeip => {
-                ips.push(nodeip);
+        try {
+            nodes.forEach(node => {
+                node.ip.forEach(nodeip => {
+                    ips.push(nodeip);
+                })
             })
-        })
+        } catch {
+        
+        }
         return ips.includes(ip);        
     }
 
