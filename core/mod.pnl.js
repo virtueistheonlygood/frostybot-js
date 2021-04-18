@@ -26,7 +26,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var type = account.hasOwnProperty ('type') ? account.type : null;
             var ex_type = exchange_id + (type != null ? '.' + type : '');
             const exchange_class = require ('../exchanges/exchange.' + ex_type);
-            var exchange = new exchange_class (stub);
+            var exchange = new exchange_class (stub, user);
             return exchange;
         }
         return false;
