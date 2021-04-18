@@ -244,8 +244,9 @@ module.exports = class frostybot_core_module extends frostybot_module {
             var ip = '<cluster>';
         }
         context.set('srcIp', ip);
+        var reqId = context.get('reqId')
         if (!proxies.includes(ip))
-            this.output.debug('source_ip', [ip]);
+            this.output.debug('source_ip', [ip, reqId]);
         return ip;
     }
 
