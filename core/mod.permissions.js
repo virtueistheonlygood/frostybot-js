@@ -860,7 +860,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
 
       if (!(params = this.utils.validator(params, schema))) return false; 
 
-      var [type] = this.utils.extract_props(params, ['type']);
+      var type = params.type;
 
       return await this.settings.set('core', 'permissionset', type);
 
