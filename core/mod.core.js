@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 var context = require('express-http-context');
+var cidrcheck = require("ip-range-check");
 
 
 // Methods exported to the API
@@ -127,7 +128,11 @@ const api_methods = {
         'get',
         'reset',
         'set_type',
-    ]
+    ],
+
+    pnl: [
+        'import_orders',
+    ],
 
 }
 
@@ -179,12 +184,10 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Check if IP address is local to the cluster
 
     async is_cluster_local_ip(ip) {
-
         var nodes = await this.settings.get('node');
         if (this.utils.is_object(nodes)) {
             nodes = nodes.hasOwnProperty('hostname') ? [nodes] : Object.values(nodes);
         }
-
         if (!Array.isArray(nodes)) nodes = [];
         var ips = [];
         try {
@@ -234,7 +237,8 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var proxy = await this.get_proxies();
         var proxies = proxy.split(',')
         var remoteAddress = req.socket.remoteAddress.replace('::ffff:','').replace('::1, ','');
-        var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
+        //var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
+        var proxydetected = cidrcheck(remoteAddress, proxies);
         var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
         if (await this.is_cluster_local_ip(ip)) {
             var ip = '<cluster>';

@@ -116,6 +116,7 @@
     "inflight": "^1.0.6",
     "inherits": "^2.0.4",
     "ini": "^2.0.0",
+    "ip-range-check": "^0.2.0",
     "ipaddr.js": "^2.0.0",
     "is-binary-path": "^2.1.0",
     "is-buffer": "^2.0.5",
