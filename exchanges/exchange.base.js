@@ -50,7 +50,7 @@ module.exports = class frostybot_exchange_base {
                 'markets' : {time: 60, global: true},
                 'market' : {time: 60, global: true},
                 'symbols' : {time: 300, global: true},
-                'fetch_markets' : {time: 60, global: true},
+                //'fetch_markets' : {time: 60, global: true},
                 'fetch_orders' : {time: 2, global: false},
                 'fetch_open_orders' : {time: 2, global: false},
                 'fetch_closed_orders' : {time: 2, global: false},
