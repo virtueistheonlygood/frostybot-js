@@ -450,7 +450,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         // Flish the cache before we start
 
-        this.cache.flush();
+        this.cache.flush(true);
+
+        // Cycle through users and send order requests
 
         user.forEach(async (user_uuid) => {
 
