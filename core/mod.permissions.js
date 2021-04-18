@@ -91,10 +91,14 @@ const default_perm = {
   },
   'gui:content': {
     'standard': [
-      'token'
+      'token',
+      'local',
+      'remote'
     ],
     'provider': [
-      'token'
+      'token',
+      'local',
+      'remote'
     ]
   },
   'gui:data': {
@@ -172,6 +176,14 @@ const default_perm = {
     ]
   },
   'permissions:get': {
+    'standard': [
+      'core,local'
+    ],
+    'provider': [
+      'core,local'
+    ]
+  },
+  'permissions:reset': {
     'standard': [
       'core,local'
     ],
@@ -856,6 +868,14 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         } else {
             return this.output.success('permissions_delete', [type, command, perms]);
         }
+    }
+
+    // Reset permissions
+
+    async reset() {
+
+      return await this.settings.delete('permissions');
+
     }
 
 
