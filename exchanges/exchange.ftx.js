@@ -25,6 +25,8 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
             tag               : 'clientId',
             trigger           : 'triggerPrice',
         };
+        this.orders_symbol_required = false;  // When getting order history, the symbol is not required
+
     }
 
 

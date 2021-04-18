@@ -209,6 +209,14 @@ const default_perm = {
       'local'
     ]
   },
+  'pnl:import_orders': {
+    'standard': [
+      'local'
+    ],
+    'provider': [
+      'local'
+    ]
+  },
   'settings:set': {
     'standard': [
       'local'

@@ -62,6 +62,7 @@ module.exports = class frostybot_exchange_base {
         }
         this.stub = stub;
         this.load_account();
+        this.orders_symbol_required = true;  // When getting order history, is the symbol required?
   
     }
 

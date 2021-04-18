@@ -478,6 +478,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                     user: user_uuid,
                     exchange: exchange,
                     symbol: symbol,
+                    signal: signal,
                     result: 0,
                     message: 'No accounts configured for ' + exchange
                 }
