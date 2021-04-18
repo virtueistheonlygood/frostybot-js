@@ -17,11 +17,12 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
     async exchange_init(stub) {
         var uuid = context.get('uuid');
-        if (!this.hasOwnProperty('connpool')) this['connpool'] = {};
+        if (uuid == undefined) uuid = this.encryption.uuid();
         if (!this.connpool.hasOwnProperty(uuid)) this.connpool[uuid] = {};
-        if (!this.connpool[uuid].hasOwnProperty(stub)) this.connpool[uuid][stub] = new this.classes.exchange(stub);
+        this.connpool[uuid][stub] = new this.classes.exchange(stub);
         if (typeof(this.connpool[uuid][stub]) == 'object' && this.connpool[uuid][stub].constructor.name == 'frostybot_exchange') {
-            return true;
+            console.log('Connection Pool Size: ' + Object.values(this.connpool[uuid]).length);
+            return [uuid, stub];
         }
         return false;
     }
@@ -31,7 +32,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async exchange_execute(stub, method, params) {
         //var exchange = new this.classes.exchange(stub);
         var uuid = context.get('uuid');
-        if (await this.exchange_init(stub)) {
+        var exchange = await this.exchange_init(stub);
+        if (exchange !== false) {
+            var [uuid, stub] = exchange;
             return await this.connpool[uuid][stub].execute(stub, method, params);
         }
         return false;
@@ -43,7 +46,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async exchange_get(stub, setting) {
         //var exchange = new this.classes.exchange(stub);
         var uuid = context.get('uuid');
-        if (await this.exchange_init(uuid, stub)) {
+        var exchange = await this.exchange_init(stub);
+        if (exchange !== false) {
+            var [uuid, stub] = exchange;
             return await this.connpool[uuid][stub].get(stub, setting);
         }
         return undefined;

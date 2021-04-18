@@ -448,6 +448,10 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         var user = user.filter(onlyUnique);
 
+        // Flish the cache before we start
+
+        this.cache.flush();
+
         user.forEach(async (user_uuid) => {
 
             var provider = await this.get_provider(provider_uuid);
@@ -531,10 +535,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
 
         });
-
-        //if (!user)
-        //    return this.output.error('invalid_user', [user_uuid]);
-
+        
         return true;
 
     }
