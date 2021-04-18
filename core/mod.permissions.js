@@ -313,7 +313,9 @@ const default_perm = {
       'multiuser,user',
       'token'
     ],
-    'provider': []
+    'provider': [
+      'local'
+    ]
   },
   'trade:cancel': {
     'standard': [
