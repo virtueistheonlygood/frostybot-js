@@ -251,6 +251,14 @@ const default_perm = {
       'local'
     ]
   },
+  'signals:send': {
+    'standard': [
+      'providerwhitelist'
+    ],
+    'provider': [
+      'providerwhitelist'
+    ]
+  },
   'signals:remove_admin': {
     'standard': [
       'local'
@@ -695,6 +703,16 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         var acl = {};
         var ip = context.get('srcIp');
         var command = params.hasOwnProperty('command') ? params.command : undefined;
+
+        if (String(command).toLocaleLowerCase() == 'signals:send') {
+            var provider = params.hasOwnProperty('provider') ? params.provider : undefined;
+            if (provider != undefined) {
+              acl['providerwhitelist'] = await this.signals.check_ip(provider, ip);
+            }
+        } else {
+            acl['providerwhitelist'] = await this.signals.check_ip(provider, ip);
+        }
+
         var uuidparams = await this.uuid(params);
         if (uuidparams != false) {
             var uuid = uuidparams.uuid;
