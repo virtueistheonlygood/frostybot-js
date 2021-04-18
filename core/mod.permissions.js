@@ -161,34 +161,34 @@ const default_perm = {
   },
   'permissions:add': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': [
-      'core,local'
+      'local'
     ]
   },
   'permissions:delete': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': [
-      'core,local'
+      'local'
     ]
   },
   'permissions:get': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': [
-      'core,local'
+      'local'
     ]
   },
   'permissions:reset': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': [
-      'core,local'
+      'local'
     ]
   },
   'permissions:set': {
@@ -519,10 +519,10 @@ const default_perm = {
   },
   'user:add': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': [
-      'core,local'
+      'local'
     ]
   },
   'user:change_password': {
@@ -535,10 +535,10 @@ const default_perm = {
   },
   'user:delete': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': [
-      'core,local'
+      'local'
     ]
   },
   'user:disable_2fa': {
@@ -587,13 +587,13 @@ const default_perm = {
   },
   'user:multiuser_disable': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': []
   },
   'user:multiuser_enable': {
     'standard': [
-      'core,local'
+      'local'
     ],
     'provider': []
   },
