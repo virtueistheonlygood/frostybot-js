@@ -185,6 +185,14 @@ const default_perm = {
       'local'
     ]
   },
+  'permissions:set_type': {
+    'standard': [
+      'local'
+    ],
+    'provider': [
+      'local'
+    ]
+  },
   'permissions:reset': {
     'standard': [
       'local'
@@ -195,12 +203,10 @@ const default_perm = {
   },
   'permissions:set': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
+      'local'
     ],
     'provider': [
-      'token'
+      'local'
     ]
   },
   'settings:set': {
@@ -842,6 +848,22 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         } else {
             return this.output.success('permissions_delete', [type, command, perms]);
         }
+    }
+
+    // Set the permission set to use for this Frostybot instance
+
+    async set_type(params) {
+
+      var schema = {
+        type:  { required: 'string', format: 'lowercase' },
+      }
+
+      if (!(params = this.utils.validator(params, schema))) return false; 
+
+      var [type] = this.utils.extract_props(params, ['type']);
+
+      return await this.settings.set('core', 'permissionset', type);
+
     }
 
     // Reset permissions

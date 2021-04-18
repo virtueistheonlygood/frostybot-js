@@ -126,6 +126,7 @@ const api_methods = {
         'delete',
         'get',
         'reset',
+        'set_type',
     ]
 
 }
