@@ -56,6 +56,8 @@ CREATE TABLE logs (
     message   TEXT         NOT NULL
 );
 
+GO; 
+
 CREATE INDEX IDX_UUID_TS ON logs (
     uuid,
     timestamp
@@ -80,6 +82,8 @@ CREATE TABLE signals (
     result    BOOLEAN      NOT NULL,
     message   TEXT         NOT NULL
 );
+
+GO;
 
 CREATE INDEX IDX_TIMESTAMP ON signals (
     timestamp
@@ -125,16 +129,18 @@ CREATE TABLE orders (
     metadata        TEXT
 );
 
-CREATE INDEX IDX_ORDERS_UUID_STUB_ORDERID ON orders (
+GO;
+
+CREATE UNIQUE INDEX IDX_ORDERS_UUID_STUB_ORDERID ON orders (
     uuid,
     stub,
-    id
+    orderid
 );
 
 CREATE INDEX IDX_ORDERS_UUID_STUB_CUSTOMID ON orders (
     uuid,
     stub,
-    customid,
+    customid
 );
 
 CREATE INDEX IDX_ORDERS_UUID_STUB_TS ON orders (
@@ -148,6 +154,34 @@ CREATE INDEX IDX_ORDERS_UUID_STUB_SYMBOL ON orders (
     stub,
     symbol
 );
+
+GO;
+
+-- Ensure that indexes are all created
+
+CREATE INDEX IF NOT EXISTS IDX_UUID_TS ON logs (
+    uuid,
+    timestamp
+);
+
+CREATE INDEX IF NOT EXISTS IDX_TIMESTAMP ON signals (
+    timestamp
+);
+
+CREATE INDEX IF NOT EXISTS IDX_PROVIDER ON signals (
+    provider
+);
+
+CREATE INDEX IF NOT EXISTS IDX_USER ON signals (
+    user
+);
+
+CREATE INDEX IF NOT EXISTS IDX_RESULT ON signals (
+    result
+);
+
+
+GO;
 
 -- Update version
 
