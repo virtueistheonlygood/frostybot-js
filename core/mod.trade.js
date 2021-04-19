@@ -1038,7 +1038,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         } 
         
         if (order_params !== false)
-            this.queue.add(stub, symbol, order_params);
+            this.mod.queue.add(stub, symbol, order_params);
         
         if (['long', 'buy'].includes(type))
             await this.tpsl(params, 'sell', true);
@@ -1065,9 +1065,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             }
         }
 
-        this.queue.clear(stub, symbol)
+        this.mod.queue.clear(stub, symbol)
         await this.create_order(type, params);
-        return await this.queue.process(stub, symbol);;
+        return await this.mod.queue.process(stub, symbol);;
     }
 
 
@@ -1228,7 +1228,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             });
         };
         // Get pending orders in the order queue
-        var queue = this.queue.get(stub, symbol);
+        var queue = this.mod.queue.get(stub, symbol);
         for (var i = 0; i < queue.length; i++) {
             var item = queue[i];
             if (!side && item.side !== false)  side = dirmap[item.side.toLowerCase()];
