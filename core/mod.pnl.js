@@ -111,7 +111,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 // Stub is defined
 
-                this.cache.flush(true);
+               //this.cache.flush(true);
                 var exchange = await this.load_exchange(user, stub);
             
                 if (exchange != false) {
