@@ -209,6 +209,17 @@ const default_perm = {
       'local'
     ]
   },
+  'pnl:get_data': {
+    'standard': [
+      'core,singleuser',
+      'multiuser,user',
+      'token'
+    ],
+    'provider': [
+      'local',
+      'token'
+    ]
+  },  
   'pnl:import_orders': {
     'standard': [
       'local'

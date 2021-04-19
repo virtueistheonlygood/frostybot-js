@@ -131,6 +131,7 @@ const api_methods = {
     ],
 
     pnl: [
+        'get_data',
         'import_orders',
     ],
 

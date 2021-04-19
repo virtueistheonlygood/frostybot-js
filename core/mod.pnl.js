@@ -143,7 +143,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                             params.market = symbol;
                             var order_history = await this.order_history(user, stub, symbol, days);
                             var qty = Array.isArray(order_history) ? order_history.length : 0;
-                            console.log(stub +': ' + symbol + ': ' + qty)
+                            //console.log(stub +': ' + symbol + ': ' + qty)
                             total += qty;
 
                             if (Array.isArray(order_history)) {
@@ -280,6 +280,117 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         if (!order.hasOwnProperty('filled_usd')) order['filled_usd'] = 0
 
         await this.database.insertOrReplace('orders', order);
+    }
+
+
+    // Generate PNL report data from order history in database
+
+    
+    async get_data(params) {
+
+        var schema = {
+            stub:        { required: 'string', format: 'lowercase', },
+            user:        { optional: 'string', format: 'lowercase', },
+            symbol:      { optional: 'string', format: 'uppercase', },
+            days:        { required: 'number' },
+        }
+
+        if (!(params = this.utils.validator(params, schema))) return false; 
+
+        var [user, stub, symbol, days] = this.utils.extract_props(params, ['user', 'stub', 'symbol', 'days']);
+        
+        if (user == undefined) { user = context.get('uuid') }
+    
+//        var position = await this.exchange_execute(stub, 'position',params);
+        
+        //var orders =  await this.exchange_execute(stub, 'orders',params);
+        
+        var query =  {uuid: user, stub: stub};
+
+        if (symbol != undefined) query['symbol'] = symbol;
+        
+        var ms = 1000 * 60 * 60 * 24 * days
+        var ts = Date.now() - ms;
+
+        var vals = [
+            user,
+            stub,
+            ts
+        ];
+        var sql = "SELECT * FROM `orders` WHERE uuid=? AND stub=? AND timestamp>=?";
+        if (symbol != undefined) {
+            sql += " AND `symbol`=?";
+            vals.push(symbol)
+        }
+
+        var orders = await this.database.query(sql, vals);
+
+        var orders_by_symbol = {};
+
+        if (Array.isArray(orders) && orders.length > 0) {
+            for (var i = 0; i < orders.length; i++) {
+                var order = orders[i];
+                delete order.metadata;
+                if (!orders_by_symbol.hasOwnProperty(order.symbol)) orders_by_symbol[order.symbol] = [];
+                orders_by_symbol[order.symbol].push(order);
+            }    
+        } else {
+            return {};
+        }
+
+        var symbols = Object.keys(orders_by_symbol);
+        var pnl_by_symbol = {}
+
+        symbols.forEach(symbol => {
+
+            var orders = orders_by_symbol[symbol].sort((a, b) => a.timestamp > b.timestamp ? -1 : 1).filter(order => order.filled_base > 0)
+
+            // Check if currently in a position, if so use the position balance for unrealized PNL calc
+            //var bal_base = this.utils.is_object(position) && position.hasOwnProperty('base_size') ? position.base_size : 0;
+            //var bal_quote = this.utils.is_object(position) && position.hasOwnProperty('quote_size') ? position.quote_size : 0;
+        
+            var bal_base = 0;
+            var bal_quote = 0;
+
+            // Cycle backwards through orders and reconstruct balance and group orders for the same position together
+            var groups = [];
+            var current = [];
+     
+            for(var n = 0; n < orders.length; n++) {
+                var order = orders[n];
+                var entry = order;
+                delete entry.trigger;
+                delete entry.status;
+                entry.balance_base = bal_base;
+                entry.balance_quote = bal_base * order.order_price,
+                current.push(entry);
+                bal_base = (order.direction == 'sell' ? bal_base + order.filled_base : bal_base - order.filled_base);
+                bal_quote = (order.direction == 'sell' ? bal_quote + order.filled_quote : bal_quote - order.filled_quote);
+                if (bal_base == 0) {
+                    var start = order.timestamp;
+                    var end = [undefined, start].includes(current[0]) || current.length < 2 ? null : current[0].timestamp;
+                    var group = {
+                        start: start,
+                        end: end,
+                        pnl: bal_quote,
+                        orders: current.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+                    }
+                    groups.push(group);
+                    current = [];
+                    bal_quote = 0
+                }
+            }
+    
+            // Sort order groups cronologically
+            groups.sort((a, b) => a.start < b.start ? -1 : 1)
+    
+            pnl_by_symbol[symbol] = new this.classes.pnl(stub, symbol, groups); 
+
+
+        });
+
+        return pnl_by_symbol;
+
     }
 
 
