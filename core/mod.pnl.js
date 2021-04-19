@@ -95,7 +95,11 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                             days        : days
                         }
     
-                        axios.post(url + '/frostybot',  payload);
+                        try {
+                            axios.post(url + '/frostybot',  payload);
+                        } catch(e) {
+                            this.output.exception(e);
+                        }
 
                     })
                 }
@@ -107,113 +111,62 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 // Stub is defined
 
+                var exchange = await this.load_exchange(user, stub);
+            
+                if (exchange != false) {
 
-                if (market == undefined) {
+                    var symbols = market != undefined ? market : (exchange.orders_symbol_required ? await exchange.execute('symbols') : ['<ALL>']);
 
-                    // Market is undefined
+                    if (Array.isArray(symbols)) {
+                        
+                        var total = 0;
 
-                    var exchange = await this.load_exchange(user, stub);
-                
-                    if (exchange != false) {
+                        for (var i = 0; i < symbols.length; i++) {
+                            var symbol = symbols[i];
 
-                        var symbols = exchange.orders_symbol_required ? await exchange.execute('symbols') : ['<ALL>'];
+                            params.market = symbol;
+                            var order_history = await this.order_history(user, stub, symbol, days);
+                            var qty = Array.isArray(order_history) ? order_history.length : 0;
+                            console.log(symbol + ': ' + qty)
+                            total += qty;
 
-                        if (Array.isArray(symbols)) {
-                            
-                            var total = 0;
-
-                            for (var i = 0; i < symbols.length; i++) {
-                                var symbol = symbols[i];
-
-                                params.market = symbol;
-                                var order_history = await this.order_history(user, stub, symbol, days);
-                                var qty = Array.isArray(order_history) ? order_history.length : 0;
-                                total += qty;
-
-                                if (Array.isArray(order_history)) {
-                                    order_history.forEach(order => {
-                                        this.update_order(user, stub, order);
-                                    });
-                                }
-
-                                /*
-                                var uuid = context.get('uuid');    
-                                var payload = {
-                                    uuid        : uuid,
-                                    command     : 'pnl:import_orders',
-                                    user        : user,
-                                    stub        : stub,
-                                    market      : symbol,
-                                    days        : days
-                                }
-    
-                                axios.post(url + '/frostybot',  payload);
-                                await this.utils.sleep(1);
-                                */
-
+                            if (Array.isArray(order_history)) {
+                                order_history.forEach(order => {
+                                    this.update_order(user, stub, order);
+                                });
                             }
 
-                            var importstats = {
-                                user: user,
-                                stub: stub,
-                                total: total,
+                            /*
+                            var uuid = context.get('uuid');    
+                            var payload = {
+                                uuid        : uuid,
+                                command     : 'pnl:import_orders',
+                                user        : user,
+                                stub        : stub,
+                                market      : symbol,
+                                days        : days
                             }
-    
-                            this.output.debug('orders_imported', importstats);
 
-                            return true;
+                            axios.post(url + '/frostybot',  payload);
+                            await this.utils.sleep(1);
+                            */
 
                         }
 
-                    }
+                        var importstats = {
+                            user: user,
+                            stub: stub,
+                            total: total,
+                        }
 
-                } else {
+                        this.output.debug('orders_imported', importstats);
 
-
-                    // Symbol is defined
-
-                    /*
-                    if (String(market).toUpperCase() == '<ALL>') market = undefined;
-                    var order_history = await this.order_history(user, stub, market, days);
-
-                    if (Array.isArray(order_history)) {
-
-                        order_history.forEach(async (order) => {
-
-                            order.uuid = user
-                            order.stub = stub
-                            order.orderid = order.id
-                            order.order_price = order.price
-                            order.trigger_price = order.trigger
-                        
-                            delete order.id
-                            delete order.price
-                            delete order.trigger
-                            delete order.datetime
-
-                            var existing = await this.database.select('orders', {uuid: user, stub: stub, orderid: order.id});
-                            if (Array.isArray(existing && existing.length == 1)) {                                
-                                order = {...existing, ...order};
-                            }
-                        
-                            if (!order.hasOwnProperty('size_usd')) order['size_usd'] = 0
-                            if (!order.hasOwnProperty('size_usd')) order['size_usd'] = 0
-                            if (!order.hasOwnProperty('filled_usd')) order['filled_usd'] = 0
-
-                            await this.database.insertOrReplace('orders', order);
-                
-
-                        })
-
-                        return order_history.length;
+                        return true;
 
                     }
 
-                    return 0;
-
-                    */
                 }
-
+                
             }
 
         }
@@ -229,14 +182,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
     async order_history(user, stub, symbol, days = 7) {
 
         var ms = 1000 * 60 * 60 * 24 * days
-         var ts = Date.now() - ms;
-
-        /*
-        console.log('Duration (ms):' + ms)
-        console.log('Start timestamp: ' + ts);
-        console.log('End timestamp: ' + Date.now());
-        */
-
+        var ts = Date.now() - ms;
         var all_orders = {};
         var order_params = { 
             stub: stub,
