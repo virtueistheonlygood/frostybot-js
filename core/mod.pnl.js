@@ -6,6 +6,13 @@ const axios = require('axios')
 
 module.exports = class frostybot_pnl_module extends frostybot_module {
 
+   // Constructor
+
+    constructor() {
+        super()
+        this.exchange = [];
+    }
+
 
     // Load exchange for a given user uuid and stub
 
@@ -26,8 +33,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var type = account.hasOwnProperty ('type') ? account.type : null;
             var ex_type = exchange_id + (type != null ? '.' + type : '');
             const exchange_class = require ('../exchanges/exchange.' + ex_type);
-            var exchange = new exchange_class (stub, user);
-            return exchange;
+            var key = [user, stub].join(':');
+            this.exchange[key] = new exchange_class (stub, user);
+            return true;
         }
         return false;
     }
@@ -111,13 +119,15 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 // Stub is defined
 
-               //this.cache.flush(true);
-                var exchange = await this.load_exchange(user, stub);
+                //this.cache.flush(true);
+                
+                var key = [user, stub].join(':');
+                await this.load_exchange(user, stub);
             
-                if (exchange != false) {
+                if (this.exchange[key] != false) {
 
                     if (market == undefined) {
-                        var symbols = exchange.orders_symbol_required ? await exchange.execute('symbols') : ['<ALL>'];
+                        var symbols = this.exchange[key].orders_symbol_required ? await this.exchange[key].execute('symbols') : ['<ALL>'];
                     } else {
                         var symbols = Array.isArray(market) ? market : [market];
                     }
@@ -133,7 +143,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                             params.market = symbol;
                             var order_history = await this.order_history(user, stub, symbol, days);
                             var qty = Array.isArray(order_history) ? order_history.length : 0;
-                            console.log(symbol + ': ' + qty)
+                            console.log(stub +': ' + symbol + ': ' + qty)
                             total += qty;
 
                             if (Array.isArray(order_history)) {
@@ -197,12 +207,12 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         if (!['<ALL>',undefined].includes(symbol)) order_params['symbol'] = symbol;
 
-        var exchange = await this.load_exchange(user, stub);
-                
-        if (exchange == false)
+        var key = [user, stub].join(':');
+        
+        if (this.exchange[key] == false)
             return false;
 
-        var orders =  await exchange.execute('order_history', order_params, true);
+        var orders =  await this.exchange[key].execute('order_history', order_params, true);
 
         while (orders.length > 0) {
 
@@ -238,7 +248,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             if (mints == 0) break;
 
             order_params.since = mints + 1;
-            orders =  await exchange.execute('order_history', order_params, true);
+            orders =  await this.exchange[key].execute('order_history', order_params, true);
         }
 
         return Object.values(all_orders);
