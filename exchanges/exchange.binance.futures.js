@@ -105,7 +105,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         raw_markets
             .filter(raw_market => raw_market.active == true)
             .forEach(raw_market => {
-                var contracttype = String(raw_market.info.hasOwnProperty('type') ? raw_market.info.type : (raw_market.info.hasOwnProperty('contractType') ? raw_market.info.contractType : 'unknown')).toLowerCase();
+                var contracttype = String(raw_market.info.hasOwnProperty('contractType') ? raw_market.info.contractType : 'perpetual').toLowerCase();
                 if (contracttype == 'perpetual') {
                     const id = raw_market.id;
                     const symbol = raw_market.symbol;
