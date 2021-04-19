@@ -15,9 +15,9 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     // Get account silently (no log output, used internally)
 
     async getaccount(stub) {
-        var account = await this.settings.get('accounts', stub);
+        var account = await this.mod.settings.get('accounts', stub);
         if (account !== null) {
-            return await this.utils.decrypt_values( this.utils.lower_props(account), ['apikey', 'secret'])
+            return await this.mod.utils.decrypt_values( this.mod.utils.lower_props(account), ['apikey', 'secret'])
         }
         return false;
     }
@@ -29,12 +29,12 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         if (params == undefined) {
             params = []
         }
-        var stub = this.utils.extract_props(params, 'stub');
+        var stub = this.mod.utils.extract_props(params, 'stub');
         if ([undefined, false].includes(stub)) {
-            var results = await this.settings.get('accounts');
+            var results = await this.mod.settings.get('accounts');
             if (results) {
                 var accounts = {};
-                if (this.utils.is_object(results)) {
+                if (this.mod.utils.is_object(results)) {
                     if (results.hasOwnProperty('stub')) {
                         var stub = results.stub;
                         accounts[stub] = results;
@@ -42,25 +42,25 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
                         accounts = results;
                     }
                 }
-                //if (!this.utils.is_array(results))
+                //if (!this.mod.utils.is_array(results))
                 //results = results.hasOwnProperty('stub') ? [results] : results;
 
                 //var accounts = {};
                 //for(var i = 0; i < results.length; i++) 
-                //    accounts[results[i].stub] = this.utils.lower_props(results[i]);
+                //    accounts[results[i].stub] = this.mod.utils.lower_props(results[i]);
                 
-                //this.output.success('account_retrieve', [ Object.values(accounts).length + ' accounts' ]);
+                //this.mod.output.success('account_retrieve', [ Object.values(accounts).length + ' accounts' ]);
                 return await this.censored(accounts);
-            } else return false; //this.output.error('account_retrieve', ['No accounts configured']);
+            } else return false; //this.mod.output.error('account_retrieve', ['No accounts configured']);
         }  else {
-            var account = await this.settings.get('accounts', stub);
+            var account = await this.mod.settings.get('accounts', stub);
             if (account) {
                 var accounts = {};
-                accounts[stub] = this.utils.lower_props(account)
-                //this.output.success('account_retrieve', stub);
+                accounts[stub] = this.mod.utils.lower_props(account)
+                //this.mod.output.success('account_retrieve', stub);
                 return this.censored(accounts);
             }
-            return false; //this.output.error('account_retrieve', stub);
+            return false; //this.mod.output.error('account_retrieve', stub);
         }
     }
 
@@ -72,8 +72,8 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         if (accounts != false) {
             for (var [stub, account] of Object.entries(accounts)) {
                 if (account != false) {
-                    account = await this.utils.decrypt_values(account, ['apikey', 'secret'])
-                    account = await this.utils.censor_props(account, ['secret'])
+                    account = await this.mod.utils.decrypt_values(account, ['apikey', 'secret'])
+                    account = await this.mod.utils.censor_props(account, ['secret'])
                 }
                 result[stub] = account;
             }
@@ -85,7 +85,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     // Check if account stub exists
 
     async exists(stub) {
-        var account = await this.settings.get('accounts', stub, false);
+        var account = await this.mod.settings.get('accounts', stub, false);
         if (account) {
             return true;
         }
@@ -130,23 +130,23 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             type: {        optional: 'string', format: 'lowercase', oneof: ['spot', 'margin', 'futures', 'coinm'] },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         if ((params.exchange == 'binance') && (!params.hasOwnProperty('type'))) {
-            return this.output.error('binance_req_type')
+            return this.mod.output.error('binance_req_type')
         }
 
         var [stub, data] = this.create_params(params);
         let testresult = await this.test(data);
         if (testresult) {
             data['stub'] = stub;
-            data = await this.utils.remove_props(data, ['tenant','token']);
-            data = await this.utils.encrypt_values(data, ['apikey', 'secret']);
-            if (await this.settings.set('accounts', stub, data)) {
-                this.output.success('account_create', stub);
+            data = await this.mod.utils.remove_props(data, ['tenant','token']);
+            data = await this.mod.utils.encrypt_values(data, ['apikey', 'secret']);
+            if (await this.mod.settings.set('accounts', stub, data)) {
+                this.mod.output.success('account_create', stub);
                 return true;
             }
-            this.output.error('account_create', stub);
+            this.mod.output.error('account_create', stub);
         }
         return false;
     }
@@ -166,15 +166,15 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         let testresult = await this.test(data);
         if (testresult) {
             data['stub'] = stub;
-            this.output.success('account_test', stub);
-            data = await this.utils.remove_props(data, ['tenant','token'])
-            data = await this.utils.encrypt_values(data, ['apikey', 'secret'])
-            if (await this.settings.set('accounts', stub, data)) {
-                this.output.success('account_update', stub);
+            this.mod.output.success('account_test', stub);
+            data = await this.mod.utils.remove_props(data, ['tenant','token'])
+            data = await this.mod.utils.encrypt_values(data, ['apikey', 'secret'])
+            if (await this.mod.settings.set('accounts', stub, data)) {
+                this.mod.output.success('account_update', stub);
             }
-            this.output.error('account_update', stub);
+            this.mod.output.error('account_update', stub);
         }
-        this.output.error('account_test', stub);
+        this.mod.output.error('account_test', stub);
         return false;
     }
 
@@ -187,17 +187,17 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             stub: { required: 'string', format: 'lowercase' }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
 
         var stub = (params.hasOwnProperty('stub') ? params.stub : null);
         if (stub != null) {
-            if (await this.settings.delete('accounts', stub)) {
-                this.output.success('account_delete', stub);
+            if (await this.mod.settings.delete('accounts', stub)) {
+                this.mod.output.success('account_delete', stub);
                 return true;
             }
         }
-        this.output.error('account_delete', stub);
+        this.mod.output.error('account_delete', stub);
         return false;
     }
 
@@ -229,8 +229,8 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             exchange: account.hasOwnProperty('exchange') ? account.exchange : null,
             description: account.hasOwnProperty('description') ? account.description : null,
             parameters: {
-                apiKey:     account.parameters.hasOwnProperty('apikey') ? await  this.encryption.decrypt(account.parameters.apikey) : null,
-                secret:     account.parameters.hasOwnProperty('secret') ? await this.encryption.decrypt(account.parameters.secret) : null,
+                apiKey:     account.parameters.hasOwnProperty('apikey') ? await  this.mod.encryption.decrypt(account.parameters.apikey) : null,
+                secret:     account.parameters.hasOwnProperty('secret') ? await this.mod.encryption.decrypt(account.parameters.secret) : null,
                 urls:       {},
             },   
         }
@@ -246,7 +246,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         if (result.exchange == 'binance') {
             var type = (account.hasOwnProperty('type') ? account.type.replace('futures','future').replace('coinm','delivery') : 'future');
             if (!['spot', 'margin', 'future', 'delivery'].includes(type)) {
-                return this.output.error('param_val_oneof', ['type', this.serialize_array(['spot', 'margin', 'futures', 'coinm'])])
+                return this.mod.output.error('param_val_oneof', ['type', this.serialize_array(['spot', 'margin', 'futures', 'coinm'])])
             } else {
                 result.parameters['options'] = {
                     defaultType : type,
@@ -263,7 +263,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
                 const url = ccxturls.test;
                 result.parameters.urls.api = url
             } else {
-                this.output.translate('warning', 'testnet_not_avail', this.utils.uc_first(result.exchange));
+                this.mod.output.translate('warning', 'testnet_not_avail', this.mod.utils.uc_first(result.exchange));
             }
         }
         return result;
@@ -288,11 +288,11 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             let result = await ccxtobj.fetchBalance();
         } catch (e) {
             if (e.name == 'AuthenticationError') {
-                this.output.error('account_test');
+                this.mod.output.error('account_test');
                 return false;
             }
         } 
-        this.output.success('account_test');
+        this.mod.output.success('account_test');
         return true;
     }
 
@@ -315,12 +315,12 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         var context = require('express-http-context');
         var uuid = context.get('uuid');
         var cachekey = uuid + ':' + stub;
-        var cacheresult = this.cache.get(cachekey);
+        var cacheresult = this.mod.cache.get(cachekey);
         if (cacheresult == undefined) {
             var account = await this.getaccount(stub);
             if (account) {
                 var result = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
-                this.cache.set(cachekey, result, 60);
+                this.mod.cache.set(cachekey, result, 60);
                 return result;
             }
             return false;

@@ -233,7 +233,7 @@ class frostybot_exchange extends frostybot_base {
     load_modules () {
       Object.keys (global.frostybot._modules_).forEach (module => {
         if (!['core', 'classes'].includes (module)) {
-          this[module] = global.frostybot._modules_[module];
+          this['mod'] = global.frostybot._modules_;
         }
       });
     }
@@ -247,15 +247,15 @@ class frostybot_exchange extends frostybot_base {
         stub = context.get('stub');
       }
       this.exhandler = null;
-      var account = await this.accounts.getaccount (stub);
+      var account = await this.mod.accounts.getaccount (stub);
       if (account) {
-        account = this.utils.lower_props (account);
+        account = this.mod.utils.lower_props (account);
         if (account && account.hasOwnProperty (stub)) {
           account = account[stub];
         }
         const exchange_id = (account.hasOwnProperty('exchange') ? account.exchange : undefined);
         if (exchange_id == undefined) {
-          //return this.output.error('account_retrieve', 'Undefined stub')
+          //return this.mod.output.error('account_retrieve', 'Undefined stub')
           return false;
         }
         this.exchange_id = exchange_id;

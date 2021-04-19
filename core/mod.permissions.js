@@ -161,6 +161,16 @@ const default_perm = {
       'remote'
     ]
   },
+  'output:node_info': {
+    'standard': [
+      'local',
+      'loopback'
+    ],
+    'provider': [
+      'local',
+      'loopback'
+    ]
+  },
   'permissions:add': {
     'standard': [
       'local'
@@ -349,7 +359,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:cancel': {
@@ -359,7 +370,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:cancelall': {
@@ -369,7 +381,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:close': {
@@ -380,7 +393,8 @@ const default_perm = {
     ],
     'provider': [
       'local',
-      'token'
+      'token',
+      'loopback'
     ]
   },
   'trade:closeall': {
@@ -391,7 +405,8 @@ const default_perm = {
     ],
     'provider': [
       'local',
-      'token'
+      'token',
+      'loopback'
     ]
   },
   'trade:leverage': {
@@ -411,7 +426,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:market': {
@@ -485,7 +501,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:short': {
@@ -495,7 +512,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:stoploss': {
@@ -505,7 +523,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:takeprofit': {
@@ -515,7 +534,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:tpsl': {
@@ -525,7 +545,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'trade:trailstop': {
@@ -535,7 +556,8 @@ const default_perm = {
       'token'
     ],
     'provider': [
-      'local'
+      'local',
+      'loopback'
     ]
   },
   'user:add': {
@@ -700,7 +722,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         var acl = {};
         //acl['ip'] = ip;
         
-        var uuidparams = await this.user.uuid_from_params(params);
+        var uuidparams = await this.mod.user.uuid_from_params(params);
         if (uuidparams != false) {
             acl['core']  = uuidparams.type == 'core'  ? true : false;
             acl['user']  = uuidparams.type == 'user'  ? true : false;
@@ -709,15 +731,24 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
 
         acl['local'] = ['127.0.0.1','::1','<cluster>'].includes(ip) ? true : false;
         acl['remote'] = !acl.local;
-        acl['multiuser'] = await this.user.multiuser_isenabled();
+        acl['multiuser'] = await this.mod.user.multiuser_isenabled();
         acl['singleuser'] = !acl.multiuser;
+
+        if (params.hasOwnProperty('_loopbacktoken_')) {
+          if (!global.frostybot.hasOwnProperty('_loopbacktokens_')) global.frostybot['_loopbacktokens_'] = [];
+          if (global.frostybot['_loopbacktokens_'].includes(params['_loopbacktoken_'])) {
+            var loopbacktoken = params['_loopbacktoken_'];
+            global.frostybot['_loopbacktokens_'] = global.frostybot['_loopbacktokens_'].filter(lbt => lbt != loopbacktoken);
+            acl['loopback'] = true;
+          }
+        }
 
         // If this is a signal, then make sure the provider is whitelisted
 
         if (String(command).toLocaleLowerCase() == 'signals:send') {
           var provider = params.hasOwnProperty('provider') ? params.provider : undefined;
           if (provider != undefined) {
-            acl['providerwhitelist'] = await this.signals.check_ip(provider, ip);
+            acl['providerwhitelist'] = await this.mod.signals.check_ip(provider, ip);
           }
         }
    
@@ -725,7 +756,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
             standard: [],    
             provider: []     
         }
-        var permissions = await this.settings.get('permissions', command, def);
+        var permissions = await this.mod.settings.get('permissions', command, def);
         var perms = [];
         if (permissions.hasOwnProperty(type))
             var perms = permissions[type];
@@ -742,16 +773,16 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
                     }
                 }
                 if (result === true) {
-                    this.output.debug('permission_granted', [type, command, check]);
+                    this.mod.output.debug('permission_granted', [type, command, check]);
                     return true;
                 }
             }
         }
 
-        this.output.debug('permission_denied', [type, command, perms]);
-        this.output.debug('custom_object', ['Required Permissions', perms]);
-        this.output.debug('custom_object', ['Current Permissions:', '']);
-        this.output.debug(acl);
+        this.mod.output.debug('permission_denied', [type, command, perms]);
+        this.mod.output.debug('custom_object', ['Required Permissions', perms]);
+        this.mod.output.debug('custom_object', ['Current Permissions:', '']);
+        this.mod.output.debug(acl);
         return false;
     }
 
@@ -764,17 +795,17 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
             cmd:   { options: 'string', format: 'lowercase' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [type, command] = this.utils.extract_props(params, ['type', 'cmd']);   
+        var [type, command] = this.mod.utils.extract_props(params, ['type', 'cmd']);   
         var def = default_perm.hasOwnProperty(command) ? default_perm[command] : {
             standard: [],    
             provider: []     
         }
-        var permissions = await this.settings.get('permissions', command);
+        var permissions = await this.mod.settings.get('permissions', command);
         if (permissions == null) return def;
         if (type == undefined) {
-            if (this.utils.is_object(permissions)) {
+            if (this.mod.utils.is_object(permissions)) {
                 var sorted = {};
                 Object.keys(permissions).sort((a,b) => a > b ? 1 : -1).forEach(key => {
                     sorted[key] = permissions[key];
@@ -800,9 +831,9 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
             perms: { required: 'string', format: 'lowercase' }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [type, command, perms] = this.utils.extract_props(params, ['type', 'cmd', 'perms']);   
+        var [type, command, perms] = this.mod.utils.extract_props(params, ['type', 'cmd', 'perms']);   
         var def = default_perm.hasOwnProperty(command) ? default_perm[command] : {
             standard: [],    
             provider: []     
@@ -813,19 +844,19 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
                      .sort((a, b) => (a < b ? -1 : 1))
                      .filter((v) => v != '')
                      .join(',')
-        var permissions = await this.settings.get('permissions', command, def);
+        var permissions = await this.mod.settings.get('permissions', command, def);
         if (!permissions.hasOwnProperty(type)) {
             permissions[type] = [];
         }
         if (!permissions[type].includes(perms)) {
             permissions[type].push(perms)
-            if (await this.settings.set('permissions', command, permissions)) {
-                return this.output.success('permissions_add', [type, command, perms]);
+            if (await this.mod.settings.set('permissions', command, permissions)) {
+                return this.mod.output.success('permissions_add', [type, command, perms]);
             } else {
-                return this.output.error('permissions_add', [type, command, perms]);
+                return this.mod.output.error('permissions_add', [type, command, perms]);
             }
         } else {
-            return this.output.success('permissions_add', [type, command, perms]);
+            return this.mod.output.success('permissions_add', [type, command, perms]);
         }
     }
 
@@ -839,9 +870,9 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
             perms: { required: 'string', format: 'lowercase' }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [type, command, perms] = this.utils.extract_props(params, ['type', 'cmd', 'perms']);   
+        var [type, command, perms] = this.mod.utils.extract_props(params, ['type', 'cmd', 'perms']);   
         var def = default_perm.hasOwnProperty(command) ? default_perm[command] : {
             standard: [],    
             provider: []     
@@ -853,19 +884,19 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
                      .sort((a, b) => (a < b ? -1 : 1))
                      .filter((v) => v != '')
                      .join(',')
-        var permissions = await this.settings.get('permissions', command, def);
+        var permissions = await this.mod.settings.get('permissions', command, def);
         if (!permissions.hasOwnProperty(type)) {
             permissions[type] = [];
         }
         if (permissions[type].includes(perms)) {
             permissions[type] = permissions[type].filter((v) => v != perms);
-            if (await this.settings.set('permissions', command, permissions)) {
-                return this.output.success('permissions_delete', [type, command, perms]);
+            if (await this.mod.settings.set('permissions', command, permissions)) {
+                return this.mod.output.success('permissions_delete', [type, command, perms]);
             } else {
-                return this.output.error('permissions_delete', [type, command, perms]);
+                return this.mod.output.error('permissions_delete', [type, command, perms]);
             }
         } else {
-            return this.output.success('permissions_delete', [type, command, perms]);
+            return this.mod.output.success('permissions_delete', [type, command, perms]);
         }
     }
 
@@ -877,11 +908,11 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         type:  { required: 'string', format: 'lowercase' },
       }
 
-      if (!(params = this.utils.validator(params, schema))) return false; 
+      if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
       var type = params.type;
 
-      return await this.settings.set('core', 'permissionset', type);
+      return await this.mod.settings.set('core', 'permissionset', type);
 
     }
 
@@ -889,7 +920,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
 
     async reset() {
 
-      return await this.settings.delete('permissions');
+      return await this.mod.settings.delete('permissions');
 
     }
 

@@ -30,21 +30,21 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                 }
             }
     
-            if (!(params = this.utils.validator(params, schema))) return false; 
+            if (!(params = this.mod.utils.validator(params, schema))) return false; 
     
-            var [email, password, recaptchasite, recaptchasecret] = this.utils.extract_props(params, ['email', 'password', 'recaptchasite', 'recaptchasecret']);
+            var [email, password, recaptchasite, recaptchasecret] = this.mod.utils.extract_props(params, ['email', 'password', 'recaptchasite', 'recaptchasecret']);
 
-            await this.settings.set('core','gui:recaptchasite', (recaptchasite != undefined ? recaptchasite : false));
-            await this.settings.set('core','gui:recaptchasecret', (recaptchasecret != undefined ? recaptchasecret : false));
+            await this.mod.settings.set('core','gui:recaptchasite', (recaptchasite != undefined ? recaptchasite : false));
+            await this.mod.settings.set('core','gui:recaptchasecret', (recaptchasecret != undefined ? recaptchasecret : false));
 
-            if (await this.user.core(email, password)) {
-                if (await this.settings.set('core','gui:enabled', true)) {
-                    return this.output.success('gui_enable');
+            if (await this.mod.user.core(email, password)) {
+                if (await this.mod.settings.set('core','gui:enabled', true)) {
+                    return this.mod.output.success('gui_enable');
                 }
             }
-            return this.output.error('gui_enable');
+            return this.mod.output.error('gui_enable');
         }
-        return this.output.error('local_only');
+        return this.mod.output.error('local_only');
     }
 
     // Disable GUI
@@ -52,18 +52,18 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async disable(params = null) {
         var ip = context.get('srcIp');
         if (['127.0.0.1','::1'].includes(ip)) {
-            if (await this.settings.set('core','gui:enabled', false)) {
-                return this.output.success('gui_disable');
+            if (await this.mod.settings.set('core','gui:enabled', false)) {
+                return this.mod.output.success('gui_disable');
             }
-            return this.output.error('gui_disable');
+            return this.mod.output.error('gui_disable');
         }
-        return this.output.error('local_only');
+        return this.mod.output.error('local_only');
     }
 
     // Check if GUI is enabled
 
     async gui_is_enabled() {
-        var enabled = await this.settings.get('core', 'gui:enabled', false);
+        var enabled = await this.mod.settings.get('core', 'gui:enabled', false);
         if (String(enabled) == "true")
             return true;
         else
@@ -73,7 +73,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Check if multi-user is enabled
 
     async multiuser_is_enabled() {
-        var enabled = await this.settings.get('core', 'multiuser:enabled', false);
+        var enabled = await this.mod.settings.get('core', 'multiuser:enabled', false);
         if (String(enabled) == "true")
             return true;
         else
@@ -98,7 +98,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             return this.render_error(res, 'GUI is not enabled.');
         var is_provider_admin = false;
         if (params.uuid != undefined) {
-            is_provider_admin = this.signals.is_provider_admin(uuid);
+            is_provider_admin = this.mod.signals.is_provider_admin(uuid);
         }
         return this.render_page(res, "pages/main", { pageTitle: 'Configuration', providerAdmin: is_provider_admin });
         //} else {
@@ -129,8 +129,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
         return res.send(auth);        
         */
-        var multiuser = await this.settings.get('core','multiuser:enabled');
-        var recaptchasite = await this.settings.get('core','gui:recaptchasite',false);
+        var multiuser = await this.mod.settings.get('core','multiuser:enabled');
+        var recaptchasite = await this.mod.settings.get('core','gui:recaptchasite',false);
         return this.render_page(res, "pages/login", { pageTitle: 'Login', regsuccess: regsuccess, sessiontimeout: sessiontimeout, showregister: (multiuser ? true: false), recaptchasite: recaptchasite });
     }
 
@@ -142,7 +142,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             return this.render_error(res, 'Cannot register more users. Multi-user mode is not enabled.');
         if (!(await this.gui_is_enabled()))
             return this.render_error(res, 'GUI is not enabled.');
-        var recaptchasite = await this.settings.get('core','gui:recaptchasite',false);
+        var recaptchasite = await this.mod.settings.get('core','gui:recaptchasite',false);
         return this.render_page(res, "pages/register", { pageTitle: 'Register', recaptchasite: recaptchasite });
     }
 
@@ -211,7 +211,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Brancing
 
     async content_logo(params) {
-        var logo = await this.settings.get('core', 'gui:logo', 'frostybot.png');
+        var logo = await this.mod.settings.get('core', 'gui:logo', 'frostybot.png');
         return logo;
     }
 
@@ -223,7 +223,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         };
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
         if (uuid != null) {
-            //if (await this.signals.is_signal_admin(uuid)) {
+            //if (await this.mod.signals.is_signal_admin(uuid)) {
             //    config['isSignalAdmin'] = true;
             //}
         }
@@ -234,7 +234,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async content_form_2fa(params) {
         if (params.hasOwnProperty('enable') && String(params.enable) == 'true') {
-            var secret = await this.user.create_2fa_secret();
+            var secret = await this.mod.user.create_2fa_secret();
             var config = {
                 enabled: false,
                 enable: true,
@@ -244,7 +244,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         } else {
             var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
             if (uuid != null) {
-                var user2fa = await this.user.get_2fa(uuid);
+                var user2fa = await this.mod.user.get_2fa(uuid);
                 var config = {
                     enabled: (user2fa == false ? false : true),
                     enable: false,
@@ -259,7 +259,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Accounts Table
 
     async content_table_accounts(params) {
-        return await this.accounts.get();
+        return await this.mod.accounts.get();
     }
 
     // Accounts Form
@@ -268,12 +268,12 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var config = {}
         if (params.hasOwnProperty('stub')) {
             var stub = params.stub;
-            var accounts = await this.accounts.get(stub);
+            var accounts = await this.mod.accounts.get(stub);
             if (accounts.hasOwnProperty(stub)) {
                 var account = accounts[stub];
                 var params = account.parameters;
                 delete account.parameters;
-                account.exchange = await this.accounts.get_shortname_from_stub(stub);
+                account.exchange = await this.mod.accounts.get_shortname_from_stub(stub);
                 var config = {...account, ...params};
             }
         }
@@ -286,18 +286,18 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var config = {}
         if (params.hasOwnProperty('stub')) {
             var stub = params.stub;
-            var shortname = await this.accounts.get_shortname_from_stub(stub);
-            var classes = require('./mod.classes');
+            var shortname = await this.mod.accounts.get_shortname_from_stub(stub);
+            var classes = require('./core.classes');
             var exchange = new classes.exchange(stub);
             var markets = await exchange.execute(stub, 'markets');
-            if (this.utils.is_array(markets)) {
+            if (this.mod.utils.is_array(markets)) {
                 var symbols = [];
                 markets.forEach(market => {
                     symbols.push(market.symbol);
                 });
                 symbols = symbols.sort();
             }
-            var allconfig = await this.config.getall();
+            var allconfig = await this.mod.config.getall();
             if ([null, undefined].includes(allconfig)) allconfig = {};
             const stubconfig = Object.keys(allconfig)
                                 .filter(filterkey => filterkey.indexOf(stub) !== -1)
@@ -321,9 +321,9 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             var gridstring = JSON.stringify(griddata);
             let buff = new Buffer.from(gridstring);
             let base64grid = buff.toString('base64');
-            let providers = await this.signals.get_providers_by_stub(stub); 
+            let providers = await this.mod.signals.get_providers_by_stub(stub); 
             let filtered = [];
-            var account = await this.accounts.get(stub);
+            var account = await this.mod.accounts.get(stub);
             account = account.hasOwnProperty(stub) ? account[stub] : account;
             if (account) {
                 var exchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
@@ -331,8 +331,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             var uuid = context.get('uuid')
             for (var i = 0; i < providers.length; i++) {
                 var provider = providers[i]
-                var is_admin = await this.signals.is_admin(provider.uuid, uuid)
-                var in_use = await this.signals.is_provider_selected(provider.uuid, exchange, stub)
+                var is_admin = await this.mod.signals.is_admin(provider.uuid, uuid)
+                var in_use = await this.mod.signals.is_provider_selected(provider.uuid, exchange, stub)
                 if ((in_use == false) || (is_admin == true)) {
                     filtered.push(provider)
                 }
@@ -351,15 +351,15 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Balances Tab
 
     async content_tab_balances(params) {
-        var config = this.accounts.get();
+        var config = this.mod.accounts.get();
         return config;
     }
 
     // Positions Tab
 
     async content_tab_positions(params) {
-        var accounts = await this.accounts.get();
-        var showspot = await this.config.get('gui:showspotpositions', false);
+        var accounts = await this.mod.accounts.get();
+        var showspot = await this.mod.config.get('gui:showspotpositions', false);
         
         return {
             accounts: accounts,
@@ -370,7 +370,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Reports Tab
 
     async content_tab_reports(params) {
-        var accounts = await this.accounts.get();
+        var accounts = await this.mod.accounts.get();
         return {
             accounts: accounts
         }
@@ -380,7 +380,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async data_griddata_balances(params) {
         var stub = params.stub;
-        var classes = require('./mod.classes');
+        var classes = require('./core.classes');
         var exchange = new classes.exchange(stub);
         var balances = await exchange.execute(stub, 'balances');
         var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
@@ -404,8 +404,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async data_griddata_positions(params) {
         var stub = params.stub;
         var showspot = params.hasOwnProperty('showspot') ? params.showspot : 'false';
-        this.config.set({'gui:showspotpositions': showspot});
-        var classes = require('./mod.classes');
+        this.mod.config.set({'gui:showspotpositions': showspot});
+        var classes = require('./core.classes');
         var exchange = new classes.exchange(stub);
         var positions = await exchange.execute(stub, 'positions');
         var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1);
@@ -422,7 +422,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Orders Tab
 
     async content_tab_orders(params) {
-        var accounts = await this.accounts.get();
+        var accounts = await this.mod.accounts.get();
         var stubs = Object.keys(accounts).sort((a, b) => (a > b) ? 1 : -1);
         var stub = stubs[0];
         var symbols = await this.data_symbols(stub);
@@ -438,7 +438,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async data_symbols(params) {
         params = (typeof(params) == 'string' ? {stub: params} : params);
         var stub = params.stub;
-        var classes = require('./mod.classes');
+        var classes = require('./core.classes');
         var exchange = new classes.exchange(stub);
         var symbols = await exchange.execute(stub, 'symbols', stub);
         return symbols;
@@ -453,7 +453,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
         if (params.status !== undefined) filter['status'] = params.status;
         var stub = params.stub;
-        var classes = require('./mod.classes');
+        var classes = require('./core.classes');
         var exchange = new classes.exchange(stub);
         var orders = await exchange.execute(stub, 'orders', filter);
         //var orders = (orders !== false ? orders : []).sort((a, b) => (a.timestamp > b.timestamp) ? 1 : -1);
@@ -470,7 +470,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
         var providers = false;
         if (uuid !== false) {
-            var signaladmins = await this.signals.get_signal_admins();
+            var signaladmins = await this.mod.signals.get_signal_admins();
             providers = signaladmins.hasOwnProperty(uuid) ? signaladmins[uuid] : false;
         }
         return {uuid : uuid, providers: providers};
@@ -480,7 +480,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async content_tab_logs(params) {
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
-        var logfilters = await this.config.get('gui:logfilters', 'debug,notice,warning,error,success');
+        var logfilters = await this.mod.config.get('gui:logfilters', 'debug,notice,warning,error,success');
         var config = {
             logfilters: logfilters
         }
@@ -493,9 +493,9 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async data_logdata(params) {
         var log = [];
         if (params.hasOwnProperty('filters')) {
-            this.config.set({'gui:logfilters': String(params.filters)});
+            this.mod.config.set({'gui:logfilters': String(params.filters)});
         }
-        var result = await this.user.log(params);
+        var result = await this.mod.user.log(params);
         if ((result !== false) && (result.length > 0)) {
             for (var i = 0; i < result.length; i++) {
                 var entry = result[i];
@@ -510,7 +510,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async content_tab_logout(params) {
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
         if (uuid !== false) {
-            var result = await this.user.logout({uuid: uuid});
+            var result = await this.mod.user.logout({uuid: uuid});
             if (result) {
                 return {logout: true};
             }
@@ -522,17 +522,17 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async verify_recaptcha(params) {
         var response = params.response;
-        var recaptchasecret = await this.settings.get('core','gui:recaptchasecret',false);
+        var recaptchasecret = await this.mod.settings.get('core','gui:recaptchasecret',false);
         if (recaptchasecret != false) {
             var result = await axios.post('https://www.google.com/recaptcha/api/siteverify?secret='+recaptchasecret+'&response='+response,{},{headers: {"Content-Type": "application/x-www-form-urlencoded; charset=utf-8"},});
             var data = result.data;
             if (data.success == true) 
                 if (data.score >= 0.5) 
-                    return this.output.success('gui_recaptcha', [data.score]);
+                    return this.mod.output.success('gui_recaptcha', [data.score]);
                 else
-                    return this.output.error('gui_recaptcha', [data.score]);            
+                    return this.mod.output.error('gui_recaptcha', [data.score]);            
         }
-        return this.output.error('gui_recaptcha', [false]);
+        return this.mod.output.error('gui_recaptcha', [false]);
     }
 
     // Render Page

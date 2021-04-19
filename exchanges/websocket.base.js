@@ -6,7 +6,7 @@ class frostybot_websocket_base {
     this.load_modules ();
     this.stub = stub;
     if (account) {
-      this.account = this.accounts.ccxtparams (account);
+      this.account = this.mod.accounts.ccxtparams (account);
       this.apikey = this.account.parameters.apiKey;
       this.secret = this.account.parameters.secret;
       this.url = this.account.parameters.urls.api;
@@ -47,7 +47,7 @@ class frostybot_websocket_base {
         'channel': channel
     }
     if (symbol != null) out.symbol = symbol;
-    this.output.debug('ws_subscribe', this.utils.serialize_object(out))
+    this.mod.output.debug('ws_subscribe', this.mod.utils.serialize_object(out))
     return true;
   }
 
@@ -63,7 +63,7 @@ class frostybot_websocket_base {
         'channel': channel
     }
     if (symbol != null) out.symbol = symbol;
-    this.output.debug('ws_unsubscribe', this.utils.serialize_object(out))
+    this.mod.output.debug('ws_unsubscribe', this.mod.utils.serialize_object(out))
     return true;
   }
 

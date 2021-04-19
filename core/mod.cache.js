@@ -38,7 +38,7 @@ module.exports = class frostybot_cache_module extends frostybot_module {
             total: total,
             ratio: ratio
         };
-        this.output.success('cache_stats', this.utils.serialize(result))
+        this.mod.output.success('cache_stats', this.mod.utils.serialize(result))
         return result
     }
 
@@ -50,9 +50,9 @@ module.exports = class frostybot_cache_module extends frostybot_module {
         var total = stats.hits + stats.misses;
         cache.flushAll();
         if (quiet === true)
-            this.output.debug('cache_flush', total)
+            this.mod.output.debug('cache_flush', total)
         else
-            this.output.success('cache_flush', total)
+            this.mod.output.success('cache_flush', total)
         return total;
     }
 

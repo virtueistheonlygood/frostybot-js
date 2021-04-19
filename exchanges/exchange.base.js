@@ -12,7 +12,7 @@ module.exports = class frostybot_exchange_base {
         this.uuid = uuid;
         this.stub = stub;
         this.doublecheck = false;                    // When order is submitted, double check that it exists on the exchange
-        this.load_modules();
+        this.map_mod();
         this.data = {
             symbols: [],
             markets: null,
@@ -80,14 +80,14 @@ module.exports = class frostybot_exchange_base {
     // Load account
 
     async load_account() {
-        //this.account = await this.accounts.getaccount(this.stub, this.uuid);
+        //this.account = await this.mod.accounts.getaccount(this.stub, this.uuid);
         if (this.uuid == undefined) this.uuid = context.get('uuid');
         var accounts = await this.database.select('settings', {uuid: this.uuid, mainkey: 'accounts', subkey: this.stub});
         var encaccount = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
-        this.account = await this.utils.decrypt_values( this.utils.lower_props(encaccount), ['apikey', 'secret'])
+        this.account = await this.mod.utils.decrypt_values( this.mod.utils.lower_props(encaccount), ['apikey', 'secret'])
         if (this.account) {
             this.shortname = this.account.exchange + (this.account.hasOwnProperty('type') ? '_' + this.account.type : '')
-            const accountParams = await this.accounts.ccxtparams(this.account);
+            const accountParams = await this.mod.accounts.ccxtparams(this.account);
             const exchangeId = this.account.exchange.replace('ftxus','ftx');
             const exchangeClass = ccxtlib[exchangeId];
             this.ccxtobj = new exchangeClass (accountParams.parameters);
@@ -96,7 +96,7 @@ module.exports = class frostybot_exchange_base {
                 await this.ccxtobj.loadMarkets();    
                 return true;
             } catch(error) {
-                this.output.exception(error);
+                this.mod.output.exception(error);
                 return false;
             }
         }
@@ -104,21 +104,19 @@ module.exports = class frostybot_exchange_base {
 
     // Create module shortcuts
 
-    load_modules() { 
-        Object.keys(global.frostybot._modules_).forEach(module => {
-            if (!['core'].includes(module)) {
-                this[module] = global.frostybot._modules_[module];
-            }
-        })
+    map_mod() { 
+        this['mod'] = global.frostybot._modules_;
+        this['classes'] = global.frostybot._classes_;
+        this['database'] = global.frostybot._modules_['database'];
     }
 
     // Execute method
 
     async execute(method, params, nocache = false) {
-        if (this.utils.is_empty(params)) {
+        if (this.mod.utils.is_empty(params)) {
             params = [];
         }
-        if (!this.utils.is_array(params)) {
+        if (!this.mod.utils.is_array(params)) {
             params = [params];
         }
         await this.markets();
@@ -134,19 +132,19 @@ module.exports = class frostybot_exchange_base {
     // Cache Execute
 
     async cache_exec(type, method, params = [], nocache = false) {
-        if (!this.utils.is_array(params)) params = [params];
+        if (!this.mod.utils.is_array(params)) params = [params];
         if (this.ccxtobj == undefined) await this.load_account();
         try {
-            this.shortname = await this.accounts.get_shortname_from_stub(this.stub);
+            this.shortname = await this.mod.accounts.get_shortname_from_stub(this.stub);
             var uuid = params.hasOwnProperty('uuid') ? params.uuid : context.get('uuid');
             var cachetime = this.interfaces.cache.hasOwnProperty(method) ? this.interfaces.cache[method].time : null;
             var isglobal = this.interfaces.cache.hasOwnProperty(method) ? this.interfaces.cache[method].global : false;
             var req = context.get('reqId')
             var stat = new this.classes.metric([(isglobal ? 'global' : 'context'), type, this.shortname, method].join(':'));
             stat.start();
-            var keyparts = isglobal ? [type, this.shortname, method, this.utils.serialize(params)] : [req, uuid, this.shortname, this.stub, type, method, this.utils.serialize(params)];
+            var keyparts = isglobal ? [type, this.shortname, method, this.mod.utils.serialize(params)] : [req, uuid, this.shortname, this.stub, type, method, this.mod.utils.serialize(params)];
             var key = md5(keyparts.join('|'));
-            var value = cachetime == null || nocache ? undefined : this.cache.get( key );
+            var value = cachetime == null || nocache ? undefined : this.mod.cache.get( key );
             if ( value == undefined ) {
                 var result = null;
                 switch (type) {
@@ -155,13 +153,13 @@ module.exports = class frostybot_exchange_base {
                     case 'ccxt'         :   var result = await this.ccxtobj[method](...params);
                                             break;
                 }
-                if (result != null) {this.cache.set( key, result, cachetime );}
+                if (result != null) {this.mod.cache.set( key, result, cachetime );}
             } else {
                 stat.cached = true;
                 var result = value;
             }
             stat.end();
-            this.output.add_stat(stat);
+            this.mod.output.add_stat(stat);
             return result;
         }
         catch (error) {
@@ -306,15 +304,15 @@ module.exports = class frostybot_exchange_base {
                 if (this.data.markets_by_symbol.hasOwnProperty(mapsymbol)) {
                     var market = this.data.markets_by_symbol[mapsymbol];
                     if (market != null) {
-                        //this.output.debug('custom_object', ['Attempting conversion using market', market])
-                        this.output.debug('custom_object', ['Converting using symbol', mapsymbol]);
+                        //this.mod.output.debug('custom_object', ['Attempting conversion using market', market])
+                        this.mod.output.debug('custom_object', ['Converting using symbol', mapsymbol]);
                         price = ((market.bid * 1) + (market.ask * 1)) / 2;
                         return price;
                     } else {
-                        //this.output.debug('custom_object', ['Null conversion market', mapsymbol])
+                        //this.mod.output.debug('custom_object', ['Null conversion market', mapsymbol])
                     }
                 } else {
-                    //this.output.debug('custom_object', ['Invalid conversion market', mapsymbol])
+                    //this.mod.output.debug('custom_object', ['Invalid conversion market', mapsymbol])
                 }
             };
         }
@@ -329,8 +327,8 @@ module.exports = class frostybot_exchange_base {
             return this.data.balances;
         }
         let results = await this.execute('fetch_balance');
-        //this.output.debug('custom_object', ['Balance response from CCXT', results])
-        //this.output.debug(results)
+        //this.mod.output.debug('custom_object', ['Balance response from CCXT', results])
+        //this.mod.output.debug(results)
         await this.markets();
         if (results.result != 'error') {
             var raw_balances = results.hasOwnProperty('data') ? results.data : results;
@@ -343,17 +341,17 @@ module.exports = class frostybot_exchange_base {
                 .forEach(currency => {
                     var raw_balance = raw_balances[currency];
                     if (raw_balance.total != false) {
-                        //this.output.debug('custom_object', ['Calculating USD value for currency', currency])
-                        //this.output.debug('custom_object', ['Input balance object', raw_balance])
-                        //this.output.debug(raw_balance)
+                        //this.mod.output.debug('custom_object', ['Calculating USD value for currency', currency])
+                        //this.mod.output.debug('custom_object', ['Input balance object', raw_balance])
+                        //this.mod.output.debug(raw_balance)
                         const used = raw_balance.used;
                         const free = raw_balance.free;
                         const total = raw_balance.total;
                         var price = this.get_usd_price(currency)
-                        //this.output.debug('custom_object', ['Conversion price detected', price])
+                        //this.mod.output.debug('custom_object', ['Conversion price detected', price])
                         const balance = new this.classes.balance(currency, price, free, used, total);
-                        //this.output.debug('custom_object', ['Output balance object', balance])
-                        //this.output.debug(balance)
+                        //this.mod.output.debug('custom_object', ['Output balance object', balance])
+                        //this.mod.output.debug(balance)
                         if (total != 0) {
                             balances.push(balance);
                         }
@@ -410,8 +408,8 @@ module.exports = class frostybot_exchange_base {
     // Merge orders
 
     merge_orders(orders1, orders2) {
-        if (!this.utils.is_array(orders1)) orders1 = [];
-        if (!this.utils.is_array(orders2)) orders2 = [];
+        if (!this.mod.utils.is_array(orders1)) orders1 = [];
+        if (!this.mod.utils.is_array(orders2)) orders2 = [];
         var merged = [...orders1, ...orders2];
         return merged.sort((a, b) => (a.timestamp < b.timestamp) ? 1 : -1);
     }
@@ -442,8 +440,8 @@ module.exports = class frostybot_exchange_base {
 
     async market(filter) {
         let markets = await this.markets();
-        let result = this.utils.filter_objects(markets, filter);
-        if (this.utils.is_array(result) && result.length == 1) {
+        let result = this.mod.utils.filter_objects(markets, filter);
+        if (this.mod.utils.is_array(result) && result.length == 1) {
             return result[0];
         }
         return result;
@@ -470,7 +468,7 @@ module.exports = class frostybot_exchange_base {
                 size: position.base_size
             }
         }
-        this.output.debug(data);
+        this.mod.output.debug(data);
         
     }
 
@@ -478,30 +476,30 @@ module.exports = class frostybot_exchange_base {
     
     async position(filter) {
         let positions = await this.execute('positions');
-        //this.output.debug('custom_object', ['Positions before filter ('+this.utils.serialize(filter)+')', positions]);
+        //this.mod.output.debug('custom_object', ['Positions before filter ('+this.mod.utils.serialize(filter)+')', positions]);
         //this.position_debug(positions);
-        let result = this.utils.filter_objects(positions, filter);
-        //this.output.debug('custom_object', ['Positions after filter ('+this.utils.serialize(filter)+')', result]);
+        let result = this.mod.utils.filter_objects(positions, filter);
+        //this.mod.output.debug('custom_object', ['Positions after filter ('+this.mod.utils.serialize(filter)+')', result]);
         //try {
         //    this.position_debug(result);
         //} catch (e) {
-        //    this.output.debug('custom_object', ['Error outputting debug info', e])
+        //    this.mod.output.debug('custom_object', ['Error outputting debug info', e])
         //} finally {
-        return this.utils.is_array(result) ? (result.length == 1 ? result[0] : result) : [];
+        return this.mod.utils.is_array(result) ? (result.length == 1 ? result[0] : result) : [];
         //}
     }
 
     // Create new order
 
     async create_order(params) {
-        var [symbol, type, side, amount, price, order_params] = this.utils.extract_props(params, ['symbol', 'type', 'side', 'amount', 'price', 'params']);
+        var [symbol, type, side, amount, price, order_params] = this.mod.utils.extract_props(params, ['symbol', 'type', 'side', 'amount', 'price', 'params']);
         var market = await this.get_market_by_id_or_symbol(symbol);
         symbol = market.symbol;
         let create_result = await this.ccxt('create_order',[symbol, type, side, amount, price, order_params]);
         if (create_result.result == 'error') {
             var errortype = create_result.data.name;
             var trimerr = create_result.data.message.replace('ftx','').replace('deribit','')
-            if (this.utils.is_json(trimerr)) {
+            if (this.mod.utils.is_json(trimerr)) {
                 var errormsg = JSON.parse(trimerr).error;
                 var result = {result: 'error', params: params, error: {type: errortype, message: errormsg}};
             } else {
@@ -518,7 +516,7 @@ module.exports = class frostybot_exchange_base {
     // Get order by id
 
     async order(params) {
-        var [symbol, id] = this.utils.extract_props(params, ['symbol', 'id']);
+        var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         var orders = await this.all_orders({symbol: symbol});
         if (orders.length > 0) {
             for (var i = 0; i < orders.length; i++) {
@@ -538,7 +536,7 @@ module.exports = class frostybot_exchange_base {
         if (params == undefined) {
             params = { id: 'all'};
         }
-        var status = this.utils.extract_props(params, ['status']);
+        var status = this.mod.utils.extract_props(params, ['status']);
         if (status == 'open') {
             var orders = await this.open_orders(params);    
         } else {
@@ -582,7 +580,7 @@ module.exports = class frostybot_exchange_base {
     // Default leverage function (if not supported by exchange)
 
     async leverage(params) {
-        return this.output.error('leverage_unsupported')
+        return this.mod.output.error('leverage_unsupported')
     }
 
 }

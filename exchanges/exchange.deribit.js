@@ -64,7 +64,7 @@ module.exports = class frostybot_exchange_deribit extends frostybot_exchange_bas
                 const total = raw_balance.total;
                 var price = this.get_usd_price(currency)
                 const balance = new this.classes.balance(currency, price, free, used, total);
-                if (this.utils.is_object(balance)) {
+                if (this.mod.utils.is_object(balance)) {
                     return Math.floor(balance.usd.total);
                 }
             }    
@@ -201,7 +201,7 @@ module.exports = class frostybot_exchange_deribit extends frostybot_exchange_bas
     // Get open orders
 
     async open_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         var currency = symbol.slice(0,3);
         this.set_code(currency);
         let raworders = await this.ccxt('fetch_open_orders', [symbol, since, limit, {type: 'all'}]);
@@ -211,7 +211,7 @@ module.exports = class frostybot_exchange_deribit extends frostybot_exchange_bas
     // Get all order history
 
     async all_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         var currency = symbol.slice(0,3);
         this.set_code(currency);
         let raworders1 = await this.ccxt('fetch_open_orders', [symbol, since, limit, {type: 'all'}]);
@@ -223,7 +223,7 @@ module.exports = class frostybot_exchange_deribit extends frostybot_exchange_bas
     // Cancel orders
 
     async cancel(params) {
-        var [symbol, id] = this.utils.extract_props(params, ['symbol', 'id']);
+        var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         var orders = await this.open_orders({symbol: symbol});
         if (id.toLowerCase() == 'all') {
             let result = await this.ccxtobj.private_get_cancel_all_by_instrument({instrument_name: symbol});

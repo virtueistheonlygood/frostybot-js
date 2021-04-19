@@ -41,18 +41,18 @@ module.exports = class frostybot_user_module extends frostybot_module {
                 }
             }
     
-            if (!(params = this.utils.validator(params, schema))) return false; 
+            if (!(params = this.mod.utils.validator(params, schema))) return false; 
     
-            var [email, password] = this.utils.extract_props(params, ['email', 'password']);
+            var [email, password] = this.mod.utils.extract_props(params, ['email', 'password']);
 
             if (await this.core(email, password)) {
-                if (await this.settings.set('core','multiuser:enabled', true)) {
-                    return this.output.success('multiuser_enable');
+                if (await this.mod.settings.set('core','multiuser:enabled', true)) {
+                    return this.mod.output.success('multiuser_enable');
                 }
             }
-            return this.output.error('multiuser_enable');
+            return this.mod.output.error('multiuser_enable');
         }
-        return this.output.error('local_only');
+        return this.mod.output.error('local_only');
     }
 
     // Disable Multi-User Mode 
@@ -60,12 +60,12 @@ module.exports = class frostybot_user_module extends frostybot_module {
     async multiuser_disable(params = null) {
         var ip = context.get('srcIp');
         if (['127.0.0.1','::1',undefined].includes(ip)) {
-            if (await this.settings.set('core','multiuser:enabled', false)) {
-                return this.output.success('multiuser_disable');
+            if (await this.mod.settings.set('core','multiuser:enabled', false)) {
+                return this.mod.output.success('multiuser_disable');
             }
-            return this.output.error('multiuser_disable');
+            return this.mod.output.error('multiuser_disable');
         }
-        return this.output.error('local_only');
+        return this.mod.output.error('local_only');
     }
 
 
@@ -74,7 +74,7 @@ module.exports = class frostybot_user_module extends frostybot_module {
     async multiuser_isenabled() {
         //if (this.database.type != 'mysql') 
         //    return false;
-        return await this.settings.get('core', 'multiuser:enabled', false);
+        return await this.mod.settings.get('core', 'multiuser:enabled', false);
     }
 
 
@@ -123,8 +123,8 @@ module.exports = class frostybot_user_module extends frostybot_module {
     // Set core user email and password
 
     async core(email, password) {
-        var uuid = await this.encryption.core_uuid();
-        var password = await this.encryption.encrypt(password, uuid);
+        var uuid = await this.mod.encryption.core_uuid();
+        var password = await this.mod.encryption.encrypt(password, uuid);
         var data = {
             uuid: uuid,
             email: email,
@@ -149,22 +149,22 @@ module.exports = class frostybot_user_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [email, password] = this.utils.extract_props(params, ['email', 'password']);
+        var [email, password] = this.mod.utils.extract_props(params, ['email', 'password']);
 
         if (await this.exists(email)) {
-            return this.output.error('user_exists', [email]);
+            return this.mod.output.error('user_exists', [email]);
         } else {
-            var uuid = this.encryption.new_uuid();
-            var password = await this.encryption.encrypt(password, uuid);
+            var uuid = this.mod.encryption.new_uuid();
+            var password = await this.mod.encryption.encrypt(password, uuid);
             var data = {
                 uuid: uuid,
                 email: email,
                 password: JSON.stringify(password)
             }
             if ((await this.database.insert('users', data)).changes == 1)
-                return this.output.success('user_register', [email]);
+                return this.mod.output.success('user_register', [email]);
         }
 
     }
@@ -185,29 +185,29 @@ module.exports = class frostybot_user_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [email, password, token2fa] = this.utils.extract_props(params, ['email', 'password', 'token2fa']);
+        var [email, password, token2fa] = this.mod.utils.extract_props(params, ['email', 'password', 'token2fa']);
 
         var result = await this.database.select('users', { email: email});
         if (result.length == 1) {
             var userdata = result[0];
             var uuid = userdata.uuid;
             var key2fa = await this.get_2fa(uuid);
-            var decr_pass = await this.encryption.decrypt(JSON.parse(userdata.password), uuid);
+            var decr_pass = await this.mod.encryption.decrypt(JSON.parse(userdata.password), uuid);
             if (password == decr_pass) {
                 if (key2fa !== false) {
                     var verify = await this.verify_2fa(key2fa, token2fa);
                     if (verify === false)
-                        return this.output.error('invalid_token')
+                        return this.mod.output.error('invalid_token')
                 }
-                this.output.success('user_auth', [email]);
+                this.mod.output.success('user_auth', [email]);
                 var token = await this.create_token(uuid);
                 if (token !== false)
                     return token;
             }
         }
-        return this.output.error('user_auth', [email]);
+        return this.mod.output.error('user_auth', [email]);
     
     }
 
@@ -227,11 +227,11 @@ module.exports = class frostybot_user_module extends frostybot_module {
     // Create a new user token
 
     async create_token(uuid) {
-        var timeout = await this.settings.get('core','gui:sessiontimeout', 3600);
+        var timeout = await this.mod.settings.get('core','gui:sessiontimeout', 3600);
         var duration = 1000 * timeout;
-        var token = this.encryption.new_uuid();
+        var token = this.mod.encryption.new_uuid();
         var expiry = (new Date()).getTime() + duration;
-        var result = await this.database.update('users', { token: token, expiry: this.utils.ts_to_datetime(expiry) }, {uuid: uuid});
+        var result = await this.database.update('users', { token: token, expiry: this.mod.utils.ts_to_datetime(expiry) }, {uuid: uuid});
         if (result != false && result.changes > 0)
             return {
                 uuid: uuid,
@@ -254,9 +254,9 @@ module.exports = class frostybot_user_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [uuid, oldpassword, newpassword] = this.utils.extract_props(params, ['uuid', 'oldpassword', 'newpassword']);
+        var [uuid, oldpassword, newpassword] = this.mod.utils.extract_props(params, ['uuid', 'oldpassword', 'newpassword']);
 
         if (uuid == undefined)
             uuid = params.token.uuid;
@@ -265,9 +265,9 @@ module.exports = class frostybot_user_module extends frostybot_module {
         if (result.length == 1) {
             var userdata = result[0];
             var uuid = userdata.uuid;
-            var decr_pass = await this.encryption.decrypt(JSON.parse(userdata.password), uuid);
+            var decr_pass = await this.mod.encryption.decrypt(JSON.parse(userdata.password), uuid);
             if (oldpassword == decr_pass) {
-                var encr_pass = JSON.stringify(await this.encryption.encrypt(newpassword, uuid));
+                var encr_pass = JSON.stringify(await this.mod.encryption.encrypt(newpassword, uuid));
                 var result = await this.database.update('users', {password: encr_pass}, {uuid, uuid});
                 if (result.changes > 0) {
                     return true;
@@ -283,7 +283,7 @@ module.exports = class frostybot_user_module extends frostybot_module {
 
     async enable_2fa(params) {
         
-        var [token, key, checktoken] = this.utils.extract_props(params, ['token', 'key', 'checktoken']);
+        var [token, key, checktoken] = this.mod.utils.extract_props(params, ['token', 'key', 'checktoken']);
 
         var uuid = token.uuid;
 
@@ -300,7 +300,7 @@ module.exports = class frostybot_user_module extends frostybot_module {
 
     async disable_2fa(params) {
 
-        var [token, checktoken] = this.utils.extract_props(params, ['token', 'checktoken']);
+        var [token, checktoken] = this.mod.utils.extract_props(params, ['token', 'checktoken']);
 
         var uuid = token.uuid;
 
@@ -373,7 +373,7 @@ module.exports = class frostybot_user_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var email = params.email;
 
@@ -387,10 +387,10 @@ module.exports = class frostybot_user_module extends frostybot_module {
         var result = await this.database.insertOrReplace('users',  user);
         if (result.changes > 0) {
             var uuid = await this.uuid_by_email(email);
-            this.output.success('multiuser_add', [uuid]);
+            this.mod.output.success('multiuser_add', [uuid]);
             return uuid;
         }  
-        return this.output.error('multiuser_add', [email]);  
+        return this.mod.output.error('multiuser_add', [email]);  
     }
 
     // Delete user
@@ -403,15 +403,15 @@ module.exports = class frostybot_user_module extends frostybot_module {
             },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var uuid = params.uuid;
         var result = await this.database.delete('users',  {uuid: uuid});
         if (result.changes > 0) {
-            this.output.success('multiuser_delete', [uuid]);
+            this.mod.output.success('multiuser_delete', [uuid]);
             return true;
         }  
-        return this.output.error('multiuser_delete', [uuid]);  
+        return this.mod.output.error('multiuser_delete', [uuid]);  
     }
 
     // Reset user password (CLI Only)
@@ -431,13 +431,13 @@ module.exports = class frostybot_user_module extends frostybot_module {
                 }
             }
     
-            if (!(params = this.utils.validator(params, schema))) return false; 
+            if (!(params = this.mod.utils.validator(params, schema))) return false; 
     
-            var [email, password] = this.utils.extract_props(params, ['email', 'password']);
+            var [email, password] = this.mod.utils.extract_props(params, ['email', 'password']);
 
             var useruuid = await this.uuid_by_email(email);
             if (useruuid !== false) {
-                var encr_pass = JSON.stringify(await this.encryption.encrypt(password, useruuid));
+                var encr_pass = JSON.stringify(await this.mod.encryption.encrypt(password, useruuid));
                 var result = await this.database.update('users', {password: encr_pass}, {uuid: useruuid});
                 if (result.changes > 0) {
                     return true;
@@ -445,7 +445,7 @@ module.exports = class frostybot_user_module extends frostybot_module {
             }
             return false;
         } else {
-            return this.output.error('local_only');         
+            return this.mod.output.error('local_only');         
         }
     }
 
@@ -462,7 +462,7 @@ module.exports = class frostybot_user_module extends frostybot_module {
             },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var uuid = params.uuid;
         var filterstr = (params.hasOwnProperty('filters') ? params.filters : 'debug,notice,warning,error,success') + ',_';
@@ -481,14 +481,14 @@ module.exports = class frostybot_user_module extends frostybot_module {
             return output;
             //return result;
         }  
-        return this.output.error('log_retrieve', [uuid]);  
+        return this.mod.output.error('log_retrieve', [uuid]);  
     }
 
     // Extract UUID from params
 
     async uuid_from_params(params) {
         var multiuser = await this.multiuser_isenabled();
-        var core_uuid = await this.encryption.core_uuid();
+        var core_uuid = await this.mod.encryption.core_uuid();
         var params_uuid = params.hasOwnProperty('uuid') ? params.uuid : (multiuser ? undefined : core_uuid);
         var token_uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : undefined) : undefined
         if (token_uuid != undefined) {

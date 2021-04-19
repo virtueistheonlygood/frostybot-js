@@ -56,7 +56,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
         await this.markets();
         // Get futures positions
         var positions = []; 
-        if (this.utils.is_array(raw_positions)) {
+        if (this.mod.utils.is_array(raw_positions)) {
             await raw_positions
             .filter(raw_position => raw_position.size != 0)
             .forEach(async raw_position => {
@@ -127,7 +127,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
     // Get open orders
 
     async open_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         let raworders1 = await this.ccxt('fetch_open_orders',[symbol, since, limit, {method: 'privateGetOrders'}]);
         let raworders2 = await this.ccxt('fetch_open_orders',[symbol, since, limit, {method: 'privateGetConditionalOrders'}]);
         var raworders = this.merge_orders(raworders1, raworders2);
@@ -137,7 +137,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
     // Get all order history
 
     async all_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         let raworders1 = await this.ccxt('fetch_orders',[symbol, since, limit, {method: 'privateGetOrdersHistory'}]);
         let raworders2 = await this.ccxt('fetch_orders',[symbol, since, limit, {method: 'privateGetConditionalOrdersHistory'}]);
         var raworders = this.merge_orders(raworders1, raworders2);
@@ -147,7 +147,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
     // Cancel orders
 
     async cancel(params) {
-        var [symbol, id] = this.utils.extract_props(params, ['symbol', 'id']);
+        var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         var orders = await this.open_orders({symbol: symbol});
         if (id.toLowerCase() == 'all') {
             let result = await this.ccxtobj.privateDeleteOrders({market: symbol});

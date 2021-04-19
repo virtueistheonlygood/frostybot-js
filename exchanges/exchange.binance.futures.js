@@ -46,7 +46,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
     // Set leverage for symbol
 
     async leverage(params) {
-        var [symbol, type, leverage] = this.utils.extract_props(params, ['symbol', 'type', 'leverage']);
+        var [symbol, type, leverage] = this.mod.utils.extract_props(params, ['symbol', 'type', 'leverage']);
         await this.markets();
         var market = await this.get_market_by_id_or_symbol(symbol);
         symbol = market.id;
@@ -83,7 +83,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
                 const direction = (raw_position.positionAmt > 0 ? 'long' : (raw_position.positionAmt <  0 ? 'short' : 'flat'));
                 const base_size = (raw_position.positionAmt * 1);
                 const entry_price = (raw_position.entryPrice * 1);
-                const liquidation_price = this.utils.is_numeric(raw_position.liquidationPrice) ? (raw_position.liquidationPrice * 1) : null;
+                const liquidation_price = this.mod.utils.is_numeric(raw_position.liquidationPrice) ? (raw_position.liquidationPrice * 1) : null;
                 const raw = raw_position;
                 const position = new this.classes.position_futures(market, direction, base_size, null, entry_price, liquidation_price, raw);
                 positions.push(position)
@@ -118,8 +118,8 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
                     const ask = ticker != null ? ticker.ask : null;
                     const expiration = (raw_market.expiration != null ? raw_market.expiration : null);
                     const contract_size = (raw_market.info.contractSize != null ? raw_market.info.contractSize : 1);
-                    const price_filter  = this.utils.filter_objects(raw_market.info.filters, {filterType: 'PRICE_FILTER'} );
-                    const amount_filter = this.utils.filter_objects(raw_market.info.filters, {filterType: 'LOT_SIZE'} );
+                    const price_filter  = this.mod.utils.filter_objects(raw_market.info.filters, {filterType: 'PRICE_FILTER'} );
+                    const amount_filter = this.mod.utils.filter_objects(raw_market.info.filters, {filterType: 'LOT_SIZE'} );
                     const precision = {
                         price: (price_filter[0] != undefined ? price_filter[0].tickSize * 1 : raw_market.precision.price != undefined ? raw_market.precision.price : undefined),
                         amount: (amount_filter[0] != undefined ? amount_filter[0].stepSize * 1 : raw_market.precision.amount != undefined ? raw_market.precision.amount : undefined)
@@ -146,8 +146,8 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
             var tickerRaw = tickersRaw[i];
             var symbol = tickerRaw.symbol;
             results[symbol] = {
-                bid: this.utils.is_numeric(tickerRaw.bidPrice) ? tickerRaw.bidPrice * 1 : null,
-                ask: this.utils.is_numeric(tickerRaw.askPrice) ? tickerRaw.askPrice * 1 : null,
+                bid: this.mod.utils.is_numeric(tickerRaw.bidPrice) ? tickerRaw.bidPrice * 1 : null,
+                ask: this.mod.utils.is_numeric(tickerRaw.askPrice) ? tickerRaw.askPrice * 1 : null,
             }
         }
         this.data.tickers = results;
@@ -158,7 +158,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
     // Get open orders
 
     async open_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         let raworders = await this.ccxt('fetch_open_orders',[symbol, since, limit]);
         return this.parse_orders(raworders);
     }
@@ -166,7 +166,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
     // Get all order history
 
     async all_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         let raworders = await this.ccxt('fetch_orders',[symbol, since, limit]);
         return this.parse_orders(raworders);
     }
@@ -174,7 +174,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
     // Cancel orders
 
     async cancel(params) {
-        var [symbol, id] = this.utils.extract_props(params, ['symbol', 'id']);
+        var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         if (id.toLowerCase() == 'all') {
             var orders = await this.open_orders({symbol: symbol});
             let cancel = await this.ccxt('cancel_all_orders',[symbol]);

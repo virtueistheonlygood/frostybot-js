@@ -25,7 +25,7 @@ module.exports = class frostybot_websocket_module extends frostybot_module {
 
   async connect_all() {
       /* 
-      var accounts = await this.accounts.get()
+      var accounts = await this.mod.accounts.get()
       var stubs = Object.keys(accounts);
       if (!this.hasOwnProperty('ws')) {
         this.ws = {}
@@ -34,9 +34,9 @@ module.exports = class frostybot_websocket_module extends frostybot_module {
         var stub = stubs[i];
         await this.connect_stub(stub)
       }
-      var account = this.accounts.getaccount('deribit');
+      var account = this.mod.accounts.getaccount('deribit');
       if (account != false) {
-        var params = this.accounts.ccxtparams(account);
+        var params = this.mod.accounts.ccxtparams(account);
         var conf = {
           exchange: 'deribit',
           stub: 'deribit',
@@ -56,8 +56,8 @@ module.exports = class frostybot_websocket_module extends frostybot_module {
   // Load Websocket API for a specific stub
 
   async connect_stub(stub) {
-      var account = this.accounts.getaccount(stub);
-      var base_dir = this.utils.base_dir()
+      var account = this.mod.accounts.getaccount(stub);
+      var base_dir = this.mod.utils.base_dir()
       if (['ftx'].includes(account.exchange)) {
         var frostybot_websocket = require(base_dir + '/exchanges/websocket.' + account.exchange)
         this.ws[stub] = new frostybot_websocket(stub, account)
@@ -84,7 +84,7 @@ module.exports = class frostybot_websocket_module extends frostybot_module {
   // Subscribe to channel
 
   async subscribe(params) {
-    var [stub, channel, symbol] = this.utils.extract_props(params, ['stub', 'channel', 'symbol']);
+    var [stub, channel, symbol] = this.mod.utils.extract_props(params, ['stub', 'channel', 'symbol']);
     if (this.ws.hasOwnProperty(stub)) {
       return await this.ws[stub].subscribe(channel, symbol);
     }
@@ -95,7 +95,7 @@ module.exports = class frostybot_websocket_module extends frostybot_module {
   // Unsubscribe 
 
   async unsubscribe(params) {
-    var [stub, channel, symbol] = this.utils.extract_props(params, ['stub', 'channel', 'symbol']);
+    var [stub, channel, symbol] = this.mod.utils.extract_props(params, ['stub', 'channel', 'symbol']);
     if (this.ws.hasOwnProperty(stub)) {
       return await this.ws[stub].unsubscribe(channel, symbol);
     }

@@ -18,7 +18,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     /*
     async exchange_init(stub) {
         var uuid = context.get('uuid');
-        if (uuid == undefined) uuid = this.encryption.uuid();
+        if (uuid == undefined) uuid = this.mod.encryption.uuid();
         if (!this.connpool.hasOwnProperty(uuid)) this.connpool[uuid] = {};
         if (!this.connpool[uuid].hasOwnProperty(stub)) this.connpool[uuid][stub] = new this.classes.exchange(stub);
         if (!(typeof(this.connpool[uuid][stub]) == 'object' && this.connpool[uuid][stub].constructor.name == 'frostybot_exchange')) {
@@ -101,14 +101,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Round a number to a given precision
 
     round_num(num, precision) {
-        return (Math.round(num / precision) * precision).toFixed(this.utils.num_decimals(precision));
+        return (Math.round(num / precision) * precision).toFixed(this.mod.utils.num_decimals(precision));
     }
 
     
     // Floor a number to a given precision
 
     floor_num(num, precision) {
-        return (Math.floor(num / precision) * precision).toFixed(this.utils.num_decimals(precision));
+        return (Math.floor(num / precision) * precision).toFixed(this.mod.utils.num_decimals(precision));
     }
 
 
@@ -150,7 +150,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         variance = (String(operator) + String(variance)) * 1;
         var rel = (from * 1) + (variance * 1);
         var relative_price = this.round_price(market, rel);
-        this.output.debug('convert_rel_price', [from, original_price, relative_price]);
+        this.mod.output.debug('convert_rel_price', [from, original_price, relative_price]);
         return relative_price;
     }
     
@@ -159,7 +159,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async position_size_usd(stub, symbol) {
         var filter = {symbol: symbol}
         var position = await this.exchange_execute(stub, 'position', filter);
-        var size = !this.utils.is_empty(position) ? position['usd_size'] : 0;
+        var size = !this.mod.utils.is_empty(position) ? position['usd_size'] : 0;
         //console.log('Size: ' + size)
         return (!isNaN(size) ? size : 0);  
     }
@@ -170,7 +170,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async get_position(stub, symbol) {
         var filter = {symbol: symbol}
         var position = await this.exchange_execute(stub, 'position',filter);
-        if (!this.utils.is_empty(position)) {
+        if (!this.mod.utils.is_empty(position)) {
             //console.log(position)
             return position;
         }
@@ -209,7 +209,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     
     async get_amount(params, type = 'standard') {
 
-        var [stub, market, symbol, side, size, base, quote, usd, price, stopsize, stopbase, stopquote, stopusd, stoptrigger, stopprice, profitsize, profitbase, profitquote, profitusd, profittrigger, profitprice] = this.utils.extract_props(params, ['stub', 'market', 'symbol', 'side', 'size', 'base', 'quote', 'usd', 'price', 'stopsize', 'stopbase', 'stopquote', 'stopusd', 'stoptrigger', 'stopprice', 'profitsize', 'profitbase', 'profitquote', 'profitusd', 'profittrigger', 'profitprice']);
+        var [stub, market, symbol, side, size, base, quote, usd, price, stopsize, stopbase, stopquote, stopusd, stoptrigger, stopprice, profitsize, profitbase, profitquote, profitusd, profittrigger, profitprice] = this.mod.utils.extract_props(params, ['stub', 'market', 'symbol', 'side', 'size', 'base', 'quote', 'usd', 'price', 'stopsize', 'stopbase', 'stopquote', 'stopusd', 'stoptrigger', 'stopprice', 'profitsize', 'profitbase', 'profitquote', 'profitusd', 'profittrigger', 'profitprice']);
 
         // Override sizing for stop loss and take profit orders
         switch(type) {
@@ -265,16 +265,16 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         // Size provided in USD
         if (base == undefined && quote == undefined && usd != undefined) {
             if (this.stablecoins.includes(market.quote)) {
-                this.output.debug('convert_size_usd')
+                this.mod.output.debug('convert_size_usd')
                 quotesize = usd;
             } else {
                 var conversion_pairs = Object.values(market.usd.pairs).filter(val => val !== null).join(', ');
-                this.output.debug('convert_size_pair', conversion_pairs)
+                this.mod.output.debug('convert_size_pair', conversion_pairs)
                 if (market.hasOwnProperty('usd')) {
                     basesize  = usd / market.usd.base;
                     quotesize = usd / market.usd.quote;
                 } else {
-                    this.output.error('convert_size_usd')
+                    this.mod.output.error('convert_size_usd')
                 }
             }
         }
@@ -283,15 +283,15 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var amount = null;
         switch (this.order_sizing) {
             case  'base'    :   amount = (basesize != null ? basesize : quotesize / price);
-                                this.output.debug('exchange_size_base', [market.base, amount])
+                                this.mod.output.debug('exchange_size_base', [market.base, amount])
                                 break;
             case  'quote'   :   amount = (quotesize != null ? quotesize : basesize * price) / market.contract_size;
-                                this.output.debug('exchange_size_quote', [market.quote, amount])
+                                this.mod.output.debug('exchange_size_quote', [market.quote, amount])
                                 break;
         }
 
         if (Number.isNaN(amount)) {            
-            this.output.error('order_size_nan', this.utils.serialize({sizing: this.order_sizing, base: basesize, quote: quotesize, price: price}));
+            this.mod.output.error('order_size_nan', this.mod.utils.serialize({sizing: this.order_sizing, base: basesize, quote: quotesize, price: price}));
             return false;
         }
 
@@ -304,8 +304,8 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     
     async order_params_advanced(type, params) {
 
-        params = this.utils.lower_props(params);
-        var [market, base, quote, usd, price, tag] = this.utils.extract_props(params, ['market', 'base', 'quote', 'usd', 'price', 'tag']);
+        params = this.mod.utils.lower_props(params);
+        var [market, base, quote, usd, price, tag] = this.mod.utils.extract_props(params, ['market', 'base', 'quote', 'usd', 'price', 'tag']);
         
         if (this.is_relative(price)) {
             var operator = this.get_operator(price);
@@ -357,7 +357,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 var level_params = await this.order_params_standard(type, adv_params);
                 order_params.push(level_params);
             }
-            this.output.debug('convert_layered', [qty, minprice, maxprice])
+            this.mod.output.debug('convert_layered', [qty, minprice, maxprice])
             return order_params;        
         }
 
@@ -374,7 +374,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Get factored size (size provided in x or %)
 
     async get_factored_size(order_type, params) {
-        var [stub, market, symbol, size] = this.utils.extract_props(params, ['stub', 'market', 'symbol', 'size']);
+        var [stub, market, symbol, size] = this.mod.utils.extract_props(params, ['stub', 'market', 'symbol', 'size']);
         var size = String(size).toLowerCase();
         var operator = this.get_operator(size);
         if (operator == undefined)
@@ -402,7 +402,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         var info = '$' + Math.floor(base) + ' ' + basetype + ' x ' + factor;
         var newsize = operator + String(this.round_num(base * factor, 0.05)); 
-        this.output.debug('order_size_factor', [size, newsize, info])
+        this.mod.output.debug('order_size_factor', [size, newsize, info])
         return newsize
     }
 
@@ -419,18 +419,18 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     
     async convert_size(type, params) {
 
-        var [stub, market, symbol, size, base, quote, usd, scale, maxsize, is_layered] = this.utils.extract_props(params, ['stub', 'market', 'symbol', 'size', 'base', 'quote', 'usd', 'scale', 'maxsize', 'is_layered']);
+        var [stub, market, symbol, size, base, quote, usd, scale, maxsize, is_layered] = this.mod.utils.extract_props(params, ['stub', 'market', 'symbol', 'size', 'base', 'quote', 'usd', 'scale', 'maxsize', 'is_layered']);
 
         // Check market symbol
         if (market == null) {
-            this.output.error('market_retrieve', symbol)
+            this.mod.output.error('market_retrieve', symbol)
             return false
         }
 
         var position_size = await this.position_size_usd(stub, symbol);
         var balance_size = await this.exchange_execute(stub, 'available_equity_usd',symbol);
-        this.output.debug('position_size', [Math.round(position_size * 100) / 100])
-        this.output.debug('balance_avail', [Math.round(balance_size * 100) / 100])
+        this.mod.output.debug('position_size', [Math.round(position_size * 100) / 100])
+        this.mod.output.debug('balance_avail', [Math.round(balance_size * 100) / 100])
 
         var side = null;
         var is_close = false;   // Report this order will result in position closure
@@ -441,7 +441,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
         // Check for base and quote factored sizing
         if (this.is_factor(base) || this.is_factor(quote)) {
-            this.output.translate('error','factor_only_size')
+            this.mod.output.translate('error','factor_only_size')
             return false;
         }
 
@@ -504,28 +504,28 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (['long', 'short'].includes(type)) {
                 if (maxsize == undefined) {
                     var warn_limit = 5;
-                    var require_maxsize = await this.settings.get('config','trade:require_maxsize',true);
-                    var warn_maxsize = await this.settings.get('counter','trade:warn_maxsize',0);
+                    var require_maxsize = await this.mod.settings.get('config','trade:require_maxsize',true);
+                    var warn_maxsize = await this.mod.settings.get('counter','trade:warn_maxsize',0);
                     if (!require_maxsize && warn_maxsize < 5) {
                         warn_maxsize++;
-                        this.output.warning('maxsize_disabled',[warn_maxsize, warn_limit]);
-                        await this.settings.set('counter','trade:warn_maxsize',warn_maxsize);
+                        this.mod.output.warning('maxsize_disabled',[warn_maxsize, warn_limit]);
+                        await this.mod.settings.set('counter','trade:warn_maxsize',warn_maxsize);
                     }
                     if (require_maxsize) {
-                        return this.output.error('order_rel_req_max', type)
+                        return this.mod.output.error('order_rel_req_max', type)
                     }
                 }
                 requested = (dir == 'short' ? -1 : 1) * (Math.abs(current) + this.apply_operator(requested))
                 order_is_relative = true
             } else {
-                return this.output.error('order_size_rel', type)
+                return this.mod.output.error('order_size_rel', type)
             }
         }
 
         // Convert scale parameter
         if (scale != undefined) {
             if (dir == 'flat') {
-                return this.output.error('order_scale_nopos', symbol)
+                return this.mod.output.error('order_scale_nopos', symbol)
             }
             var current = (dir == 'long' ? 1 : -1) * parseFloat(current_position['usd_size'])
             scale = parseFloat(scale)
@@ -540,7 +540,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             case 'sell'  :  target = current - requested;         break;
             case 'long'  :  target = requested;                   break;
             case 'short' :  target = -1 * Math.abs(requested);    break;
-            case 'close' :  if (dir == 'flat') return this.output.error('position_none', symbol)
+            case 'close' :  if (dir == 'flat') return this.mod.output.error('position_none', symbol)
                             target = closeall ? 0 : ((dir == 'long') ? current - Math.abs(requested) : current + Math.abs(requested))
                             is_close = true
         }
@@ -557,44 +557,44 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 target = maxsize;
                 var newsize = Math.abs(target) - Math.abs(current)
                 if (newsize < 0)
-                    return this.output.error('order_over_maxsize', requested)
+                    return this.mod.output.error('order_over_maxsize', requested)
                 else
-                    this.output.warning('order_over_maxsize', [requested, newsize])            
+                    this.mod.output.warning('order_over_maxsize', [requested, newsize])            
             }
             // Check if buy or sell order would exceed maxsize
             if ((type == 'buy' && target > maxsize) || (type == 'sell' && target < maxsize)) {
                 target = maxsize;
                 var newsize = Math.abs(target) - Math.abs(current)
                 if (newsize < 0)
-                    return this.output.error('order_over_maxsize', requested)
+                    return this.mod.output.error('order_over_maxsize', requested)
                 else
-                    this.output.warning('order_over_maxsize', [requested, newsize])            
+                    this.mod.output.warning('order_over_maxsize', [requested, newsize])            
             }
         }
 
         // Check if already long or short more than requested (non relative orders only)
         
         if (type != "close" && is_layered !== true && !order_is_relative && scale == undefined && ((type == 'long' && target < current) || (type == 'short' && target > current))) {
-            return this.output.error('order_size_exceeds', type)  
+            return this.mod.output.error('order_size_exceeds', type)  
         }
 
         // Check if long or short relative order would cause a flip and prevent it
         if (order_is_relative && ((type == 'long' && target < 0) || (type == 'short' && target > 0))) {
-            this.output.warning('order_rel_close')
+            this.mod.output.warning('order_rel_close')
             is_close = true
             target = 0
         }
 
         // Check if close order would exceed current position size
         if (type == 'close' && ((target > 0 && current < 0) || (target < 0 && current > 0))) {
-            this.output.debug('close_exceeds_pos', [requested, 0 - current])
+            this.mod.output.debug('close_exceeds_pos', [requested, 0 - current])
             target = 0;
         }
 
         // Check for a position flip 
         if ((dir == 'long' && target < 0) || (dir == 'short' && target > 0)) {
             is_flip = true
-            this.output.warning('order_will_flip', [dir, (dir == 'long' ? 'short' : 'long')])
+            this.mod.output.warning('order_will_flip', [dir, (dir == 'long' ? 'short' : 'long')])
         }
 
         // Ensure that when closing all of position and the exchange uses base sizing that the order size equals the current base size
@@ -627,10 +627,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var currency = currencies[sizing];
 
         if (!is_layered) {
-            this.output.debug('order_sizing_type', [currency, (sizing == 'usd' ? 'USD' : sizing)])
-            this.output.notice('order_sizing_cur', [ (sizing == 'usd' ? 'USD' : sizing), currency, current])
-            this.output.notice('order_sizing_tar', [ (sizing == 'usd' ? 'USD' : sizing), currency, target])
-            this.output.notice('order_sizing_ord', [this.utils.uc_first(order_side), currency, order_size])
+            this.mod.output.debug('order_sizing_type', [currency, (sizing == 'usd' ? 'USD' : sizing)])
+            this.mod.output.notice('order_sizing_cur', [ (sizing == 'usd' ? 'USD' : sizing), currency, current])
+            this.mod.output.notice('order_sizing_tar', [ (sizing == 'usd' ? 'USD' : sizing), currency, target])
+            this.mod.output.notice('order_sizing_ord', [this.mod.utils.uc_first(order_side), currency, order_size])
         }
         
         // Return result
@@ -641,12 +641,12 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Check if the maximum amount of allowable positions is configured and if it has been met
 
     async check_maxposqty(stub, symbol) {
-        var maxposqty = await this.config.get(stub + ':maxposqty');
+        var maxposqty = await this.mod.config.get(stub + ':maxposqty');
         var symbols = [];
         if ((maxposqty != null) && (maxposqty != '') && (maxposqty > 0)) {
             var positions = await this.exchange_execute(stub, 'positions');
             if (!Array.isArray(positions)) {
-                this.output.debug('custom_object',['Unexpected output for positions in check_maxposqty', positions]);
+                this.mod.output.debug('custom_object',['Unexpected output for positions in check_maxposqty', positions]);
                 positions = [];
             }
             var symbols = [];
@@ -657,7 +657,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 symbols.push(symbol);
             }
             if (symbols.length > maxposqty) {
-                this.output.error('position_maxposqty', [stub, positions.length]);
+                this.mod.output.error('position_maxposqty', [stub, positions.length]);
                 return false;
             } else {
                 return true;
@@ -669,9 +669,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Check if the maximum amount of allowable positions is configured and if it has been met
 
     async check_ignored(stub, symbol) {
-        var ignored = await this.config.get([stub,symbol,'ignored'].join(':'), false);
+        var ignored = await this.mod.config.get([stub,symbol,'ignored'].join(':'), false);
         if (ignored) {
-            this.output.error('position_ignoresym', [symbol, stub]);
+            this.mod.output.error('position_ignoresym', [symbol, stub]);
             return false;
         }
         return true;
@@ -693,7 +693,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (type == 'close') {
             var position = await this.get_position(params.stub, params.symbol);
             if (position == false) {
-                return this.output.error('position_none', [params.symbol]);
+                return this.mod.output.error('position_none', [params.symbol]);
             }
         }
 
@@ -701,7 +701,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         let order_sizes = await this.convert_size(type, params);
         
         if (order_sizes === false)
-            return this.output.error('order_size_unknown');
+            return this.mod.output.error('order_size_unknown');
         
         var [sizing, size, side, flags] = order_sizes;
         params[sizing] = size;
@@ -711,8 +711,8 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             delete params.size
 
         // Extract params
-        params = this.utils.lower_props(params);
-        var [stub, symbol, side, price, post, ioc, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'price', 'post', 'ioc', 'reduce', 'tag']);
+        params = this.mod.utils.lower_props(params);
+        var [stub, symbol, side, price, post, ioc, reduce, tag] = this.mod.utils.extract_props(params, ['stub', 'symbol', 'side', 'price', 'post', 'ioc', 'reduce', 'tag']);
         
         // Get parameters from the normalizer
         this.param_map = await this.exchange_get(stub, 'param_map');
@@ -725,7 +725,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 type = side;
             }
             var level_params = await this.order_params_advanced(type, params);
-            //if (this.utils.is_array(level_params) && level_params.length > 1)
+            //if (this.mod.utils.is_array(level_params) && level_params.length > 1)
             //    params['is_layered'] = true;
             return level_params;
         }
@@ -739,7 +739,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var amount = await this.get_amount(params, type);
 
         if (Math.abs(amount) < (market.precision.amount * 1)) {
-            return this.output.error('order_too_small')
+            return this.mod.output.error('order_too_small')
         }
 
         var order_params = {
@@ -767,7 +767,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         // Get normalizer custom params (if defined)
         order_params = await this.exchange_execute(stub, 'custom_params',[type, order_params, custom_params]);
 
-        return this.utils.remove_values(order_params, [null, undefined]);
+        return this.mod.utils.remove_values(order_params, [null, undefined]);
 
     }
 
@@ -776,20 +776,20 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     
     async order_params_conditional(type, params) {
 
-        params = this.utils.lower_props(params);
+        params = this.mod.utils.lower_props(params);
 
         switch (type) {
-            case 'stoploss' :   var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'stoptrigger', 'triggertype', 'stopprice', 'reduce', 'tag']);
+            case 'stoploss' :   var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.mod.utils.extract_props(params, ['stub', 'symbol', 'side', 'stoptrigger', 'triggertype', 'stopprice', 'reduce', 'tag']);
                                 var above = 'buy';
                                 var below = 'sell';
                                 //side = undefined;
                                 break;
-            case 'trailstop' :  var [stub, symbol, side, trigger, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'trailstop', 'reduce', 'tag']);
+            case 'trailstop' :  var [stub, symbol, side, trigger, reduce, tag] = this.mod.utils.extract_props(params, ['stub', 'symbol', 'side', 'trailstop', 'reduce', 'tag']);
                                 var above = 'buy';
                                 var below = 'sell';
                                 side = undefined;
                                 break;
-            case 'takeprofit' : var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'profittrigger', 'triggertype', 'profitprice', 'reduce', 'tag']);
+            case 'takeprofit' : var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.mod.utils.extract_props(params, ['stub', 'symbol', 'side', 'profittrigger', 'triggertype', 'profitprice', 'reduce', 'tag']);
                                 var above = 'sell';
                                 var below = 'buy';
                                 //side = undefined;
@@ -852,9 +852,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var market_price = await this.get_market_price(stub, symbol);
             side = (trigger > market_price ? above : (trigger < market_price ? below : null));
             if (side == null) {
-                return this.output.error('order_side_unknown');
+                return this.mod.output.error('order_side_unknown');
             } else {
-                this.output.debug('order_side_assumed', side);
+                this.mod.output.debug('order_side_assumed', side);
             }
         }
 
@@ -863,7 +863,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var amount = await this.get_amount(params, type);
 
         if (Math.abs(amount) < (market.precision.amount * 1)) {
-            return this.output.error('order_too_small')
+            return this.mod.output.error('order_too_small')
         }
 
         // Base order params object
@@ -912,7 +912,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         // Get normalizer custom params (if defined)
         order_params = await this.exchange_execute(stub, 'custom_params',[type, order_params, custom_params])
 
-        return this.utils.remove_values(order_params, [null, undefined]);
+        return this.mod.utils.remove_values(order_params, [null, undefined]);
 
     }
 
@@ -922,14 +922,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (params.symbol != undefined && params.stub != undefined && params.size == undefined && params.base == undefined && params.quote == undefined && params.usd == undefined && params.scale == undefined) {
             var stub = params.stub;
             var symbol = params.symbol;
-            var defsizestub = await this.config.get(stub + ':defsize');
-            var defsizesymbol = await this.config.get(stub + ':' + symbol + ':defsize');
+            var defsizestub = await this.mod.config.get(stub + ':defsize');
+            var defsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defsize');
             if (defsizesymbol !== false) {
-                this.output.debug('order_size_default', [(stub + ':' + symbol + ':defsize').toLowerCase()]);
+                this.mod.output.debug('order_size_default', [(stub + ':' + symbol + ':defsize').toLowerCase()]);
                 params.size = defsizesymbol;
             } else {
                 if (defsizestub !== false) {
-                    this.output.debug('order_size_default', [(stub + ':defsize').toLowerCase()]);
+                    this.mod.output.debug('order_size_default', [(stub + ':defsize').toLowerCase()]);
                     params.size = defsizestub;
                 }
             }
@@ -939,15 +939,15 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var stub = params.stub;
             var symbol = params.symbol;
             var operator = (type == 'long' ? '-' : '+');
-            var defstoptriggerstub = await this.config.get(stub + ':defstoptrigger');
-            var defstoptriggersymbol = await this.config.get(stub + ':' + symbol + ':defstoptrigger');
+            var defstoptriggerstub = await this.mod.config.get(stub + ':defstoptrigger');
+            var defstoptriggersymbol = await this.mod.config.get(stub + ':' + symbol + ':defstoptrigger');
             if (defstoptriggersymbol !== false) {
-                this.output.debug('order_sl_default', [(stub + ':' + symbol + ':defstoptrigger').toLowerCase()]);
+                this.mod.output.debug('order_sl_default', [(stub + ':' + symbol + ':defstoptrigger').toLowerCase()]);
                 params.stoptrigger = operator + defstoptriggersymbol;
                 params.reduce = true;
             } else {
                 if (defstoptriggerstub !== false) {
-                    this.output.debug('order_sl_default', [(stub + ':defstoptrigger').toLowerCase()]);
+                    this.mod.output.debug('order_sl_default', [(stub + ':defstoptrigger').toLowerCase()]);
                     params.stoptrigger = operator + defstoptriggerstub;
                     params.reduce = true;
                 }
@@ -957,15 +957,15 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var stub = params.stub;
             var symbol = params.symbol;
             var operator = (type == 'long' ? '+' : '-');
-            var defprofittriggerstub = await this.config.get(stub + ':defprofittrigger');
-            var defprofittriggersymbol = await this.config.get(stub + ':' + symbol + ':defprofittrigger');
+            var defprofittriggerstub = await this.mod.config.get(stub + ':defprofittrigger');
+            var defprofittriggersymbol = await this.mod.config.get(stub + ':' + symbol + ':defprofittrigger');
             if (defprofittriggersymbol !== false) {
-                this.output.debug('order_tp_default', [(stub + ':' + symbol + ':defprofittrigger').toLowerCase()]);
+                this.mod.output.debug('order_tp_default', [(stub + ':' + symbol + ':defprofittrigger').toLowerCase()]);
                 params.profittrigger = operator + defprofittriggersymbol;
                 params.reduce = true;
             } else {
                 if (defprofittriggerstub !== false) {
-                    this.output.debug('order_tp_default', [(stub + ':defprofittrigger').toLowerCase()]);
+                    this.mod.output.debug('order_tp_default', [(stub + ':defprofittrigger').toLowerCase()]);
                     params.profittrigger = operator + defprofittriggerstub;
                     params.reduce = true;
                 }
@@ -974,14 +974,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (['long','short'].includes(type) && params.symbol != undefined && params.stub != undefined && params.profittrigger != undefined) {
             var stub = params.stub;
             var symbol = params.symbol;
-            var defprofitsizestub = await this.config.get(stub + ':defprofitsize');
-            var defprofitsizesymbol = await this.config.get(stub + ':' + symbol + ':defprofitsize');
+            var defprofitsizestub = await this.mod.config.get(stub + ':defprofitsize');
+            var defprofitsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defprofitsize');
             if (defprofitsizesymbol !== false) {
-                this.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase()]);
+                this.mod.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase()]);
                 params.profitsize = defprofitsizesymbol;
             } else {
                 if (defprofitsizestub !== false) {
-                    this.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase()]);
+                    this.mod.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase()]);
                     params.profitsize = defprofitsizestub;
                 }
             }
@@ -993,7 +993,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Get total size of orders
 
     total_order_size(orders) {
-        if (!this.utils.is_array(orders)) 
+        if (!this.mod.utils.is_array(orders)) 
             orders = [orders];
         var total = 0;
         for(var i = 0; i < orders.length; i++) {
@@ -1008,7 +1008,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         const stub = params.stub
         const symbol = params.symbol
         params.market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol.toUpperCase());
-        this.output.subsection('order_' + type);  
+        this.mod.output.subsection('order_' + type);  
         var order_params = null;
         if (['long', 'short', 'buy', 'sell'].includes(type)) {
             if (!await this.check_maxposqty(stub, symbol)) {
@@ -1056,7 +1056,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         
         // Disable reduce=true for FTX spot markets
         if (String(params.reduce) == 'true') {
-            var exch = await this.accounts.get_shortname_from_stub(params.stub);
+            var exch = await this.mod.accounts.get_shortname_from_stub(params.stub);
             if (exch.indexOf('ftx') != -1) { 
                 var market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol.toUpperCase());
                 if ((market.type == 'spot') && (params.hasOwnProperty('reduce'))) {
@@ -1097,7 +1097,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             scale:  { requiredifnotpresent: ['base', 'quote', 'size', 'usd'], },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         return await this.create_and_submit_order('long', params);
     }
@@ -1124,7 +1124,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             scale:  { requiredifnotpresent: ['base', 'quote', 'size', 'usd'], },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         return await this.create_and_submit_order('short', params);
     }
@@ -1152,7 +1152,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             scale:  { requiredifnotpresent: ['base', 'quote', 'size', 'usd'], },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         return await this.create_and_submit_order('buy', params);
     }
@@ -1180,7 +1180,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             scale:  { requiredifnotpresent: ['base', 'quote', 'size', 'usd'], },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         return await this.create_and_submit_order('sell', params);
     }
@@ -1263,7 +1263,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var amount = order_sizing == 'base' ? totalbase : totalquote;
         var side = dirmap[side];
         if (amount > 0) {
-            this.output.debug('potential_position', [ {price: avgprice, base: totalbase, quote: totalquote, sizing: order_sizing, side: side, amount: amount, totals: this.utils.serialize({position: typetotals.position, orders: typetotals.orders, queue: typetotals.queue})} ]);
+            this.mod.output.debug('potential_position', [ {price: avgprice, base: totalbase, quote: totalquote, sizing: order_sizing, side: side, amount: amount, totals: this.mod.utils.serialize({position: typetotals.position, orders: typetotals.orders, queue: typetotals.queue})} ]);
             return { base: totalbase, quote: totalquote, sizing: order_sizing, amount: amount, price: avgprice, side: side}
         }
         return false;
@@ -1284,7 +1284,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             stoptrigger:   { optional: 'string',  },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
 
         var stub = params.stub;
@@ -1294,14 +1294,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         // If stoptrigger not given, check if default exists and use that
         if ((params.stoptrigger == undefined)) {
             var operator = (side != null ? (side == 'sell' ? '-' : '+') : '');
-            var defstoptriggerstub = await this.config.get(stub + ':defstoptrigger');
-            var defstoptriggersymbol = await this.config.get(stub + ':' + symbol + ':defstoptrigger');
+            var defstoptriggerstub = await this.mod.config.get(stub + ':defstoptrigger');
+            var defstoptriggersymbol = await this.mod.config.get(stub + ':' + symbol + ':defstoptrigger');
             if (defstoptriggersymbol !== false) {
-                this.output.debug('order_sl_default', [(stub + ':' + symbol + ':defstoptrigger').toLowerCase() + '=' + defstoptriggersymbol]);
+                this.mod.output.debug('order_sl_default', [(stub + ':' + symbol + ':defstoptrigger').toLowerCase() + '=' + defstoptriggersymbol]);
                 params.stoptrigger = defstoptriggersymbol;
             } else {
                 if (defstoptriggerstub !== false) {
-                    this.output.debug('order_sl_default', [(stub + ':defstoptrigger').toLowerCase() + '=' + defstoptriggerstub]);
+                    this.mod.output.debug('order_sl_default', [(stub + ':defstoptrigger').toLowerCase() + '=' + defstoptriggerstub]);
                     params.stoptrigger = defstoptriggerstub;
                 }
             }
@@ -1335,14 +1335,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                     if (isNaN(potential.price)) {
                         var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
                         //if (isNaN(price)) {
-                        //    this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
-                        //    this.output.debug(market);
+                        //    this.mod.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
+                        //    this.mod.output.debug(market);
                         //} else {
-                        //    this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        //    this.mod.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
                         //}
                     } else {
                         var price = potential.price;
-                        //this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
+                        //this.mod.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
                     }
                     params.stoptrigger = this.get_relative_price(market, params.stoptrigger, this.round_price(market, price));
                 }
@@ -1365,7 +1365,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                     await this.exchange_execute(stub, 'cancel_all', {symbol: symbol, type: 'stop_limit'});
                     await this.exchange_execute(stub, 'cancel_all', {symbol: symbol, type: 'stop_market'});
                 }
-                this.output.notice('position_nopotential',[symbol]);
+                this.mod.output.notice('position_nopotential',[symbol]);
                 return false;
             }
         } else {
@@ -1392,7 +1392,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             profitsize:    { optional: 'string',  },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
 
         var stub = params.stub;
@@ -1400,17 +1400,17 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
         // If profitsize not given, check if default exists and use that, else use 100%
         if (params.profitsize == undefined) {
-            var defprofitsizestub = await this.config.get(stub + ':defprofitsize');
-            var defprofitsizesymbol = await this.config.get(stub + ':' + symbol + ':defprofitsize');
+            var defprofitsizestub = await this.mod.config.get(stub + ':defprofitsize');
+            var defprofitsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defprofitsize');
             if (defprofitsizesymbol !== false) {
-                this.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase() + '=' + defprofitsizesymbol]);
+                this.mod.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase() + '=' + defprofitsizesymbol]);
                 params.profitsize = defprofitsizesymbol;
             } else {
                 if (defprofitsizestub !== false) {
-                    this.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase() + '=' + defprofitsizestub]);
+                    this.mod.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase() + '=' + defprofitsizestub]);
                     params.profitsize = defprofitsizestub;
                 } else {
-                    this.output.debug('order_tpsize_default', ['default=100%']);
+                    this.mod.output.debug('order_tpsize_default', ['default=100%']);
                     params.profitsize = '100%';
                 }
             }
@@ -1419,14 +1419,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         // If profittrigger not given, check if default exists and use that
         if ((params.profittrigger == undefined)) {
             var operator = side == 'sell' ? '+' : '-';
-            var defprofittriggerstub = await this.config.get(stub + ':defprofittrigger');
-            var defprofittriggersymbol = await this.config.get(stub + ':' + symbol + ':defprofittrigger');
+            var defprofittriggerstub = await this.mod.config.get(stub + ':defprofittrigger');
+            var defprofittriggersymbol = await this.mod.config.get(stub + ':' + symbol + ':defprofittrigger');
             if (defprofittriggersymbol !== false) {
-                this.output.debug('order_tp_default', [(stub + ':' + symbol + ':defprofittrigger').toLowerCase() + '=' + defprofittriggersymbol]);
+                this.mod.output.debug('order_tp_default', [(stub + ':' + symbol + ':defprofittrigger').toLowerCase() + '=' + defprofittriggersymbol]);
                 params.profittrigger = operator + defprofittriggersymbol;
             } else {
                 if (defprofittriggerstub !== false) {
-                    this.output.debug('order_tp_default', [(stub + ':defprofittrigger').toLowerCase() + '=' + defprofittriggerstub]);
+                    this.mod.output.debug('order_tp_default', [(stub + ':defprofittrigger').toLowerCase() + '=' + defprofittriggerstub]);
                     params.profittrigger = operator + defprofittriggerstub;
                 }
             }
@@ -1459,14 +1459,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                     if (isNaN(potential.price)) {
                         var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
                         //if (isNaN(price)) {
-                        //    this.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
-                        //    this.output.debug(market);
+                        //    this.mod.output.debug('custom_object', ['Cannot find potential or market price, dumping market data:', market]);
+                        //    this.mod.output.debug(market);
                         //} else {
-                        //    this.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
+                        //    this.mod.output.debug('custom_object', ['Potential price cannot be calculated, using market price: ', price]);
                         //}
                     } else {
                         var price = potential.price;
-                        //this.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
+                        //this.mod.output.debug('custom_object', ['Potential price calculated, using potential price: ', price]);
                     }
                     params.profittrigger = this.get_relative_price(market, params.profittrigger, this.round_price(market, price));
                 }
@@ -1491,7 +1491,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                     await this.exchange_execute(stub, 'cancel_all', {symbol: symbol, type: 'takeprofit_market'});
                     await this.exchange_execute(stub, 'cancel_all', {symbol: symbol, type: 'limit', side: side});
                 }
-                this.output.notice('position_nopotential',[symbol]);
+                this.mod.output.notice('position_nopotential',[symbol]);
                 return false;
             }
         } else {
@@ -1526,7 +1526,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             trailstop:   { required: 'string'},
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         return await this.create_and_submit_order('trailstop', params);
     }
@@ -1547,7 +1547,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             symbol:      { required: 'string', format: 'uppercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
         if (params.size == undefined || params.size == '100%') params['cancelall'] = true;
 
         return await this.create_and_submit_order('close', params);
@@ -1561,12 +1561,12 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             stub:        { required: 'string', format: 'lowercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
         
         var stub = params.stub;
         var positions = await this.positions(params);
 
-        if (this.utils.is_array(positions)) {
+        if (this.mod.utils.is_array(positions)) {
             for(var i = 0; i < positions.length; i++) {
                 var symbol = positions[i].symbol;
                 await this.create_and_submit_order('close', {stub: stub, symbol: symbol, cancelall: true});
@@ -1586,7 +1586,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             symbol: { optional: 'string',  },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         let filter = {};
         const stub = params.stub
@@ -1598,10 +1598,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         })
         let result = await this.exchange_execute(stub, 'order', filter);
         if (result != false) {
-            this.output.success('orders_retrieve', 1)
+            this.mod.output.success('orders_retrieve', 1)
             return result;        
         }
-        this.output.error('orders_retrieve')
+        this.mod.output.error('orders_retrieve')
         return false;
     }
 
@@ -1610,11 +1610,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async orders(params) {
         const stub = params.stub
         let result = await this.exchange_execute(stub, 'orders',params);
-        if (this.utils.is_array(result)) {
-            this.output.success('orders_retrieve', result.length)
+        if (this.mod.utils.is_array(result)) {
+            this.mod.output.success('orders_retrieve', result.length)
             return result;        
         } else {
-            this.output.error('orders_retrieve')
+            this.mod.output.error('orders_retrieve')
             return false;
         }
     }
@@ -1630,14 +1630,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             id:     { required: 'string',  },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         let result = await this.exchange_execute(stub, 'cancel',params);
-        if (this.utils.is_array(result) && result.length == 1) {
-            this.output.notice('order_cancel', params.id)
+        if (this.mod.utils.is_array(result) && result.length == 1) {
+            this.mod.output.notice('order_cancel', params.id)
         } else {
-            this.output.error('order_cancel', params.id)
+            this.mod.output.error('order_cancel', params.id)
         }
         return result;
     }
@@ -1653,14 +1653,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             type:        { optional: 'string', format: 'lowercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         let result = await this.exchange_execute(stub, 'cancel_all',params);
-        if (this.utils.is_array(result)) {
-            this.output.notice('orders_cancel', result.length)
+        if (this.mod.utils.is_array(result)) {
+            this.mod.output.notice('orders_cancel', result.length)
         } else {
-            this.output.error('orders_cancel')
+            this.mod.output.error('orders_cancel')
         }
         return result;
     }
@@ -1674,14 +1674,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             symbol:      { required: 'string', format: 'uppercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         var result = await this.exchange_execute(stub, 'position',params);
-        if (!this.utils.is_array(result)) {
-            this.output.success('position_retrieve', result.symbol)
+        if (!this.mod.utils.is_array(result)) {
+            this.mod.output.success('position_retrieve', result.symbol)
         } else {
-            this.output.error('position_retrieve', this.utils.serialize( this.utils.remove_props(params, ['stub']) ))
+            this.mod.output.error('position_retrieve', this.mod.utils.serialize( this.mod.utils.remove_props(params, ['stub']) ))
         }
         return result;
     }
@@ -1695,19 +1695,19 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             stub:        { required: 'string', format: 'lowercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         var result = await this.exchange_execute(stub, 'positions', params);
-        if (this.utils.is_array(result)) {
-            this.output.success('positions_retrieve', result.length)
+        if (this.mod.utils.is_array(result)) {
+            this.mod.output.success('positions_retrieve', result.length)
             /*
             result.forEach(position => {
-                this.output.debug('custom_object', [position.symbol, position]);
+                this.mod.output.debug('custom_object', [position.symbol, position]);
             });
             */
         } else {
-            this.output.error('positions_retrieve')
+            this.mod.output.error('positions_retrieve')
         }
         return result;
     }
@@ -1721,14 +1721,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             stub:        { required: 'string', format: 'lowercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         var result = await this.exchange_execute(stub, 'balances',params);
-        if (this.utils.is_array(result)) {
-            this.output.success('balances_retrieve', result.length)
+        if (this.mod.utils.is_array(result)) {
+            this.mod.output.success('balances_retrieve', result.length)
         } else {
-            this.output.error('balances_retrieve')
+            this.mod.output.error('balances_retrieve')
         }
         return result;
     }
@@ -1743,14 +1743,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             symbol:      { required: 'string', format: 'uppercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         var result = await this.exchange_execute(stub, 'market', params);
-        if (!this.utils.is_array(result)) {
-            this.output.success('market_retrieve', result.symbol)
+        if (!this.mod.utils.is_array(result)) {
+            this.mod.output.success('market_retrieve', result.symbol)
         } else {
-            this.output.error('market_retrieve', this.utils.serialize( this.utils.remove_props(params, ['stub']) ))
+            this.mod.output.error('market_retrieve', this.mod.utils.serialize( this.mod.utils.remove_props(params, ['stub']) ))
         }
         return result;        
     }
@@ -1764,14 +1764,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             stub:        { required: 'string', format: 'lowercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         var result = await this.exchange_execute(stub, 'markets', params);
-        if (this.utils.is_array(result)) {
-            this.output.success('markets_retrieve', result.length)
+        if (this.mod.utils.is_array(result)) {
+            this.mod.output.success('markets_retrieve', result.length)
         } else {
-            this.output.error('markets_retrieve')
+            this.mod.output.error('markets_retrieve')
         }
         return result;
     }
@@ -1791,14 +1791,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             leverage:    { required: 'string', format: 'lowercase', },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
         var result = await this.exchange_execute(stub, 'leverage',params);
         if ((result !== false) && (result.result !== 'error')) {
-            this.output.success('leverage_set', [params.symbol, params.leverage.toLowerCase().replace('x',''), params.type])
+            this.mod.output.success('leverage_set', [params.symbol, params.leverage.toLowerCase().replace('x',''), params.type])
         } else {
-            this.output.error('leverage_set', params.symbol)
+            this.mod.output.error('leverage_set', params.symbol)
         }
 
     }

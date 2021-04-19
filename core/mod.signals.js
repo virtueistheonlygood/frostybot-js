@@ -9,7 +9,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     // Get signal provider by UUID
 
     async get_provider(uuid) {
-        var data = await this.settings.get('signalprovider', uuid, false);
+        var data = await this.mod.settings.get('signalprovider', uuid, false);
         if (data != false) {
             if (!data.hasOwnProperty('admins')) data['admins'] = [];
             if (!data.hasOwnProperty('exchanges')) data['exchanges'] = [];
@@ -22,7 +22,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     // Set signal provider data by UUID
 
     async set_provider(uuid, data) {
-        return await this.settings.set('signalprovider', uuid, data);
+        return await this.mod.settings.set('signalprovider', uuid, data);
     }
 
     // Get user config by UUID
@@ -59,15 +59,15 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
     async get_providers(params) {
 
-        var providers = await this.settings.get('signalprovider');
+        var providers = await this.mod.settings.get('signalprovider');
         var result = {};
         var data = providers == null ? [] : (providers.hasOwnProperty('uuid') ? [providers] : Object.values(providers));
-        if (this.utils.is_array(data)) {
+        if (this.mod.utils.is_array(data)) {
             data.forEach(provider => {
                 result[provider.uuid] = provider;
             })
         } 
-        if (providers != null && providers != false && this.utils.is_object(providers) && providers.hasOwnProperty('uuid')) {
+        if (providers != null && providers != false && this.mod.utils.is_object(providers) && providers.hasOwnProperty('uuid')) {
             result[providers.uuid] = providers;
         }
         return result;
@@ -78,13 +78,13 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
     async get_providers_by_stub(stub) {
 
-        var account = await this.accounts.get(stub);
+        var account = await this.mod.accounts.get(stub);
         var result = [];
         account = account.hasOwnProperty(stub) ? account[stub] : account;
         if (account) {
             var exchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
             var providers = await this.get_providers();
-            if (this.utils.is_object(providers)) {
+            if (this.mod.utils.is_object(providers)) {
                 var data = Object.values(providers);
                 if (data.length > 0) {
                     var result = data.filter(item => item.exchanges.includes(exchange));
@@ -97,7 +97,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     // Provider selected
 
     async is_provider_selected(provider, exchange, except) {
-        var accounts = await this.accounts.get();
+        var accounts = await this.mod.accounts.get();
         accounts = Object.values(accounts);
         for (var i = 0; i< accounts.length; i++) {
             var account = accounts[i]
@@ -105,7 +105,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             if (stub != except) {
                 var accexchange = account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '');
                 if (exchange == accexchange) {
-                    var check = await this.config.get(stub+':provider');
+                    var check = await this.mod.config.get(stub+':provider');
                     if (check == provider) {
                         return true;
                     }
@@ -118,12 +118,12 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     // Get symbol ignore list for stub
 
     async get_ignore_list(stub) {
-        var markets = await this.trade.markets({stub: stub});
-        var ignored = await this.config.get(stub + ':ignored');
+        var markets = await this.mod.trade.markets({stub: stub});
+        var ignored = await this.mod.config.get(stub + ':ignored');
         ignored = [null, false, ''].includes(ignored) ? [] : ignored.split(",");
-        if (!this.utils.is_array(ignored)) ignored = [];
+        if (!this.mod.utils.is_array(ignored)) ignored = [];
         var results = [];
-        if (this.utils.is_array(markets)) {
+        if (this.mod.utils.is_array(markets)) {
             for(var i=0; i< markets.length; i++) {
                 var market = markets[i];
                 var symbol = market.symbol;
@@ -137,7 +137,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     // Set symbol ignore list for stub
 
     async set_ignore_list(stub, list) {
-        await this.config.set(stub + ':ignored', list);
+        await this.mod.config.set(stub + ':ignored', list);
     }
 
     // Set if a symbol is ignored for a stub
@@ -149,12 +149,12 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             ignored: { required: 'boolean' }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [stub, symbol, ignored] = this.utils.extract_props(params, ['stub', 'symbol', 'ignored']);        
+        var [stub, symbol, ignored] = this.mod.utils.extract_props(params, ['stub', 'symbol', 'ignored']);        
 
-        var list = await this.config.get(stub + ':ignored');
-        if (this.utils.is_array(list)) {
+        var list = await this.mod.config.get(stub + ':ignored');
+        if (this.mod.utils.is_array(list)) {
             if (!list.includes(symbol)) {
                 list.push(symbol);
                 this.set_ignore_list(stub, list);
@@ -173,11 +173,11 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             name: { required: 'string' }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var name = params.name;
 
-        var provider_uuid = this.encryption.new_uuid();
+        var provider_uuid = this.mod.encryption.new_uuid();
 
         var data = {
             uuid:   provider_uuid,
@@ -186,12 +186,12 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             exchanges: []
         }
 
-        var result = await this.settings.set('signalprovider', provider_uuid, data);
+        var result = await this.mod.settings.set('signalprovider', provider_uuid, data);
         if (result) {
-            this.output.success('add_provider', [name]);
+            this.mod.output.success('add_provider', [name]);
             return provider_uuid;
         }
-        return this.output.error('add_provider', [name]);
+        return this.mod.output.error('add_provider', [name]);
 
     }
 
@@ -204,24 +204,24 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             store: { required: 'string' }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, store, val, key] = this.utils.extract_props(params, ['provider', 'store', 'val', 'key'])
+        var [provider, store, val, key] = this.mod.utils.extract_props(params, ['provider', 'store', 'val', 'key'])
 
         var data = await this.get_provider(provider);
         if (data == false) {
             return false;
         }
 
-        if (!data.hasOwnProperty(store)) data[store] = this.utils.is_object(val);
+        if (!data.hasOwnProperty(store)) data[store] = this.mod.utils.is_object(val);
 
         if (!data[type].hasOwnProperty(key))
             data[type][key] = {};
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('add_provider_exch', [provider, exchange]);
+            return this.mod.output.success('add_provider_exch', [provider, exchange]);
         } else {
-            return this.output.error('add_provider_exch', [provider, exchange]);
+            return this.mod.output.error('add_provider_exch', [provider, exchange]);
         }
 
         
@@ -236,9 +236,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             exchange: { required: 'string', format: 'lowercase', oneof: ['ftx', 'deribit', 'binance_futures', 'binance_spot', 'binance_margin', 'binance_coinm', 'binanceus', 'bitmex'] },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, exchange] = this.utils.extract_props(params, ['provider', 'exchange'])
+        var [provider, exchange] = this.mod.utils.extract_props(params, ['provider', 'exchange'])
 
         var data = await this.get_provider(provider);
         if (!data.hasOwnProperty('exchanges')) data['exchanges'] = [];
@@ -247,9 +247,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             data.exchanges.push(exchange);
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('add_provider_exch', [provider, exchange]);
+            return this.mod.output.success('add_provider_exch', [provider, exchange]);
         } else {
-            return this.output.error('add_provider_exch', [provider, exchange]);
+            return this.mod.output.error('add_provider_exch', [provider, exchange]);
         }
 
     }
@@ -263,9 +263,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             exchange: { required: 'string', format: 'lowercase', oneof: ['ftx', 'deribit', 'binance_futures', 'binance_spot', 'binanceus', 'bitmex'] },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, exchange] = this.utils.extract_props(params, ['provider', 'exchange'])
+        var [provider, exchange] = this.mod.utils.extract_props(params, ['provider', 'exchange'])
 
         var data = await this.get_provider(provider);
         if (!data.hasOwnProperty('exchanges')) data['exchanges'] = [];
@@ -274,9 +274,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             data.exchanges = data.exchanges.filter(exch => exch != exchange);
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('del_provider_exch', [provider, exchange]);
+            return this.mod.output.success('del_provider_exch', [provider, exchange]);
         } else {
-            return this.output.error('del_provider_exch', [provider, exchange]);
+            return this.mod.output.error('del_provider_exch', [provider, exchange]);
         }
 
     }
@@ -290,9 +290,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             user: { required: 'string', format: 'lowercase' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, user] = this.utils.extract_props(params, ['provider', 'user'])
+        var [provider, user] = this.mod.utils.extract_props(params, ['provider', 'user'])
 
         var data = await this.get_provider(provider);
         if (!data.hasOwnProperty('admins')) data['admins'] = [];
@@ -300,9 +300,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             data.admins.push(user);
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('add_provider_admin', [provider, user]);
+            return this.mod.output.success('add_provider_admin', [provider, user]);
         } else {
-            return this.output.error('add_provider_admin', [provider, user]);
+            return this.mod.output.error('add_provider_admin', [provider, user]);
         }
 
     }
@@ -316,9 +316,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             user: { required: 'string', format: 'lowercase' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, user] = this.utils.extract_props(params, ['provider', 'user'])
+        var [provider, user] = this.mod.utils.extract_props(params, ['provider', 'user'])
 
         var data = await this.get_provider(provider);
         if (!data.hasOwnProperty('admins')) data['admins'] = [];
@@ -327,9 +327,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             data.admins = data.admins.filter(admin => admin != user);
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('del_provider_admin', [provider, user]);
+            return this.mod.output.success('del_provider_admin', [provider, user]);
         } else {
-            return this.output.error('del_provider_admin', [provider, admin]);
+            return this.mod.output.error('del_provider_admin', [provider, admin]);
         }
 
     }
@@ -356,9 +356,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             ip: { required: 'ip', format: 'lowercase' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, ip] = this.utils.extract_props(params, ['provider', 'ip'])
+        var [provider, ip] = this.mod.utils.extract_props(params, ['provider', 'ip'])
 
         var data = await this.get_provider(provider);
 
@@ -367,9 +367,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             data.whitelist.push(ip);
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('add_provider_ip', [provider, ip]);
+            return this.mod.output.success('add_provider_ip', [provider, ip]);
         } else {
-            return this.output.error('add_provider_ip', [provider, ip]);
+            return this.mod.output.error('add_provider_ip', [provider, ip]);
         }
 
     }
@@ -383,9 +383,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             ip: { required: 'ip', format: 'lowercase' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider, ip] = this.utils.extract_props(params, ['provider', 'ip'])
+        var [provider, ip] = this.mod.utils.extract_props(params, ['provider', 'ip'])
 
         var data = await this.get_provider(provider);
         if (!data.hasOwnProperty('whitelist')) data['whitelist'] = [];
@@ -394,9 +394,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             data.whitelist = data.whitelist.filter(address => address != ip);
 
         if (await this.set_provider(provider, data)) {
-            return this.output.success('del_provider_ip', [provider, ip]);
+            return this.mod.output.success('del_provider_ip', [provider, ip]);
         } else {
-            return this.output.error('del_provider_ip', [provider, ip]);
+            return this.mod.output.error('del_provider_ip', [provider, ip]);
         }
 
     }
@@ -426,9 +426,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             symbol: { required: 'string', format: 'lowercase' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider_uuid, user, exchange, signal, symbol] = this.utils.extract_props(params, ['provider', 'user', 'exchange', 'signal', 'symbol']);
+        var [provider_uuid, user, exchange, signal, symbol] = this.mod.utils.extract_props(params, ['provider', 'user', 'exchange', 'signal', 'symbol']);
 
         var signalmap = {
             'long'  : 'buy',
@@ -450,7 +450,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         // Flish the cache before we start
 
-        this.cache.flush(true);
+        this.mod.cache.flush(true);
 
         // Cycle through users and send order requests
 
@@ -459,13 +459,13 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             var provider = await this.get_provider(provider_uuid);
             var config = await this.get_user_config(user_uuid);
             if (!provider)
-                return this.output.error('invalid_provider', [provider_uuid]);
+                return this.mod.output.error('invalid_provider', [provider_uuid]);
             
             if (!provider.exchanges.includes(exchange))
-                return this.output.error('exch_not_supported', [exchange]);
+                return this.mod.output.error('exch_not_supported', [exchange]);
 
             var accounts = await this.get_user_accounts(user_uuid);        
-            if (this.utils.is_array(accounts))
+            if (this.mod.utils.is_array(accounts))
                 accounts = accounts
                     .filter(account => (account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : '')) == exchange)
                     .filter(account => (Object.keys(config).includes(account.stub+':provider') && config[account.stub+':provider'] == provider_uuid))
@@ -483,8 +483,8 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                     message: 'No accounts configured for ' + exchange
                 }
                 this.database.insert('signals',data);
-                this.output.debug('signal_exec_result', [data]);
-                this.output.error('no_accounts', [exchange, provider_uuid, user_uuid]);
+                this.mod.output.debug('signal_exec_result', [data]);
+                this.mod.output.error('no_accounts', [exchange, provider_uuid, user_uuid]);
 
             } else {
 
@@ -506,7 +506,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                     }
 
                     var url = await global.frostybot._modules_['core'].url();
-                    this.output.debug('loopback_url', [url]);
+                    this.mod.output.debug('loopback_url', [url]);
 
                     // Create new request for the signal processing
                     axios.post(url + '/frostybot',  cmd).then(function (response) {
@@ -532,7 +532,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
             
                 });
 
-                this.output.success('signal_queued', [provider_uuid, user_uuid]);
+                this.mod.output.success('signal_queued', [provider_uuid, user_uuid]);
                 
             }
 

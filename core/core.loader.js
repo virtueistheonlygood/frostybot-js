@@ -16,6 +16,7 @@ module.exports = {
                 this.load(module)
             }
         });
+        global.frostybot['_classes_'] = require('./core.classes');
         this.map_all();
         this.init_all();
     },
@@ -46,9 +47,10 @@ module.exports = {
 
     map_all() {
         Object.keys(global.frostybot._modules_).forEach(module => {
-            if (typeof(global.frostybot._modules_[module]['module_maps']) == 'function') {
-                global.frostybot._modules_[module].module_maps()
-            }
+            global.frostybot._modules_[module].mod_map();
+            //if (typeof(global.frostybot._modules_[module]['module_maps']) == 'function') {
+                //global.frostybot._modules_[module].module_maps()
+            //}
         })
     },
 

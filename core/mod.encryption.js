@@ -17,6 +17,7 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
 
     initialize() {
         this.algorithm = 'aes-256-ctr';
+        this.mod_map();
     }
 
 
@@ -30,10 +31,10 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
     // Get Core UUID
 
     async core_uuid() {
-        var key = await this.settings.get('core', 'uuid');
+        var key = await this.mod.settings.get('core', 'uuid');
         if ([null, undefined].includes(key)) {
             key = this.new_uuid();
-            if (this.settings.set('core', 'uuid', key)) {
+            if (this.mod.settings.set('core', 'uuid', key)) {
                 return key
             }
             return false
@@ -45,7 +46,7 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
     // Check is value is encrypted
 
     is_encrypted(val) {
-        return (this.utils.is_object(val) && val.hasOwnProperty('iv') && val.hasOwnProperty('content')) ? true : false
+        return (this.mod.utils.is_object(val) && val.hasOwnProperty('iv') && val.hasOwnProperty('content')) ? true : false
     }
 
 
@@ -71,7 +72,7 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
                 content: encrypted.toString('hex')
             };
         }
-        return this.output.error('encryption_failed')
+        return this.mod.output.error('encryption_failed')
     }
 
 
@@ -93,7 +94,7 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
             const decrypted = Buffer.concat([decipher.update(Buffer.from(hash.content, 'hex')), decipher.final()]);
             return decrypted.toString();
         }
-        return this.output.error('decryption_failed')
+        return this.mod.output.error('decryption_failed')
     }
 
 

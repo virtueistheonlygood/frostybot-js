@@ -27,28 +27,28 @@ module.exports = class frostybot_symbolmap_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [exchange, symbol] = this.utils.extract_props(params, ['exchange', 'symbol']);
+        var [exchange, symbol] = this.mod.utils.extract_props(params, ['exchange', 'symbol']);
         var exchange = exchange.toLowerCase();
         var symbol = symbol != undefined ? symbol.toUpperCase() : null;
-        var result = (symbol == null ? await this.settings.get('symbolmap:' + exchange) : await this.settings.get('symbolmap:' + exchange, symbol));
+        var result = (symbol == null ? await this.mod.settings.get('symbolmap:' + exchange) : await this.mod.settings.get('symbolmap:' + exchange, symbol));
         if ((typeof result == 'string') && (symbol != null)) {
             var mapping = result;
             result = {};
             result[symbol] = mapping;
-            this.output.debug('symbolmap_get', [exchange, symbol, mapping]);
+            this.mod.output.debug('symbolmap_get', [exchange, symbol, mapping]);
             return result;
         } else {
             if (result !== false) {
-                result = this.utils.remove_values(result, [null, undefined, false]);
+                result = this.mod.utils.remove_values(result, [null, undefined, false]);
                 for (var symbol in result) {
                     var mapping = result[symbol];
-                    this.output.debug('symbolmap_get', [exchange, symbol, mapping]);
+                    this.mod.output.debug('symbolmap_get', [exchange, symbol, mapping]);
                 }
                 return result;
             }
-            return this.output.error('symbolmap_get', [exchange, symbol]);
+            return this.mod.output.error('symbolmap_get', [exchange, symbol]);
         }
     }
 
@@ -73,20 +73,20 @@ module.exports = class frostybot_symbolmap_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [exchange, symbol, mapping] = this.utils.extract_props(params, ['exchange', 'symbol', 'mapping']);
+        var [exchange, symbol, mapping] = this.mod.utils.extract_props(params, ['exchange', 'symbol', 'mapping']);
         var exchange = exchange.toLowerCase();
         var symbol = symbol.toUpperCase();
         var mapping = mapping.toUpperCase();
         var data = {
             value: mapping,
         }
-        if (this.settings.set('symbolmap:' + exchange, symbol, mapping)) {
-            this.output.success('symbolmap_add', [exchange, symbol, mapping]);
+        if (this.mod.settings.set('symbolmap:' + exchange, symbol, mapping)) {
+            this.mod.output.success('symbolmap_add', [exchange, symbol, mapping]);
             return this.get({exchange: exchange, symbol: symbol});
         }
-        return this.output.error('symbolmap_add', [exchange, symbol, mapping]);
+        return this.mod.output.error('symbolmap_add', [exchange, symbol, mapping]);
     }
 
 
@@ -106,16 +106,16 @@ module.exports = class frostybot_symbolmap_module extends frostybot_module {
             }
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [exchange, symbol] = this.utils.extract_props(params, ['exchange', 'symbol']);
+        var [exchange, symbol] = this.mod.utils.extract_props(params, ['exchange', 'symbol']);
         var exchange = exchange.toLowerCase();
         var symbol = symbol.toUpperCase();
-        if (this.settings.delete('symbolmap:' + exchange.toLowerCase(), symbol.toUpperCase())) {
-            this.output.success('symbolmap_delete', [exchange, symbol]);
+        if (this.mod.settings.delete('symbolmap:' + exchange.toLowerCase(), symbol.toUpperCase())) {
+            this.mod.output.success('symbolmap_delete', [exchange, symbol]);
             return true;
         }
-        this.output.error('symbolmap_delete', [exchange, symbol]);
+        this.mod.output.error('symbolmap_delete', [exchange, symbol]);
         return false;
     }
 
@@ -123,7 +123,7 @@ module.exports = class frostybot_symbolmap_module extends frostybot_module {
     // Map symbol
 
     async map(exchange, symbol) {
-        var result = await await this.settings.get('symbolmap:' + exchange, symbol.toUpperCase())
+        var result = await await this.mod.settings.get('symbolmap:' + exchange, symbol.toUpperCase())
         return (result === null ? false : result)
     }
 

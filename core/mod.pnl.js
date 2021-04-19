@@ -19,7 +19,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
     async load_exchange(user, stub) {
         var accounts = await this.database.select('settings', {uuid: user, mainkey: 'accounts', subkey: stub});
         var encaccount = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
-        var account = await this.utils.decrypt_values( this.utils.lower_props(encaccount), ['apikey', 'secret'])
+        var account = await this.mod.utils.decrypt_values( this.mod.utils.lower_props(encaccount), ['apikey', 'secret'])
 
         if (account) {
             if (account && account.hasOwnProperty (stub)) {
@@ -51,9 +51,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             days:        { optional: 'number' },
         }        
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [user, stub, market, days] = this.utils.extract_props(params, ['user', 'stub', 'market', 'days']);
+        var [user, stub, market, days] = this.mod.utils.extract_props(params, ['user', 'stub', 'market', 'days']);
         var url = await global.frostybot._modules_['core'].url();
 
         if (user == undefined) {
@@ -106,7 +106,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                         try {
                             axios.post(url + '/frostybot',  payload);
                         } catch(e) {
-                            this.output.exception(e);
+                            this.mod.output.exception(e);
                         }
 
                     })
@@ -119,7 +119,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 // Stub is defined
 
-                //this.cache.flush(true);
+                //this.mod.cache.flush(true);
                 
                 var key = [user, stub].join(':');
                 await this.load_exchange(user, stub);
@@ -164,7 +164,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                             }
 
                             axios.post(url + '/frostybot',  payload);
-                            await this.utils.sleep(1);
+                            await this.mod.utils.sleep(1);
                             */
 
                         }
@@ -175,7 +175,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                             total: total,
                         }
 
-                        this.output.debug('orders_imported', importstats);
+                        this.mod.output.debug('orders_imported', importstats);
 
                         return true;
 
@@ -295,9 +295,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             days:        { required: 'number' },
         }
 
-        if (!(params = this.utils.validator(params, schema))) return false; 
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [user, stub, symbol, days] = this.utils.extract_props(params, ['user', 'stub', 'symbol', 'days']);
+        var [user, stub, symbol, days] = this.mod.utils.extract_props(params, ['user', 'stub', 'symbol', 'days']);
         
         if (user == undefined) { user = context.get('uuid') }
     
@@ -346,8 +346,8 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var orders = orders_by_symbol[symbol].sort((a, b) => a.timestamp > b.timestamp ? -1 : 1).filter(order => order.filled_base > 0)
 
             // Check if currently in a position, if so use the position balance for unrealized PNL calc
-            //var bal_base = this.utils.is_object(position) && position.hasOwnProperty('base_size') ? position.base_size : 0;
-            //var bal_quote = this.utils.is_object(position) && position.hasOwnProperty('quote_size') ? position.quote_size : 0;
+            //var bal_base = this.mod.utils.is_object(position) && position.hasOwnProperty('base_size') ? position.base_size : 0;
+            //var bal_quote = this.mod.utils.is_object(position) && position.hasOwnProperty('quote_size') ? position.quote_size : 0;
         
             var bal_base = 0;
             var bal_quote = 0;

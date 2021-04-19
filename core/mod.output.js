@@ -17,6 +17,15 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     constructor() {
         super();
+        /*this.output_obj = {
+            result: 'success',
+            message: null,
+            type: null,
+            data: null,
+            stats: [],
+            cache: null,
+            messages: []
+        }*/
     }
 
 
@@ -35,14 +44,14 @@ module.exports = class frostybot_output_module extends frostybot_module {
     async load_language() {
         this.settings = global.frostybot._modules_.settings;
         if (this.language == undefined) {
-            var language = await this.settings.get('core', 'language', 'en');
+            var language = await this.mod.settings.get('core', 'language', 'en');
             if (language == undefined) language = 'en';
             this.language = require('../lang/lang.' + language);
             this.section('frostybot_startup');
             this.translate('notice', 'using_language', language);
             this.notice('database_type', this.database.type);
             this.notice('database_name', this.database.name);
-            //this.output_debug = await this.settings.get('config', 'debug:output', true);
+            //this.output_debug = await this.mod.settings.get('config', 'debug:output', true);
             //this.notice('output_debug', (this.output_debug ? 'enabled' : 'disabled'));
         }
     }
@@ -51,7 +60,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     /*
     async enable_debug() {
-        await this.settings.set('config', 'debug:output', true);
+        await this.mod.settings.set('config', 'debug:output', true);
         this.output_debug = true;
         return true;
     }
@@ -60,7 +69,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
     // Enable debug output
 
     async disable_debug() {
-        await this.settings.set('config', 'debug:output', false);
+        await this.mod.settings.set('config', 'debug:output', false);
         this.output_debug = false;
         return true;
     }
@@ -102,8 +111,8 @@ module.exports = class frostybot_output_module extends frostybot_module {
     // Expand object in console output
 
     outobj(type, str, idx, obj) {
-        var data = this.utils.is_array(obj) || this.utils.is_object(obj) ? this.utils.serialize(obj) : obj;
-        var datalen = this.utils.is_string(data) ? data.length : 0;
+        var data = this.mod.utils.is_array(obj) || this.mod.utils.is_object(obj) ? this.mod.utils.serialize(obj) : obj;
+        var datalen = this.mod.utils.is_string(data) ? data.length : 0;
         if (datalen > 40) {
             var resmessage = str.replace(idx, data).trim();
             var objmessage = str.replace(idx, "").trim();
@@ -119,13 +128,13 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     translate(type, id, params = []) {
         
-        if (this.utils.is_array(id) && id.length == 2) {
+        if (this.mod.utils.is_array(id) && id.length == 2) {
             var params = [id[1]];
             var id = id[0];
         }
 
         // If object supplied, just output it directly
-        if (this.utils.is_object(id)) {
+        if (this.mod.utils.is_object(id)) {
             this.add_message(type, id, true);
             return (type == 'error' ? false : true);       
         }
@@ -134,7 +143,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
         if (this.language == undefined) {
             this.language = require("../lang/lang.en");
         }
-        params = this.utils.force_array(params);
+        params = this.mod.utils.force_array(params);
         if ((this.language.hasOwnProperty(type)) && (this.language[type].hasOwnProperty(id))) {
             var str = this.language[type][id];
 
@@ -161,7 +170,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
                         return result;
                     }
                 }
-                var data = result == -1 ? (this.utils.is_array(param) || this.utils.is_object(param) ? this.utils.serialize(param) : param) : null;
+                var data = result == -1 ? (this.mod.utils.is_array(param) || this.mod.utils.is_object(param) ? this.mod.utils.serialize(param) : param) : null;
                 str = str.split(placeholder).join(data).trim();
                 str = str.slice(-1) == ':' ? str.substr(0, str.length - 1) : str;
             });
@@ -314,7 +323,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
             noTrim:     false
         };
         var settings = { ...defaults, ...settings };
-        if (this.utils.is_object(message)) {
+        if (this.mod.utils.is_object(message)) {
             var maxproplength = Object.getOwnPropertyNames(message).sort(
                 function(a,b) {  
                   if (a.length > b.length) return -1;
@@ -328,7 +337,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
                 if (['apikey','secret','password','oldpassword','newpassword'].includes(prop.toLowerCase())) {
                     var outstr = '********';
                 } else {
-                    var outstr = this.utils.is_empty(val) ? null : this.utils.serialize(val);
+                    var outstr = this.mod.utils.is_empty(val) ? null : this.mod.utils.serialize(val);
                 }
                 if (outstr !== null)
                     objmsgs.push((prop + ": ").padEnd(maxproplength + 2, " ") + outstr);
@@ -346,6 +355,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
         var ts = d.getTime();
         if (!['section','subsection','blank'].includes(type)) {  
             if (settings.toResults) {
+                if (this.output_obj == undefined) this.reset();
                 this.output_obj.messages.push({
                     'timestamp': ts,
                     'type': type.toUpperCase(),
@@ -442,16 +452,16 @@ module.exports = class frostybot_output_module extends frostybot_module {
     }
 
     async format_output(output) {
-        var outputdebug = await this.config.get('output:debug', true);
+        var outputdebug = await this.mod.config.get('output:debug', true);
         if (Boolean(outputdebug) !== true) 
             output.messages = output.messages.filter(message => message.type.toLowerCase() != 'debug');            
-        switch (await this.config.get('output:messages', 'brief')) {
+        switch (await this.mod.config.get('output:messages', 'brief')) {
             case 'none'  : delete output.messages;
                            break;
             case 'brief' : output.messages = this.brief_messages(output.messages);
                            break;
         }   
-        var outputstats = await this.config.get('output:stats', false);
+        var outputstats = await this.mod.config.get('output:stats', false);
         if (Boolean(outputstats) !== true) 
             delete output.stats;
 
@@ -464,11 +474,38 @@ module.exports = class frostybot_output_module extends frostybot_module {
         return true;
     }
 
+    // Node status
+
+    async node_info() {
+        const os = require('os');
+        const host = os.hostname().toLowerCase();
+        const nets = os.networkInterfaces();
+        const ips = [];
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name]) {
+                // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+                if (net.family === 'IPv4' && !net.internal) {
+                    ips.push(net.address);
+                }
+            }
+        }
+        var d = new Date();
+        var ts = d.getTime();
+        var hostinfo = {
+            hostname: host,
+            ip: ips,
+            timestamp: ts
+        }
+        await this.mod.settings.set('node', host, hostinfo);
+    }
+
+
+
     // Parse raw output into a frostybot_output object
 
     async parse(result) {
         this.add_data(result);
-        var output = new this.classes.output(...this.utils.extract_props(this.output_obj, ['command', 'params', 'result', 'message', 'type', 'data', 'stats', 'messages']));
+        var output = new this.classes.output(...this.mod.utils.extract_props(this.output_obj, ['command', 'params', 'result', 'message', 'type', 'data', 'stats', 'messages']));
         this.reset();
         return await this.format_output(output);
     }

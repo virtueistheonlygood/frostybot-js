@@ -3,7 +3,7 @@
 const fs = require('fs');
 var context = require('express-http-context');
 var cidrcheck = require("ip-range-check");
-
+const axios = require('axios')
 
 // Methods exported to the API
 
@@ -120,6 +120,7 @@ const api_methods = {
 
     output: [
         'status',
+        'node_info',
     ],
 
     permissions: [
@@ -146,48 +147,29 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
     constructor() {
         super()
-        setInterval(this.update_node_status, 10000);
     }
 
     // Initalize
 
     initialize() {
+//        setInterval(async () => {
+//            await global.frostybot._modules_['utils'].loopback('output:node_info', {}, function(result) {
+//                console.log(result.data)
+//            });
+//        }, 10000);
     }
 
-    // Update node status
-
-    async update_node_status() {
-        const os = require('os');
-        const host = os.hostname().toLowerCase();
-        const nets = os.networkInterfaces();
-        const ips = [];
-        for (const name of Object.keys(nets)) {
-            for (const net of nets[name]) {
-                // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-                if (net.family === 'IPv4' && !net.internal) {
-                    ips.push(net.address);
-                }
-            }
-        }
-        var d = new Date();
-        var ts = d.getTime();
-        var hostinfo = {
-            hostname: host,
-            ip: ips,
-            timestamp: ts
-        }
-        if (this.settings == undefined && global.frostybot._modules_.hasOwnProperty('settings')) {
-            this.settings = global.frostybot._modules_['settings'];
-        }
-        await this.settings.set('node', host, hostinfo);
-    }
 
     // Check if IP address is local to the cluster
 
     async is_cluster_local_ip(ip) {
-        var nodes = await this.settings.get('node');
-        if (this.utils.is_object(nodes)) {
-            nodes = nodes.hasOwnProperty('hostname') ? [nodes] : Object.values(nodes);
+        var nodes = await this.mod.settings.get('node');
+        if (nodes == null) {
+            return true;
+        } else {
+            if (this.mod.utils.is_object(nodes)) {
+                nodes = nodes.hasOwnProperty('hostname') ? [nodes] : Object.values(nodes);
+            }
         }
         if (!Array.isArray(nodes)) nodes = [];
         var ips = [];
@@ -206,7 +188,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Get proxies
 
     async get_proxies() {
-        var proxy = await this.config.get('core:proxy', '');
+        var proxy = await this.mod.config.get('core:proxy', '');
         return (proxy != '' ? proxy : '');
     }
 
@@ -228,7 +210,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
     async url() {
         var port = await this.port();
         var defval = 'http://localhost:' + port.toString();
-        var url = await this.config.get('core:url', defval);
+        var url = await this.mod.config.get('core:url', defval);
         return url;
     }
 
@@ -247,7 +229,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         context.set('srcIp', ip);
         var reqId = context.get('reqId')
         if (!proxies.includes(ip))
-            this.output.debug('source_ip', [ip, reqId]);
+            this.mod.output.debug('source_ip', [ip, reqId]);
         return ip;
     }
 
@@ -256,14 +238,14 @@ module.exports = class frostybot_core_module extends frostybot_module {
     async verify_access(ip, uuid, token, params) {
         var command = params != undefined && params.hasOwnProperty('body') && params.body.hasOwnProperty('command') ? params.body.command : null;
         context.set('command', command)
-        var core_uuid = await this.encryption.core_uuid();
+        var core_uuid = await this.mod.encryption.core_uuid();
         var token_uuid = token != null && token.hasOwnProperty('uuid') ? token.uuid : null;
         var param_uuid = uuid;
         var localhost = ['127.0.0.1','::1','<cluster>'].includes(ip);
         var isgui = token != null;
         var isapi = !isgui;
-        var multiuser = await this.user.multiuser_isenabled();
-        var verified = token != null ? await this.user.verify_token(token) : false;
+        var multiuser = await this.mod.user.multiuser_isenabled();
+        var verified = token != null ? await this.mod.user.verify_token(token) : false;
         var uuid = null;
 
         var all_ip_allowed = [
@@ -281,7 +263,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         //console.log({isgui: isgui, isapi : isapi, localhost: localhost, param_uuid: param_uuid, multiuser: multiuser, token_uuid: token_uuid, verified: verified})
 
         if (!localhost && isapi && multiuser && param_uuid == null && !all_ip_allowed.includes(command)) {
-            await this.output.error('required_param', ['uuid']);
+            await this.mod.output.error('required_param', ['uuid']);
             return false;
         }
 
@@ -290,19 +272,19 @@ module.exports = class frostybot_core_module extends frostybot_module {
         }
 
         if (isgui && !verified) {
-            await this.output.error('invalid_token');
+            await this.mod.output.error('invalid_token');
             return false;
         }
 
         if (localhost && isapi && param_uuid == null) {
-            this.output.debug('access_local_core')
+            this.mod.output.debug('access_local_core')
             uuid = core_uuid;
             context.set('uuid', uuid);
-            return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
+            return (all_ip_allowed.includes(command) ? true : await this.mod.whitelist.verify(ip));
         }
 
         if (isgui && verified) {
-            this.output.debug('access_gui_token')
+            this.mod.output.debug('access_gui_token')
             uuid = token_uuid;
             context.set('uuid', uuid);
             return true;
@@ -310,30 +292,30 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
         if (isapi && multiuser && param_uuid != null) {
             uuid = param_uuid;
-            this.output.debug('access_api_uuid')
+            this.mod.output.debug('access_api_uuid')
             context.set('uuid', uuid);
-            return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
+            return (all_ip_allowed.includes(command) ? true : await this.mod.whitelist.verify(ip));
         }
             
         if (!localhost && isapi && multiuser && param_uuid == null && token_uuid == null) {
             //uuid = core_uuid;
-            this.output.debug('access_api_core')
+            this.mod.output.debug('access_api_core')
             //context.set('uuid', uuid);
-            return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
+            return (all_ip_allowed.includes(command) ? true : await this.mod.whitelist.verify(ip));
         }
 
         if (isapi && !multiuser && param_uuid == null) {
             uuid = core_uuid;
-            this.output.debug('access_api_core')
+            this.mod.output.debug('access_api_core')
             context.set('uuid', uuid);
-            return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
+            return (all_ip_allowed.includes(command) ? true : await this.mod.whitelist.verify(ip));
         }
 
         if (isapi && !multiuser && param_uuid != null) {
             uuid = param_uuid;
-            this.output.debug('access_api_uuid')
+            this.mod.output.debug('access_api_uuid')
             context.set('uuid', uuid);
-            return (all_ip_allowed.includes(command) ? true : await this.whitelist.verify(ip));
+            return (all_ip_allowed.includes(command) ? true : await this.mod.whitelist.verify(ip));
         }
 
         return false;
@@ -346,7 +328,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         // Single pre-parsed command parameter
         if (request.body.hasOwnProperty('command')) return request.body;
         // Multiple pre-parsed command parameters
-        if (this.utils.is_array(request.body) && request.body[0].hasOwnProperty('command')) return request.body;
+        if (this.mod.utils.is_array(request.body) && request.body[0].hasOwnProperty('command')) return request.body;
         // Raw request body
         return this.parse_raw(request.rawBody);
     }
@@ -385,15 +367,15 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Parse Command Parameter Object
 
     parse_obj(params) {
-        params = this.utils.clean_object(params);      
-        var command = this.utils.extract_props(params, 'command').toLowerCase();
+        params = this.mod.utils.clean_object(params);      
+        var command = this.mod.utils.extract_props(params, 'command').toLowerCase();
         if (command == undefined) 
-            return this.output.error('required_param', ['command']);
+            return this.mod.output.error('required_param', ['command']);
         if (command.indexOf(':') < 0) 
-            return this.output.error('malformed_param', ['command']);
+            return this.mod.output.error('malformed_param', ['command']);
         var parts = command.split(':');
         var numparts = parts.length;
-        if (this.utils.is_array(parts) && parts.length > 1) {
+        if (this.mod.utils.is_array(parts) && parts.length > 1) {
             var mod = parts[0];
             var cmd = parts.slice(1).join(':');
             if (cmd.indexOf(':') > 0) {                 // Check if stub is included in the command
@@ -405,14 +387,14 @@ module.exports = class frostybot_core_module extends frostybot_module {
                 var stub = mod;
                 var mod = "trade";
                 params['stub'] = stub;
-                this.output.debug('trade_cmd_shortcut', [stub.toLowerCase(), cmd.toLowerCase()]);
+                this.mod.output.debug('trade_cmd_shortcut', [stub.toLowerCase(), cmd.toLowerCase()]);
             }
         } else {
-            return this.output.error('malformed_param', ['command']);
+            return this.mod.output.error('malformed_param', ['command']);
         }
         delete params.command;
-        params = this.utils.uppercase_values(params, ['symbol', 'mapping']);
-        params = this.utils.lowercase_values(params, ['stub']);
+        params = this.mod.utils.uppercase_values(params, ['symbol', 'mapping']);
+        params = this.mod.utils.lowercase_values(params, ['stub']);
         return [mod, cmd, params];
     }
 
@@ -420,9 +402,9 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Check if module exists and initialize it
 
     load_module(module) {
-        if (api_methods.hasOwnProperty(module) && this.hasOwnProperty(module)) {
+        if (api_methods.hasOwnProperty(module) && this.mod.hasOwnProperty(module)) {
             var mod = require('./mod.'+module)
-            this[module] = new mod();
+            this.mod[module] = new mod();
             return true;
         } else {
             return false;
@@ -445,12 +427,12 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Execute Frostybot Command(s)
 
     async execute(request, raw = null) {
-        this.output.reset();
+        this.mod.output.reset();
         var params = this.parse_request(request);
-        if (this.utils.is_object(params) && params.hasOwnProperty('0') && params['0'].hasOwnProperty('command')) {
+        if (this.mod.utils.is_object(params) && params.hasOwnProperty('0') && params['0'].hasOwnProperty('command')) {
             params = Object.values(params);
         }
-        if (this.utils.is_array(params)) {                          
+        if (this.mod.utils.is_array(params)) {                          
             var results = await this.execute_multiple(params, raw);  // Multiple commands submitted
         } else {        
             var results = await this.execute_single(params, raw);     // Single command submitted
@@ -463,17 +445,17 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
     async execute_multiple(multi_params, raw) {
         var results = [];
-        if (this.utils.is_object(multi_params)) {
+        if (this.mod.utils.is_object(multi_params)) {
             multi_params = Object.values(multi_params)
         }
         for (var i = 0; i < multi_params.length; i++) {
             var params = multi_params[i];
-            if (this.utils.is_object(params)) {
+            if (this.mod.utils.is_object(params)) {
                 var result = await this.execute_single(params, raw);
                 results.push(result);    
             }
         }
-        return await this.output.combine(results);
+        return await this.mod.output.combine(results);
     }
 
     // Execute a Single Command
@@ -482,13 +464,15 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var parsed = this.parse_obj(params);
         if (parsed.length == 3) {
             var [module, method, params] = parsed;
-            this.output.section('executing_command', [module, method]);
-            this.output.notice('executing_command', [module, method]);
-            //this.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...(this.utils.remove_props(params,['_raw_'])) }]);
-            this.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...params }]);
+            this.mod.output.section('executing_command', [module, method]);
+            this.mod.output.notice('executing_command', [module, method]);
+            //this.mod.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...(this.mod.utils.remove_props(params,['_raw_'])) }]);
+            var cmdparams = { ...{ command: module + ":" + method}, ...params };
+            if (cmdparams.hasOwnProperty('_loopbacktoken_')) delete cmdparams['_loopbacktoken_']
+            this.mod.output.notice('command_params', [cmdparams]);
             if (this.load_module(module)) {
-                //this.output.debug('loaded_module', module)    
-                var method = this.utils.is_array(method.split(':')) ? method.split(':')[0] : method;
+                //this.mod.output.debug('loaded_module', module)    
+                var method = this.mod.utils.is_array(method.split(':')) ? method.split(':')[0] : method;
                 if (params.hasOwnProperty('uuid')) {
                     context.set('uuid', params.uuid);
                 }
@@ -496,12 +480,12 @@ module.exports = class frostybot_core_module extends frostybot_module {
                 if (this.method_exists(module, method)) {
 
                     // Check permissions to execute 
-                    var permissionset = await this.settings.get('core', 'permissionset', 'standard');
+                    var permissionset = await this.mod.settings.get('core', 'permissionset', 'standard');
                     if (!['standard','provider'].includes(permissionset))
                         permissionset = 'standard';
-                    var checkpermissions = await this.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
+                    var checkpermissions = await this.mod.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
                     if (!checkpermissions)
-                        return await this.output.parse(this.output.error('permissions_denied', [permissionset, module + ":" + method]));
+                        return await this.mod.output.parse(this.mod.output.error('permissions_denied', [permissionset, module + ":" + method]));
 
                     // Start execution
                     var start = (new Date).getTime();
@@ -512,11 +496,11 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
                     // If no symbol is supplied, use the default symbol
                     if (module != 'symbolmap' && !params.hasOwnProperty('symbol') && params.hasOwnProperty('stub')) {
-                        var exchangeid = this.accounts.get_exchange_from_stub(params.stub);
+                        var exchangeid = this.mod.accounts.get_exchange_from_stub(params.stub);
                         if (exchangeid !== false) {
-                            var mapping = await this.symbolmap.map(exchangeid, 'DEFAULT');
+                            var mapping = await this.mod.symbolmap.map(exchangeid, 'DEFAULT');
                             if (mapping !== false) {
-                                this.output.notice('symbol_mapping', [exchangeid, 'default', mapping])
+                                this.mod.output.notice('symbol_mapping', [exchangeid, 'default', mapping])
                                 params.symbol = mapping;
                             } 
                         }
@@ -525,8 +509,8 @@ module.exports = class frostybot_core_module extends frostybot_module {
                     // If stub is supplied, and not adding a new stub, make sure the account exists
                     if (params.hasOwnProperty('stub') && !(module == 'accounts' && method == 'add')) {
                         var stub = params.stub.toLowerCase()
-                        if (this.accounts.getaccount(stub) === false) {
-                            return await this.output.parse(this.output.error('unknown_stub', stub))
+                        if (this.mod.accounts.getaccount(stub) === false) {
+                            return await this.mod.output.parse(this.mod.output.error('unknown_stub', stub))
                         } 
                         params.stub = stub
                         context.set('stub', stub);
@@ -534,7 +518,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
                     // Check for symbol mapping and use it if required, verify that market exists
                     if (module != 'symbolmap' && (params.hasOwnProperty('symbol') || params.hasOwnProperty('tvsymbol')) && params.hasOwnProperty('stub')) {
-                        var exchangeid = await this.accounts.get_exchange_from_stub(params.stub);
+                        var exchangeid = await this.mod.accounts.get_exchange_from_stub(params.stub);
                         if (exchangeid !== false) {
                             var exchange = new this.classes.exchange(stub);
                             if (exchange != undefined) {
@@ -545,18 +529,18 @@ module.exports = class frostybot_core_module extends frostybot_module {
                                     let result = await exchange.execute(stub, 'market', {tvsymbol: tvsymbol.toUpperCase()});
                                     if (result instanceof this.classes.market) {
                                         var symbol = result.symbol;
-                                        this.output.notice('tvsymbolmap_map', [exchangeid, tvsymbol, symbol]);
+                                        this.mod.output.notice('tvsymbolmap_map', [exchangeid, tvsymbol, symbol]);
                                         params.symbol = symbol;
                                         delete params.tvsymbol;
                                     } else {
-                                        return this.output.error('tvsymbolmap_map', [tvsymbol]);
+                                        return this.mod.output.error('tvsymbolmap_map', [tvsymbol]);
                                     }
                                 }
 
                                 // Check for symbolmap and use it if configured
-                                var mapping = await this.symbolmap.map(exchangeid, params.symbol);
+                                var mapping = await this.mod.symbolmap.map(exchangeid, params.symbol);
                                 if (mapping !== false) {
-                                    this.output.notice('symbol_mapping', [exchangeid, params.symbol, mapping])
+                                    this.mod.output.notice('symbol_mapping', [exchangeid, params.symbol, mapping])
                                     params.symbol = mapping.toUpperCase();
                                 }
                                 params.symbol = params.symbol.toUpperCase();
@@ -564,8 +548,8 @@ module.exports = class frostybot_core_module extends frostybot_module {
                                 // Check that market symbol is valid
 
                                 let result = await exchange.execute(stub, 'market', {symbol: params.symbol});
-                                if (this.utils.is_empty(result)) {
-                                    return await this.output.parse(this.output.error('unknown_market', params.symbol));
+                                if (this.mod.utils.is_empty(result)) {
+                                    return await this.mod.output.parse(this.mod.output.error('unknown_market', params.symbol));
                                 }
                             }
                         }
@@ -578,22 +562,22 @@ module.exports = class frostybot_core_module extends frostybot_module {
                     try {
                         result = await global.frostybot._modules_[module][method](params);
                     } catch (e) {
-                        this.output.exception(e);
+                        this.mod.output.exception(e);
                         result = false;
                     }
                     var end = (new Date).getTime();
                     var duration = (end - start) / 1000;            
-                    this.output.notice('command_completed', duration);
-                    return await this.output.parse(result);
+                    this.mod.output.notice('command_completed', duration);
+                    return await this.mod.output.parse(result);
 
                 } else {
-                    return await this.output.parse(this.output.error('unknown_method', method));  
+                    return await this.mod.output.parse(this.mod.output.error('unknown_method', method));  
                 }
             } else {
-                return await this.output.parse(this.output.error('unknown_module', (module == 'this' ? 'Invalid format' : module)));  
+                return await this.mod.output.parse(this.mod.output.error('unknown_module', (module == 'this' ? 'Invalid format' : module)));  
             }
         }
-        return await this.output.parse(this.output.error('malformed_param', parsed));
+        return await this.mod.output.parse(this.mod.output.error('malformed_param', parsed));
     } 
 
 

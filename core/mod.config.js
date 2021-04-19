@@ -44,7 +44,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
     // Get all config parameters for a user
     
     async getall() {
-        return await this.settings.get('config', null, null, true);
+        return await this.mod.settings.get('config', null, null, true);
     }
 
     // Split keyname into mainkey/subkey parts
@@ -71,12 +71,12 @@ module.exports = class frostybot_config_module extends frostybot_module {
         var results = {};
 
         // Internal 
-        if (this.utils.is_string(params)) {
+        if (this.mod.utils.is_string(params)) {
             check[params] = false;            
         }
         
         // User
-        if (this.utils.is_object(params) && Object.keys(params).length > 0) {
+        if (this.mod.utils.is_object(params) && Object.keys(params).length > 0) {
             check = params;
         }
 
@@ -90,14 +90,14 @@ module.exports = class frostybot_config_module extends frostybot_module {
             var validate = await this.validate_key(key);
             if (validate !== false) {
                 var [mainkey, subkey] = this.splitkey(key);
-                var val = await this.settings.get(mainkey, subkey, null);
+                var val = await this.mod.settings.get(mainkey, subkey, null);
                 if (val != null)
-                    results[key] = this.utils.is_json(val) ? JSON.parse(val) : val;
+                    results[key] = this.mod.utils.is_json(val) ? JSON.parse(val) : val;
                 else 
                     if (defval !== null) 
                         results[key] = defval;
                     //else
-                    //    this.output.warning('config_get', [key])        
+                    //    this.mod.output.warning('config_get', [key])        
             }
         }
 
@@ -112,8 +112,8 @@ module.exports = class frostybot_config_module extends frostybot_module {
     // Validate stub in config key
 
     async validatestub(stub) {
-        var accounts = await this.accounts.get();
-        if (this.utils.is_object(accounts)) {
+        var accounts = await this.mod.accounts.get();
+        if (this.mod.utils.is_object(accounts)) {
             if (Object.keys(accounts).includes(stub))
                 return stub;
         }
@@ -154,7 +154,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
         if (key.toLowerCase().indexOf('core:') != -1) {
             var ip = context.get('srcIp');
             if (!['127.0.0.1','::1'].includes(ip)) {
-                this.output.error('config_core_localonly', [key]);
+                this.mod.output.error('config_core_localonly', [key]);
                 return false;
             }        
         }
@@ -178,21 +178,21 @@ module.exports = class frostybot_config_module extends frostybot_module {
                         if (symbol !== false) {
                             return val_key;
                         } else {
-                            this.output.error('config_invalid_symbol', [key]);
+                            this.mod.output.error('config_invalid_symbol', [key]);
                             return false;
                         }
                     } else {
                         return val_key;
                     }
                 } else {
-                    this.output.error('config_invalid_stub', [key]);
+                    this.mod.output.error('config_invalid_stub', [key]);
                     return false;
                 }
             } else {
                 return val_key;
             }
         }
-        this.output.error('config_invalid_key', [key]);
+        this.mod.output.error('config_invalid_key', [key]);
         return false;
     }
 
@@ -208,27 +208,27 @@ module.exports = class frostybot_config_module extends frostybot_module {
             else
                 var valtype = valstr;
             switch (valtype) {
-                case 'boolean'  :   if (this.utils.is_bool(val) || String(val) == 'null') {
+                case 'boolean'  :   if (this.mod.utils.is_bool(val) || String(val) == 'null') {
                                         validated = true;
                                         val = String(val) == 'true' ? true : String(val) == 'null' ? null : false;
                                     } else
-                                        this.output.error('config_invalid_value', [key, 'true or false']);
+                                        this.mod.output.error('config_invalid_value', [key, 'true or false']);
                                     break;
-                case 'array'    :   val = this.utils.is_json(val) ? JSON.parse(val) : val;
-                                    if (this.utils.is_array(val) || this.utils.is_object(val)) {
+                case 'array'    :   val = this.mod.utils.is_json(val) ? JSON.parse(val) : val;
+                                    if (this.mod.utils.is_array(val) || this.mod.utils.is_object(val)) {
                                         validated = true;
                                     } else
-                                        this.output.error('config_invalid_value', [key, 'an array']);
+                                        this.mod.output.error('config_invalid_value', [key, 'an array']);
                                     break;
-                case 'string'   :   if (this.utils.is_string(val)) 
+                case 'string'   :   if (this.mod.utils.is_string(val)) 
                                         validated = true;
                                     else
-                                        this.output.error('config_invalid_value', [key, 'a string']);
+                                        this.mod.output.error('config_invalid_value', [key, 'a string']);
                                     break;
                 case 'oneof'    :   if (valopt.split(',').includes(val))
                                         validated = true;
                                     else
-                                        this.output.error('config_invalid_value', [key, 'one of [' + valopt + ']']);
+                                        this.mod.output.error('config_invalid_value', [key, 'one of [' + valopt + ']']);
                                     break;
             }
         } else {
@@ -247,12 +247,12 @@ module.exports = class frostybot_config_module extends frostybot_module {
         var results = {};
 
         // Internal 
-        if (this.utils.is_string(params)) {
+        if (this.mod.utils.is_string(params)) {
             check[key] = val;            
         }
         
         // User
-        if (this.utils.is_object(params) && Object.keys(params).length > 0) {
+        if (this.mod.utils.is_object(params) && Object.keys(params).length > 0) {
             check = params;
         }
 
@@ -266,14 +266,14 @@ module.exports = class frostybot_config_module extends frostybot_module {
             if ((validate !== false) && (this.validatelocalonly(key))) {
                 var [mainkey, subkey] = this.splitkey(key);
                 if (val == null || val == '' || val == "null") { 
-                    await this.settings.delete(mainkey, subkey);
+                    await this.mod.settings.delete(mainkey, subkey);
                     results[key] = '(deleted)';
                 } else {
-                    if (await this.settings.set(mainkey, subkey, val)) {
-                        this.output.success('config_set', [key, val])
+                    if (await this.mod.settings.set(mainkey, subkey, val)) {
+                        this.mod.output.success('config_set', [key, val])
                         results[key] = val;
                     } else {
-                        this.output.error('config_set', [key, val])
+                        this.mod.output.error('config_set', [key, val])
                     }   
                 }
             }
@@ -292,7 +292,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
 
     async delete(key) {
         var [mainkey, subkey] = this.splitkey(key);
-        return await this.settings.delete(mainkey, subkey.toLowerCase());
+        return await this.mod.settings.delete(mainkey, subkey.toLowerCase());
     }
     
 };

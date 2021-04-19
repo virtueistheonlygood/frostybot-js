@@ -71,7 +71,7 @@ module.exports = class frostybot_exchange_binance_base extends frostybot_exchang
     // Get open orders
 
     async open_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         let raworders = await this.ccxt('fetch_open_orders',[symbol, since, limit]);
         return this.parse_orders(raworders);
     }
@@ -79,7 +79,7 @@ module.exports = class frostybot_exchange_binance_base extends frostybot_exchang
     // Get all order history
 
     async all_orders(params) {
-        var [symbol, since, limit] = this.utils.extract_props(params, ['symbol', 'since', 'limit']);
+        var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
         let raworders = await this.ccxt('fetch_orders',[symbol, since, limit]);
         return this.parse_orders(raworders);
     }
@@ -87,7 +87,7 @@ module.exports = class frostybot_exchange_binance_base extends frostybot_exchang
     // Cancel orders
 
     async cancel(params) {
-        var [symbol, id] = this.utils.extract_props(params, ['symbol', 'id']);
+        var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         var orders = await this.open_orders({symbol: symbol});
         if (id.toLowerCase() == 'all') {
             let cancel = await this.ccxt('cancel_all_orders',[symbol]);

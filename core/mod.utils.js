@@ -1,6 +1,7 @@
 // Commonly used utility and helper functions
 
 const frostybot_module = require('./mod.base')
+const axios = require('axios')
 
 module.exports = class frostybot_utils_module extends frostybot_module {
 
@@ -9,7 +10,6 @@ module.exports = class frostybot_utils_module extends frostybot_module {
     constructor() {
         super()
     }
-
 
     // Check if value is JSON
 
@@ -249,7 +249,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
             if (!obj.hasOwnProperty(key))
                 continue;
             var val = obj[key];
-            if (this.is_object(val) && !this.is_empty(val) && !this.encryption.is_encrypted(val))
+            if (this.is_object(val) && !this.is_empty(val) && !this.mod.encryption.is_encrypted(val))
                 obj[key] = this.walk_values(val, filter, callfunc);
             else 
                 if ((filter == null) || (filter.includes(key))) 
@@ -280,7 +280,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
             if (!obj.hasOwnProperty(key))
                 continue;
             var val = obj[key];
-            if (this.is_object(val) && !this.is_empty(val) && !this.encryption.is_encrypted(val))
+            if (this.is_object(val) && !this.is_empty(val) && !this.mod.encryption.is_encrypted(val))
                 obj[key] = await this.walk_values_async(val, filter, callfunc);
             else 
                 if ((filter == null) || (filter.includes(key))) 
@@ -381,8 +381,6 @@ module.exports = class frostybot_utils_module extends frostybot_module {
     base_dir() {
         return __dirname.substr(0, __dirname.lastIndexOf('/'))
     }
-
-
     // Count the number of decimals in a number
     
     num_decimals(num) {
@@ -473,6 +471,20 @@ module.exports = class frostybot_utils_module extends frostybot_module {
         return new Promise((resolve) => setTimeout(resolve, seconds * 1000));
     } 
 
+    // Loopback Function Call
+
+    async loopback(command, params, callback) {
+        var url = await global.frostybot._modules_['core'].url();
+        var cmd = { ...{command: command}, ...params};
+        var token = this.mod.encryption.new_uuid();
+        if (!global.frostybot.hasOwnProperty('_loopbacktokens_')) global.frostybot['_loopbacktokens_'] = [];
+        global.frostybot['_loopbacktokens_'].push(token);
+        cmd['_loopbacktoken_'] = token;
+        axios.post(url + '/frostybot',  cmd).then(function (response) {
+            if (typeof(callback) == 'function') callback(response);
+        });
+    }
+
     // Method parameter validator
 
     validator(params, schema) {
@@ -502,7 +514,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
                     }
                 });
                 if (!found) {
-                    this.output.error('required_oneof', this.serialize_array(requiredoneof));
+                    this.mod.output.error('required_oneof', this.serialize_array(requiredoneof));
                     return false;    
                 }
             }
@@ -510,7 +522,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
             // Param is required but not present
 
             if (required && !present) {
-                this.output.error('required_param', prop + ' (' + expected_type + ') in ' + this.get_current_command());
+                this.mod.output.error('required_param', prop + ' (' + expected_type + ') in ' + this.get_current_command());
                 return false;
             }
             if (present) {
@@ -528,7 +540,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
                 // Param is the incorrect type
 
                 if ( (expected_type != undefined) && (actual_type !== expected_type) ) {
-                    this.output.error('incorrect_type', [prop, expected_type, actual_type]);
+                    this.mod.output.error('incorrect_type', [prop, expected_type, actual_type]);
                     return false;    
                 }
 
@@ -545,7 +557,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
 
                 if ( (oneof != null) && (this.is_array(oneof)) ) {
                     if (!oneof.includes(val)) {
-                        this.output.error('param_val_oneof', [prop, this.serialize_array(oneof)]);
+                        this.mod.output.error('param_val_oneof', [prop, this.serialize_array(oneof)]);
                         return false;
                     }
                 }

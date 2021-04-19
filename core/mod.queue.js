@@ -49,11 +49,11 @@ module.exports = class frostybot_queue_module extends frostybot_module {
     add(stub, symbol, params) {
         var uuid = context.get('reqId')
         this.create(stub, symbol)
-        if (!this.utils.is_array(params)) {
+        if (!this.mod.utils.is_array(params)) {
             params = [params]
         }
         params.forEach(order => {
-            this.output.notice('order_queued', order)
+            this.mod.output.notice('order_queued', order)
             this.queue[uuid][stub][symbol].push(order)
         });
     }
@@ -69,7 +69,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
     // Check if order exists (ensure that it was successfully created on the exchange)
 
     async check(stub, symbol, id) {
-        await this.utils.sleep(3);
+        await this.mod.utils.sleep(3);
         var exchange = new this.classes.exchange(stub);
         let result = await exchange.execute(stub, 'order', {id: id, symbol: symbol}, true);
         return (result !== false ? true : false);
@@ -83,34 +83,34 @@ module.exports = class frostybot_queue_module extends frostybot_module {
             
         if (result.result == 'success') {
             var id = result.order.id;
-            this.output.debug('order_submitted', [id]);
+            this.mod.output.debug('order_submitted', [id]);
         
             let doublecheck = await exchange.get(stub, 'doublecheck');
             
             if (doublecheck == true) {
-                this.output.debug('order_check_enabled', [id]);
+                this.mod.output.debug('order_check_enabled', [id]);
                 var check = await this.check(stub, symbol, id);
                 if (check == true) {
                     // Doublecheck successful
-                    this.output.notice('order_check', [id]);
+                    this.mod.output.notice('order_check', [id]);
                     return result;
                 } else {
                     // Doublecheck failed
-                    //this.output.error('order_check', [id]);
-                    this.output.warning('order_submit', ['DoubleCheckError: Doublecheck failed for ID: ' + id] ); 
+                    //this.mod.output.error('order_check', [id]);
+                    this.mod.output.warning('order_submit', ['DoubleCheckError: Doublecheck failed for ID: ' + id] ); 
                     return false;
                 }
 
             } else {
 
                 // Doublecheck disabled and order successful
-                //this.output.debug('order_check_disabled');
+                //this.mod.output.debug('order_check_disabled');
                 return result;
             }
 
         }  
-        var message = result.error.type + ': ' + (this.utils.is_object(result.error.message) ? this.utils.serialize_object(result.error.message) : result.error.message);
-        this.output.warning('order_submit', [message] ); 
+        var message = result.error.type + ': ' + (this.mod.utils.is_object(result.error.message) ? this.mod.utils.serialize_object(result.error.message) : result.error.message);
+        this.mod.output.warning('order_submit', [message] ); 
         return false;
 
     }
@@ -120,11 +120,11 @@ module.exports = class frostybot_queue_module extends frostybot_module {
     async process(stub, symbol) {
         var uuid = context.get('reqId')
         this.create(stub, symbol)
-        var noexecute = await this.config.get('debug:noexecute', false);
-        var maxretry = parseInt(await this.config.get(stub + ':maxretry', 5));
-        var retrywait = parseInt(await this.config.get(stub + ':retrywait', 10));
+        var noexecute = await this.mod.config.get('debug:noexecute', false);
+        var maxretry = parseInt(await this.mod.config.get(stub + ':maxretry', 5));
+        var retrywait = parseInt(await this.mod.config.get(stub + ':retrywait', 10));
         if (noexecute == true) {
-            this.output.debug('debug_noexecute');
+            this.mod.output.debug('debug_noexecute');
             var result = this.queue[uuid][stub][symbol];
             this.clear(stub, symbol);
             return result;
@@ -133,8 +133,8 @@ module.exports = class frostybot_queue_module extends frostybot_module {
         var total = this.queue[uuid][stub][symbol].length;
         if (total > 0) { 
             var success = 0;
-            this.output.subsection('processing_queue', total);
-            this.output.notice('processing_queue', total); 
+            this.mod.output.subsection('processing_queue', total);
+            this.mod.output.notice('processing_queue', total); 
             
             for (const order of this.queue[uuid][stub][symbol]) {
 
@@ -143,25 +143,25 @@ module.exports = class frostybot_queue_module extends frostybot_module {
                 for (var retry = 1; retry <= maxretry; retry++) {
                     result = await this.submit(stub, symbol, order);
                     if (result === false) {
-                        this.output.warning('order_retry_wait', [retrywait])
-                        await this.utils.sleep(retrywait)
-                        this.output.warning('order_retry_num', [retry, maxretry])                
+                        this.mod.output.warning('order_retry_wait', [retrywait])
+                        await this.mod.utils.sleep(retrywait)
+                        this.mod.output.warning('order_retry_num', [retry, maxretry])                
                     } else break
                 }
                 
                 
                 if (result == false) {
                     //output.set_exitcode(-1);
-                    this.output.error('order_submit', { ...{stub: stub}, ...order}); 
+                    this.mod.output.error('order_submit', { ...{stub: stub}, ...order}); 
                 } else {
                     success++;
-                    this.output.success('order_submit', { ...{stub: stub}, ...order}); 
+                    this.mod.output.success('order_submit', { ...{stub: stub}, ...order}); 
                 }
         
                 this.results[uuid][stub][symbol].push(result);
             };
             var results = this.results[uuid][stub][symbol];
-            this.output.notice('processed_queue', [success, total]);   
+            this.mod.output.notice('processed_queue', [success, total]);   
             this.clear(stub, symbol);
             if (success == 0) {
                 return false;

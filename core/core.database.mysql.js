@@ -71,7 +71,7 @@ module.exports = class frostybot_database_mysql_module extends frostybot_databas
         for (var key in data) {
             colList.push(key);
             valList.push("?");
-            vals.push(this.utils.is_object(data[key]) ? JSON.stringify(data[key]) : data[key]);
+            vals.push(this.mod.utils.is_object(data[key]) ? JSON.stringify(data[key]) : data[key]);
             //actList.push(val);
             //updList.push("`" + key + "`= ?");
         }

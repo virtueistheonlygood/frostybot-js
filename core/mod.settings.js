@@ -21,7 +21,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
-        //var cacheresult = this.cache.get(cachekey)
+        //var cacheresult = this.mod.cache.get(cachekey)
         //if (cacheresult != undefined) {
         //    return cacheresult;
         //}
@@ -32,30 +32,30 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         switch (result.length) {
             case 0      :   if (defval != undefined) {
                                 this.set(mainkey, subkey, defval);
-                                this.cache.set(cachekey, defval, 60);
+                                this.mod.cache.set(cachekey, defval, 60);
                                 return defval
                             } else return null;
             case 1      :   var val = result[0].value
-                            val = this.utils.is_json(val) ? JSON.parse(val) : val;
+                            val = this.mod.utils.is_json(val) ? JSON.parse(val) : val;
                             val = ['true','false','"true"','"false"'].includes(val) ? (String(val.replace(/"/g,"")) == 'true' ? true : false)  : val;
                             if (retobj == true) {
                                 var obj = {};
                                 var subkey = result[0].subkey
                                 obj[subkey] = val
-                                this.cache.set(cachekey, obj, 60);
+                                this.mod.cache.set(cachekey, obj, 60);
                                 return obj;
                             }
-                            this.cache.set(cachekey, val, 60);
+                            this.mod.cache.set(cachekey, val, 60);
                             return val;
             default     :   var obj = {};
                             for (var i=0; i < result.length; i++) {
                                 var setting = result[i];
                                 var subkey = setting.subkey;
-                                val = this.utils.is_json(setting.value) ? JSON.parse(setting.value) : setting.value;
+                                val = this.mod.utils.is_json(setting.value) ? JSON.parse(setting.value) : setting.value;
                                 val = ['true','false','"true"','"false"'].includes(val) ? (String(val.replace(/"/g,"")) == 'true' ? true : false) : val;
                                 obj[subkey] = val;
                             }
-                            this.cache.set(cachekey, obj, 60);
+                            this.mod.cache.set(cachekey, obj, 60);
                             return obj;
         }
     }
@@ -82,7 +82,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var result = await this.database.insertOrReplace('settings', query);
         if (result.changes > 0) {
             var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
-            this.cache.set(cachekey, undefined, 60);
+            this.mod.cache.set(cachekey, undefined, 60);
             return true;
         }
         return false;
@@ -96,7 +96,7 @@ module.exports = class frostybot_settings_module extends frostybot_module {
         var uuid = global_keys.includes(globalkey) ? '00000000-0000-0000-0000-000000000000' : context.get('uuid');
         if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
         var cachekey = md5(uuid + (mainkey != null ? mainkey : '') + (subkey != null ? subkey : ''));
-        this.cache.set(cachekey, undefined, 60);
+        this.mod.cache.set(cachekey, undefined, 60);
         var query = this.database.type == 'mysql' ? { uuid: uuid } : {};
         if (mainkey != null) query['mainkey'] = mainkey;
         if (subkey != null)  query['subkey'] = subkey;
