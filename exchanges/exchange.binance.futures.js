@@ -121,8 +121,8 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
                     const price_filter  = this.utils.filter_objects(raw_market.info.filters, {filterType: 'PRICE_FILTER'} );
                     const amount_filter = this.utils.filter_objects(raw_market.info.filters, {filterType: 'LOT_SIZE'} );
                     const precision = {
-                        price: (price_filter[0].tickSize * 1),
-                        amount: (amount_filter[0].stepSize * 1)
+                        price: (price_filter[0] != undefined ? price_filter[0].tickSize * 1 : raw_market.precision.price != undefined ? raw_market.precision.price : undefined),
+                        amount: (amount_filter[0] != undefined ? amount_filter[0].stepSize * 1 : raw_market.precision.amount != undefined ? raw_market.precision.amount : undefined)
                     }
                     const raw = raw_market.info;
                     const market = new this.classes.market(id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
