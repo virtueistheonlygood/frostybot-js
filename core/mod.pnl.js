@@ -120,8 +120,23 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                         if (Array.isArray(symbols)) {
                             
-                            symbols.forEach(async(symbol) => {
+                            var total = 0;
 
+                            for (var i = 0; i < symbols.length; i++) {
+                                var symbol = symbols[i];
+
+                                params.market = symbol;
+                                var order_history = await this.order_history(user, stub, symbol, days);
+                                var qty = Array.isArray(order_history) ? order_history.length : 0;
+                                total += qty;
+
+                                if (Array.isArray(order_history)) {
+                                    order_history.forEach(order => {
+                                        this.update_order(user, stub, order);
+                                    });
+                                }
+
+                                /*
                                 var uuid = context.get('uuid');    
                                 var payload = {
                                     uuid        : uuid,
@@ -133,10 +148,18 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                                 }
     
                                 axios.post(url + '/frostybot',  payload);
-
                                 await this.utils.sleep(1);
+                                */
 
-                            })
+                            }
+
+                            var importstats = {
+                                user: user,
+                                stub: stub,
+                                total: total,
+                            }
+    
+                            this.output.debug('orders_imported', importstats);
 
                             return true;
 
@@ -149,9 +172,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                     // Symbol is defined
 
+                    /*
                     if (String(market).toUpperCase() == '<ALL>') market = undefined;
                     var order_history = await this.order_history(user, stub, market, days);
-                    var count = order_history.length;
 
                     if (Array.isArray(order_history)) {
 
@@ -177,19 +200,18 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                             if (!order.hasOwnProperty('size_usd')) order['size_usd'] = 0
                             if (!order.hasOwnProperty('filled_usd')) order['filled_usd'] = 0
 
-                            var result = await this.database.insertOrReplace('orders', order);
-                            if (result.changes > 0) {
-                                console.log('UPDATED ORDER! ' + order.orderid)
-                            }
-                            console.log(order);
+                            await this.database.insertOrReplace('orders', order);
+                
 
                         })
 
+                        return order_history.length;
+
                     }
 
-//                    console.log([user,stub,market,count].join(':'))
+                    return 0;
 
-                    return true;
+                    */
                 }
 
             }
@@ -209,9 +231,11 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         var ms = 1000 * 60 * 60 * 24 * days
          var ts = Date.now() - ms;
 
+        /*
         console.log('Duration (ms):' + ms)
         console.log('Start timestamp: ' + ts);
         console.log('End timestamp: ' + Date.now());
+        */
 
         var all_orders = {};
         var order_params = { 
@@ -267,6 +291,33 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         return Object.values(all_orders);
 
+    }
+
+
+    // Update order in the database
+
+    async update_order(user, stub, order) {
+        order.uuid = user
+        order.stub = stub
+        order.orderid = order.id
+        order.order_price = order.price
+        order.trigger_price = order.trigger
+    
+        delete order.id
+        delete order.price
+        delete order.trigger
+        delete order.datetime
+
+        var existing = await this.database.select('orders', {uuid: user, stub: stub, orderid: order.id});
+        if (Array.isArray(existing && existing.length == 1)) {                                
+            order = {...existing, ...order};
+        }
+    
+        if (!order.hasOwnProperty('size_usd')) order['size_usd'] = 0
+        if (!order.hasOwnProperty('size_usd')) order['size_usd'] = 0
+        if (!order.hasOwnProperty('filled_usd')) order['filled_usd'] = 0
+
+        await this.database.insertOrReplace('orders', order);
     }
 
 

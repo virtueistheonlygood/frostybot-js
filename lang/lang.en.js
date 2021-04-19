@@ -68,7 +68,7 @@ module.exports = {
         permission_denied:  'Execute permission denied using {0} permission set: {1} => {2}',
         cache_flush:        'Successfully flushed cache: {0} items deleted',
         cache_stats:        'Sucessfully retrieved cache stats: {0}',
-
+        orders_imported:    'Order history imported/updated: {0}',
     },
 
     notice: {
