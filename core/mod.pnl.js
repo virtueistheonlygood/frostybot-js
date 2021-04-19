@@ -116,7 +116,12 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             
                 if (exchange != false) {
 
-                    var symbols = market != undefined ? market : (exchange.orders_symbol_required ? await exchange.execute('symbols') : ['<ALL>']);
+                    if (market == undefined) {
+                        var symbols = exchange.orders_symbol_required ? await exchange.execute('symbols') : ['<ALL>'];
+                    } else {
+                        var symbols = Array.isArray(market) ? market : [market];
+                    }
+                    
 
                     if (Array.isArray(symbols)) {
                         
