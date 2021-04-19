@@ -103,28 +103,31 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         var raw_markets = results;
         this.data.markets = [];
         raw_markets
-            .filter(raw_market => raw_market.active == true && raw_market.info.type.toLowerCase() == 'perpetual')
+            .filter(raw_market => raw_market.active == true)
             .forEach(raw_market => {
-                const id = raw_market.id;
-                const symbol = raw_market.symbol;
-                const tvsymbol = 'BINANCE:' + raw_market.symbol.replace('-','').replace('/','');
-                const type = 'futures';
-                const base = raw_market.base;
-                const quote = raw_market.quote;
-                var ticker = this.data.tickers.hasOwnProperty(id) ? this.data.tickers[id] : null;
-                const bid = ticker != null ? ticker.bid : null;
-                const ask = ticker != null ? ticker.ask : null;
-                const expiration = (raw_market.expiration != null ? raw_market.expiration : null);
-                const contract_size = (raw_market.info.contractSize != null ? raw_market.info.contractSize : 1);
-                const price_filter  = this.utils.filter_objects(raw_market.info.filters, {filterType: 'PRICE_FILTER'} );
-                const amount_filter = this.utils.filter_objects(raw_market.info.filters, {filterType: 'LOT_SIZE'} );
-                const precision = {
-                    price: (price_filter[0].tickSize * 1),
-                    amount: (amount_filter[0].stepSize * 1)
+                var contracttype = String(raw_market.info.hasOwnProperty('type') ? raw_market.info.type : (raw_market.info.hasOwnProperty('contractType') ? raw_market.info.contractType : 'unknown')).toLowerCase();
+                if (contractype == 'perpetual') {
+                    const id = raw_market.id;
+                    const symbol = raw_market.symbol;
+                    const tvsymbol = 'BINANCE:' + raw_market.symbol.replace('-','').replace('/','');
+                    const type = 'futures';
+                    const base = raw_market.base;
+                    const quote = raw_market.quote;
+                    var ticker = this.data.tickers.hasOwnProperty(id) ? this.data.tickers[id] : null;
+                    const bid = ticker != null ? ticker.bid : null;
+                    const ask = ticker != null ? ticker.ask : null;
+                    const expiration = (raw_market.expiration != null ? raw_market.expiration : null);
+                    const contract_size = (raw_market.info.contractSize != null ? raw_market.info.contractSize : 1);
+                    const price_filter  = this.utils.filter_objects(raw_market.info.filters, {filterType: 'PRICE_FILTER'} );
+                    const amount_filter = this.utils.filter_objects(raw_market.info.filters, {filterType: 'LOT_SIZE'} );
+                    const precision = {
+                        price: (price_filter[0].tickSize * 1),
+                        amount: (amount_filter[0].stepSize * 1)
+                    }
+                    const raw = raw_market.info;
+                    const market = new this.classes.market(id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
+                    this.data.markets.push(market);
                 }
-                const raw = raw_market.info;
-                const market = new this.classes.market(id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
-                this.data.markets.push(market);
             });
         await this.index_markets();
         await this.update_markets_usd_price();
