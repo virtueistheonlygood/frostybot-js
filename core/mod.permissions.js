@@ -81,6 +81,22 @@ const default_perm = {
       'local'
     ]
   },
+  'gui:enable': {
+    'standard': [
+      'local'
+    ],
+    'provider': [
+      'local'
+    ]
+  },
+  'gui:disable': {
+    'standard': [
+      'local'
+    ],
+    'provider': [
+      'local'
+    ]
+  },
   'gui:chart': {
     'standard': [
       'local',
