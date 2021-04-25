@@ -2,6 +2,7 @@
 
 const frostybot_module = require('./mod.base')
 const axios = require('axios')
+var context = require('express-http-context');
 
 module.exports = class frostybot_utils_module extends frostybot_module {
 
@@ -9,6 +10,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Internal Shared Library'
     }
 
     // Check if value is JSON
@@ -169,7 +171,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
 
     async encrypt_values(obj, filter = null, uuid = null) {
         return await this.walk_values_async(obj, filter, async function(val) {
-            return await global.frostybot._modules_['encryption'].encrypt(val, uuid);
+            return await global.frostybot.modules['encryption'].encrypt(val, uuid);
         }); 
     }
 
@@ -180,7 +182,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
 
     async decrypt_values(obj, filter = null, uuid = null) {
         return await this.walk_values_async(obj, filter, async function(val) {
-            return await global.frostybot._modules_['encryption'].decrypt(val, uuid);
+            return await global.frostybot.modules['encryption'].decrypt(val, uuid);
         }); 
     }
 
@@ -462,7 +464,8 @@ module.exports = class frostybot_utils_module extends frostybot_module {
     // Get currently running module and method
     
     get_current_command() {
-        return global.frostybot.command.module + ':' + global.frostybot.command.method;
+        var cmd = context.get('command');
+        return cmd;
     }
 
     // Sleep function
@@ -474,7 +477,7 @@ module.exports = class frostybot_utils_module extends frostybot_module {
     // Loopback Function Call
 
     async loopback(command, params, callback) {
-        var url = await global.frostybot._modules_['core'].url();
+        var url = await global.frostybot.modules['core'].url();
         var cmd = { ...{command: command}, ...params};
         var token = this.mod.encryption.new_uuid();
         if (!global.frostybot.hasOwnProperty('_loopbacktokens_')) global.frostybot['_loopbacktokens_'] = [];
@@ -485,6 +488,34 @@ module.exports = class frostybot_utils_module extends frostybot_module {
         });
     }
 
+    // Get class of an object
+
+    get_object_class(obj){
+        if ([null,undefined].includes(obj)) {
+            return null;
+        }
+        var objtype = typeof(obj);
+        if (objtype == 'boolean') {
+            return 'boolean';
+        } else {
+            if (objtype == 'object') {
+                return obj.constructor.name;
+            }
+            if (objtype != 'undefined') {
+                return objtype;
+            } else {
+                if (obj && obj.constructor && obj.constructor.toString) {
+                    var arr = obj.constructor.toString().match(
+                        /function\s*(\w+)/);
+                    if (arr && arr.length == 2) {
+                        return arr[1];
+                    }
+                }
+            }
+        }
+        return undefined;
+    }
+        
     // Method parameter validator
 
     validator(params, schema) {

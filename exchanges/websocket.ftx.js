@@ -1,202 +1,78 @@
-// FTX Websocket Normalizer
+// Frostybot Websocket interface for FTX
 
-const frostybot_websocket = require ('./websocket.base');
+const axios = require('axios'); 
 
-class frostybot_websocket_client_ftx extends frostybot_websocket.client {
-  constructor (conf = {}) {
-    conf.url = 'wss://ftx.com/ws/';
-    super (conf);
-  }
+const frostybot_websocket_base = require('./websocket.base');
 
-  // Authenticate websocket client
+class frostybot_websocket_ftx extends frostybot_websocket_base {
 
-  async authenticate () {
-    if (!this.connected) {
-      await this.connect ();
+    // Constructor
+
+    constructor() {
+        super('ftx', 'wss://ftx.com/ws/')
     }
 
-    const date = +new Date ();
-    const crypto = require ('crypto');
-    const signature = crypto
-      .createHmac ('sha256', this.secret)
-      .update (date + 'websocket_login')
-      .digest ('hex');
+    // Connected handler
+    
+    async onconnected() {
+        axios.get('https://ftx.com/api/markets')
+        .then((response) => {
+            var result = response.data;
+            if (result.success == true) {
+                let markets = result.result;
+                markets.forEach(market => {
+                    if (market.enabled == true) {
+                        let symbol = market.name;
+                        let bid = market.bid;
+                        let ask = market.ask;
+                        this.updateticker(symbol, bid, ask)
+                        this.send({op: 'subscribe', channel: 'ticker', market: symbol});
+                    }
+                });
 
-    const message = {
-      op: 'login',
-      args: {
-        key: this.apikey,
-        sign: signature,
-        time: date,
-        subaccount: this.subaccount,
-      },
-    };
-    this.sendMessage (message);
-
-    this.authenticated = true;
-  }
-
-  // Subscribe to channel
-
-  _subscribe (sub) {
-    sub.done = new Promise (r => (sub.doneHook = r));
-
-    const message = {
-      op: 'subscribe',
-      //market: (sub.market != null ? sub.market : undefined),
-      channel: sub.channel,
-    };
-
-    if (sub.market != null) {
-      message.market = sub.market
+            }
+        });
     }
 
-    this.sendMessage (message);
-  }
+    // Send message
 
-  // Unsubscribe from channel
-
-  _unsubscribe (sub) {
-    sub.done = new Promise (r => (sub.doneHook = r));
-
-    const message = {
-      op: 'unsubscribe',
-      //market: (sub.market != null ? sub.market : undefined),
-      channel: sub.channel,
-    };
-
-    if (sub.market != null) {
-      message.market = sub.market
+    send(data) {
+        try {
+            this.ws.send(JSON.stringify(data));
+        } catch (e) {
+            this.error(e);
+        }
     }
 
-    this.sendMessage (message);
-  }
+    // Message handler
 
+    onmessage(data) {
+        var message = JSON.parse(data)
+        var type = message.type
+        var channel = message.channel
+        switch (type) {
+            case    'update'    :   if (channel == 'ticker') {
+                                        var symbol = message.market;
+                                        var bid = message.data.bid;
+                                        var ask = message.data.ask;
+                                        this.updateticker(symbol, bid, ask)                                        
+                                    };
+                                    break;
+            case    'pong'      :   this.lastpong = (new Date()).getTime();
+                                    //this.logger('notice', 'Pong received')
+                                    break;
+        }
+    }
 
+    // Heartbeat handler
+
+    onheartbeat() {
+        if (this.connected) {
+            //this.logger('notice', 'Ping sent')
+            this.send({op: 'ping'})
+        }
+    }
+    
 }
 
-module.exports = class frostybot_websocket_ftx extends frostybot_websocket.base {
-
-  constructor (stub, account) {
-    super (stub, account);
-    this.ticker = {};
-    this.ws = new frostybot_websocket_client_ftx ({
-      exchange: 'ftx',
-      stub: stub,
-      apikey: this.apikey,
-      secret: this.secret,
-      subaccount: this.subaccount != null ? this.subaccount : undefined,
-    });
-  }
-
-  parse_channel_trades (message) {
-    var results = [];
-    if (message.type == 'update') {
-      for (var i = 0; i < message.data.length; i++) {
-        var trade = message.data[i];
-        const exchange = message.frostybot.exchange;
-        const stub = message.frostybot.stub;
-        const timestamp = new Date (trade.time).valueOf ();
-        const symbol = message.market;
-        const side = trade.side;
-        const base = trade.size;
-        const quote = trade.size * trade.price;
-        const price = trade.price;
-        results.push (
-          new this.classes.websocket_trade (
-            exchange,
-            stub,
-            timestamp,
-            symbol,
-            side,
-            base,
-            quote,
-            price
-          )
-        );
-      }
-    }
-    return results;
-  }
-
-  parse_channel_ticker (message) {
-    var results = [];
-    if (message.type == 'update') {
-      var ticker = message.data;
-      const exchange = message.frostybot.exchange;
-      const stub = message.frostybot.stub;
-      const timestamp = Math.floor(ticker.time * 1000);
-      const symbol = message.market;
-      const bid = ticker.bid;
-      const ask = ticker.ask;
-      if (!this.ticker.hasOwnProperty(symbol)) {
-        this.ticker[symbol] = { bid: null, ask: null}
-      }
-      if ((bid != this.ticker[symbol].bid) || (ask != this.ticker[symbol].ask)) {
-        var tickerObj = new this.classes.websocket_ticker (
-            exchange,
-            stub,
-            timestamp,
-            symbol,
-            bid,
-            ask,
-        );
-        results.push(tickerObj)
-        this.ticker[symbol] = tickerObj;
-      }
-    }
-    return results;
-  }
-
-  parse_channel_orders (message) {
-    var results = [];
-    if (message.type == 'update') {
-      var order = message.data;
-      const exchange = message.frostybot.exchange;
-      const stub = message.frostybot.stub;
-      const symbol = order.market;
-      const id = order.id;
-      const timestamp = + new Date()
-      const type = order.type;
-      const direction = order.side;
-      const price = order.price;
-      const trigger = null;
-      const size_base = order.size;
-      const size_quote = order.size * order.price;
-      const filled_base = order.filledSize;
-      const filled_quote = order.filledSize * order.avgFillPrice;
-      const status = order.status;
-      results.push (
-        new this.classes.websocket_order (
-          exchange,
-          stub,
-          symbol,
-          id,
-          timestamp,
-          type,
-          direction,
-          price,
-          trigger,
-          size_base,
-          size_quote,
-          filled_base,
-          filled_quote,
-          status,
-          order
-        )
-      );
-    }
-    return results;
-  }
-
-  parse (message) {
-    switch (message.channel) {
-      case     'trades' : var results = this.parse_channel_trades (message); break;
-      case     'ticker' : var results = this.parse_channel_ticker (message); break;
-      case     'orders' : var results = this.parse_channel_orders (message); break;
-      default           : var results = [];
-      //default           : var results = [JSON.stringify (message)];
-    }
-    return results;
-  }
-};
+module.exports = new frostybot_websocket_ftx();

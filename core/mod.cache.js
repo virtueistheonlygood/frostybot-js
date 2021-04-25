@@ -12,6 +12,30 @@ module.exports = class frostybot_cache_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Cache Handler'
+    }
+
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': ['local'],
+            'provider': ['local'],
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'cache:flush':  'delete|/cache/flush',      // Flush the cache
+            'cache:stats':  'get|/cache/stats',         // Get cache hit statistics
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+        
     }
 
     // Set an item in cache

@@ -18,7 +18,7 @@ module.exports = class frostybot_core_test {
         // Load and link modules
 
         global.frostybot = {
-            _modules_  : {},
+            modules  : {},
             settings   : {},
             command    : 'test',
             method     : 'run'
@@ -32,10 +32,10 @@ module.exports = class frostybot_core_test {
             var dbcfg = JSON.parse(dbcfgjson);
             var dbtype = (dbcfg.hasOwnProperty('type') ? dbcfg.type : 'sqlite').toLowerCase();
             if (!global.hasOwnProperty('frostybot')) global.frostybot = {}
-            if (!global.frostybot.hasOwnProperty('_modules_')) global.frostybot._modules_ = {}
+            if (!global.frostybot.hasOwnProperty('modules')) global.frostybot.modules = {}
             var mod = require(dir + '/core/core.database.' + dbtype)
             var obj = (typeof(mod) == 'function') ? new mod() : mod
-            global.frostybot._modules_['database'] = obj
+            global.frostybot.modules['database'] = obj
 
         }
 
@@ -44,23 +44,23 @@ module.exports = class frostybot_core_test {
                 var module = file.split('.')[1];
                 var mod = require('../core/mod.' + module)
                 var obj = (typeof(mod) == 'function') ? new mod() : mod
-                global.frostybot._modules_[module] = obj    
+                global.frostybot.modules[module] = obj    
             }
         });
 
-        var modules = Object.keys(global.frostybot._modules_);
+        var modules = Object.keys(global.frostybot.modules);
 
         modules.forEach(module => {
-            if (typeof(global.frostybot._modules_[module]['module_maps']) == 'function') {
-                global.frostybot._modules_[module].module_maps()
+            if (typeof(global.frostybot.modules[module]['module_maps']) == 'function') {
+                global.frostybot.modules[module].module_maps()
             }
         })
 
         modules.forEach(module => {
-            if (typeof(global.frostybot._modules_[module]['initialize']) == 'function') {
-                global.frostybot._modules_[module].initialize('test');
+            if (typeof(global.frostybot.modules[module]['initialize']) == 'function') {
+                global.frostybot.modules[module].initialize('test');
             }
-            this[module] = global.frostybot._modules_[module];
+            this[module] = global.frostybot.modules[module];
         })
 
     }

@@ -1,14 +1,19 @@
 frostybot_exchange_base = require('./exchange.base');
 
-module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
+module.exports = class frostybot_exchange_ftxus extends frostybot_exchange_base {
 
     // Class constructor
 
     constructor(stub = undefined) {
-        super(stub);        
+        super(stub);
+    }
+
+    // Initialize exchange
+
+    async initialize() {
         this.ccxtmodule = 'ftx'              // CCXT module to use
-        this.shortname = 'ftx'               // Abbreviated name for this exchange
-        this.description = 'FTX'             // Full name for this exchange
+        this.shortname = 'ftxus'             // Abbreviated name for this exchange
+        this.description = 'FTX US'          // Full name for this exchange
         this.has_subaccounts = true          // Subaccounts supported?
         this.has_testnet = false             // Test supported?
         this.stablecoins = ['USD', 'USDT'];  // Stablecoins supported on this exchange
@@ -38,7 +43,18 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
 
     ccxtparams() {
         var params = {
-            hostname: 'ftx.com',
+            hostname: 'ftx.us',
+            urls: {
+                logo: 'https://user-images.githubusercontent.com/1294454/67149189-df896480-f2b0-11e9-8816-41593e17f9ec.jpg',
+                www: 'https://ftx.com',
+                api: {
+                    public: 'https://{hostname}',
+                    private: 'https://{hostname}',
+                },
+                doc: 'https://github.com/ftexchange/ftx',
+                fees: 'https://ftexchange.zendesk.com/hc/en-us/articles/360024479432-Fees',
+                referral: 'https://ftx.com/#a=1623029',
+            }    
         }
 
         if (this.stub != undefined) {
@@ -54,7 +70,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
                 params['urls'] = urls;
                 if (urls.hasOwnProperty('test')) params.urls.api = urls.test;
             }*/
-            if (stub.parameters.subaccount != undefined) params['headers'] = { 'FTX-SUBACCOUNT': stub.parameters.subaccount };
+            if (stub.parameters.subaccount != undefined) params['headers'] = { 'FTXUS-SUBACCOUNT': stub.parameters.subaccount };
         }
         return ['ftx', params];
 
@@ -62,8 +78,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
 
     // Custom params
 
-    custom_params(params) {
-        var [type, order_params, custom_params] = params
+    custom_params(type, order_params, custom_params) {
         if (order_params.type == 'trailingStop') {
             order_params.params['trailValue'] = order_params.params.triggerPrice;
             delete order_params.params.triggerPrice;
@@ -72,11 +87,18 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
     }    
 
     
+    // Get available equity in USD for placing an order on a specific symbol using size as a factor of equity (size=1x)
+
+    async available_equity_usd(symbol) {
+        return await this.total_balance_usd();
+    }
+
     // Get list of current positions
 
     async positions() { 
         let results = await this.execute('private_get_positions', {showAvgPrice: true});
         var raw_positions = results.result;
+        await this.markets();
         // Get futures positions
         var positions = []; 
         if (this.mod.utils.is_array(raw_positions)) {
@@ -84,13 +106,13 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
             .filter(raw_position => raw_position.size != 0)
             .forEach(async raw_position => {
                 const symbol = raw_position.future;
+                const market = await this.get_market_by_symbol(symbol);
                 const direction = (raw_position.side == 'buy' ? 'long' : 'short');
-                const base_size = parseFloat(raw_position.size);
-                const entry_price = parseFloat(raw_position.recentAverageOpenPrice);
-                const liquidation_price = parseFloat(raw_position.estimatedLiquidationPrice);
+                const base_size = raw_position.size;
+                const entry_price = raw_position.recentAverageOpenPrice;
+                const liquidation_price = raw_position.estimatedLiquidationPrice;
                 const raw = raw_position;
-                const position = new this.classes.position_futures(this.stub.uuid, this.stub.stub, 'ftx', symbol, direction, base_size, null, entry_price, liquidation_price, raw);
-                await position.update();
+                const position = new this.classes.position_futures(market, direction, base_size, null, entry_price, liquidation_price, raw);
                 positions.push(position)
             })
         }
@@ -100,12 +122,11 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
             balances.forEach(async (balance) => {
                 if (!this.stablecoins.includes(balance.currency)) {
                     const symbol = balance.currency + '/' + stablecoin;
-                    const market = await this.mod.exchange.market('ftx', symbol);
+                    const market = await this.get_market_by_symbol(symbol);
                     if (market != null) {
                         const direction = 'long';
-                        const base_size = parseFloat(balance.base.total);
-                        const position = new this.classes.position_spot(this.stub.uuid, this.stub.stub, 'ftx', symbol, direction, base_size);
-                        await position.update();
+                        const base_size = balance.base.total;
+                        const position = new this.classes.position_spot(market, direction, base_size);
                         positions.push(position)
                     }
                 }
@@ -118,8 +139,17 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
     // Get list of markets from exchange
 
     async markets() {
-        let results = [];
-        var raw_markets = await this.execute('fetch_markets');;
+        var cached = this.mod.exchange.markets({exchange: 'ftxus'})
+        if (this.mod.utils.is_array(cached)) {
+            this.data.markets = cached;
+            return cached;
+        }
+        if (this.data.markets != null) {
+            return this.data.markets;
+        }
+        let results = await this.execute('fetch_markets');
+        var raw_markets = results;
+        this.data.markets = [];
         var exchange = (this.shortname != undefined ? this.shortname : (this.constructor.name).split('_').slice(2).join('_'));
         if (this.mod.utils.is_array(raw_markets))
             raw_markets
@@ -138,9 +168,11 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
                 const raw = raw_market.info;
                 const tvsymbol = 'FTX:' + symbol.replace('-','').replace('/','');
                 const market = new this.classes.market(exchange, id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
-                results.push(market);
+                this.data.markets.push(market);
             });
-        return results;
+        await this.index_markets();
+        await this.update_markets_usd_price();
+        return this.data.markets;
     }
 
 
@@ -203,14 +235,17 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
             return order;
         }
         const symbol = order.symbol;
+        const market = this.data.markets_by_symbol[symbol];
         const id = order.id;
         const timestamp = order.timestamp;
         const direction = order.side;
         const trigger = (order.info.trailValue != undefined ? order.info.trailValue : (order.info.triggerPrice != undefined ? order.info.triggerPrice : null));
-        //const market_price = (direction == 'buy' ? market.ask : market.bid);
-        const price = (order.info.orderPrice != null ? order.info.orderPrice : (order.price != null ? order.price : (trigger != null ? trigger : null)));
-        const size = order.amount;
-        const filled = order.filled;
+        const market_price = (direction == 'buy' ? market.ask : market.bid);
+        const price = (order.info.orderPrice != null ? order.info.orderPrice : (order.price != null ? order.price : (trigger != null ? trigger : (type == 'market' ? market_price : null))));
+        const size_base = order.amount;
+        const size_quote = order.amount * price;
+        const filled_base = order.filled;
+        const filled_quote = order.filled * price;
         var type = order.type.toLowerCase();
         switch (type) {
             case 'stop'          :  type = (price != trigger ? 'stop_limit' : 'stop_market');
@@ -220,7 +255,7 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
         }
         const status = order.status.replace('canceled', 'cancelled');   // Fix spelling error
         const raw = order.info;
-        return new this.classes.order(this.stub.uuid, this.stub.stub, 'ftx', symbol, id, timestamp, type, direction, price, trigger, size, filled, status, raw);
+        return new this.classes.order(market, id, timestamp, type, direction, price, trigger, size_base, size_quote, filled_base, filled_quote, status, raw);
     }
 
 

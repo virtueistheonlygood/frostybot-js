@@ -12,6 +12,35 @@ module.exports = class frostybot_settings_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Configuration Module (System-Level)'
+    }
+
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': ['local' ],
+            'provider': ['local' ]
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'settings:get': [
+                                'get|/settings/:mainkey',            // Retrieve all settings for a main key (this should not be used by normal users, use config:get instead)
+                                'get|/settings/:mainkey/:subkey',    // Retrieve all settings for a subkey of a mainkey (this should not be used by normal users, use config:get instead)
+                            ],
+            'settings:set': [
+                                'post|/settings/:mainkey/:subkey',   // Set a specific setting (this should not be used by normal users, use config:set instead)
+                            ],
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+    
     }
 
     // Get settings(s)

@@ -11,11 +11,62 @@ module.exports = class frostybot_user_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'User Management Module'
     }
 
-    // Initialize
+    // Register methods with the API (called by init_all() in core.loader.js)
 
-    async initialize() {
+    register_api_endpoints() {
+
+        // Permission templates for reuse
+        var templates = {
+            'localonly': { 'standard': ['local' ], 'provider': ['local' ]  },
+            'tokenonly': { 'standard': ['token'],  'provider': ['token']   },
+            'normal':    { 'standard': ['core,singleuser','multiuser,user','token'], 'provider': ['token'] },
+            'any':       { 'standard': ['any'], 'provider': ['any'] }
+        }
+
+        // Method permissions 
+
+        var permissions = {
+            'user:multiuser_enable':    templates.localonly,
+            'user:multiuser_disable':   templates.localonly,
+            'user:enable_2fa':          templates.tokenonly,
+            'user:disable_2fa':         templates.tokenonly,
+            'user:verify_2fa':          templates.tokenonly,
+            'user:register':            templates.any,
+            'user:login':               templates.any,
+            'user:logout':              templates.tokenonly,
+            'user:add':                 templates.localonly,
+            'user:delete':              templates.localonly,
+            'user:change_password':     templates.tokenonly,
+            'user:reset':               templates.localonly,
+            'user:log':                 templates.normal,
+        }
+
+
+        // API method to endpoint mappings
+        var api = {
+            'user:multiuser_enable':    'post|/user/multiuser/enable',  // Enable multiuser mode (for hosted solutions)
+            'user:multiuser_disable':   'post|/user/multiuser/disable', // Disable multiuser mode 
+            'user:enable_2fa':          'post|/user/:uuid/2fa/enable',  // Enable 2FA for a specific user (GUI)
+            'user:disable_2fa':         'post|/user/:uuid/2fa/disable', // Disble 2FA for a specific user (GUI)
+            'user:verify_2fa':          'post|/user/:uuid/2fa/verify',  // Verify 2FA for a specific user (GUI)
+            'user:register':            'post|/user/register',          // New user registration (GUI)
+            'user:login':               'post|/user/login',             // User Login (GUI)
+            'user:logout':              'post|/user/logout',            // User Logout (GUI)
+            'user:add':                 'post|/user',                   // Add new user (Non-GUI)
+            'user:delete':              'delete|/user/:uuid',           // Delete user (Non-GUI)
+            'user:change_password':     'post|/user/:uuid/password',    // User Password Change (GUI)
+            'user:reset':               'post|/user/:uuid/reset',       // User Password Reset (Non-GUI)
+            'user:log':                 'post|/user/:uuid/log',         // Retrieve user logs
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions[method]); // Defined in mod.base.js
+        }
+        
     }
 
     // Check if any users have been created yet

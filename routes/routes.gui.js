@@ -17,7 +17,7 @@ Object.keys(api).forEach(baseapi => {
         
         router[method](route, async function(req, res, next) {            
 
-            const core = global.frostybot._modules_.core
+            const core = global.frostybot.modules.core
 
             const routeparts = req.route.path.split('/')
             const baseapi = '/' + routeparts[1]
@@ -47,7 +47,7 @@ Object.keys(api).forEach(baseapi => {
 
             // Get Remote Address 
 
-            var ip = global.frostybot._modules_['core'].remote_ip(req);
+            var ip = global.frostybot.modules['core'].remote_ip(req);
 
             var uuid = params.hasOwnProperty('uuid') ? params.uuid : (params.hasOwnProperty('body') && params.body.hasOwnProperty('uuid') ? params.body.uuid : null);
             var token = params.hasOwnProperty('token') ? params.token : (params.hasOwnProperty('body') && params.body.hasOwnProperty('token') ? params.body.token : null);

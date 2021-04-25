@@ -8,7 +8,54 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Web GUI Module'
     }
+
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permission templates for reuse
+        var templates = {
+            'localonly':  { 'standard': ['local' ], 'provider': ['local' ]  },
+            'tokenonly':  { 'standard': ['token'],  'provider': ['token']   },
+            'tokenorany': { 'standard': ['any','token'],  'provider': ['any','token'] },
+            'any':        { 'standard': ['any'], 'provider': ['any'] }
+        }
+
+        // Method permissions 
+
+        var permissions = {
+            'gui:enable':   templates.localonly,
+            'gui:disable':   templates.localonly,
+            'gui:main':   templates.any,
+            'gui:register':   templates.any,
+            'gui:login':   templates.any,
+            'gui:verify_recaptcha':   templates.localonly,
+            'gui:content':   templates.tokenorany,
+            'gui:data':   templates.tokenonly,
+            'gui:chart':   templates.any,
+        }
+
+        // API method to endpoint mappings (Webhooks only, no REST endpoints)
+        var api = {
+            'gui:enable':   [],         // Enable GUI (Webhook only, no REST)
+            'gui:disable':  [],         // Disable GUI (Webhook only, no REST)
+            'gui:main':     [],         // Main GUI Container (Webhook only, no REST)
+            'gui:register': [],         // Registration Page (Webhook only, no REST)
+            'gui:login':    [],         // Login Page 
+            'gui:verify_recaptcha': [], // Verify Google Recaptcha3
+            'gui:content':  [],         // Get GUI Content
+            'gui:data':     [],         // Get GUI Data
+            'gui:chart':    ['get|/chart/:symbol'], // Get TradingView Chart embed for Symbol
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions[method]); // Defined in mod.base.js
+        }
+        
+    }    
 
     // Enable GUI
 
@@ -286,17 +333,9 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var config = {}
         if (params.hasOwnProperty('stub')) {
             var stub = params.stub;
-            var shortname = await this.mod.accounts.get_shortname_from_stub(stub);
-            var classes = require('./core.classes');
-            var exchange = new classes.exchange(stub);
-            var markets = await exchange.execute(stub, 'markets');
-            if (this.mod.utils.is_array(markets)) {
-                var symbols = [];
-                markets.forEach(market => {
-                    symbols.push(market.symbol);
-                });
-                symbols = symbols.sort();
-            }
+            var exchange = await this.mod.exchange.get_exchange_from_stub(stub);
+            var markets = global.frostybot.markets[exchange];
+            var symbols = markets != undefined ? Object.keys(markets).sort() : [];
             var allconfig = await this.mod.config.getall();
             if ([null, undefined].includes(allconfig)) allconfig = {};
             const stubconfig = Object.keys(allconfig)
@@ -380,9 +419,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
     async data_griddata_balances(params) {
         var stub = params.stub;
-        var classes = require('./core.classes');
-        var exchange = new classes.exchange(stub);
-        var balances = await exchange.execute(stub, 'balances');
+        var balances = await this.mod.exchange.balances(stub);
         var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
         for (var i =0; i < balances.length; i++) {
             var balance = balances[i];
@@ -405,9 +442,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         var stub = params.stub;
         var showspot = params.hasOwnProperty('showspot') ? params.showspot : 'false';
         this.mod.config.set({'gui:showspotpositions': showspot});
-        var classes = require('./core.classes');
-        var exchange = new classes.exchange(stub);
-        var positions = await exchange.execute(stub, 'positions');
+        var positions = await this.mod.exchange.positions(stub);
         var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1);
         if (String(showspot) == 'false') {
             positions = positions.filter(position => position.type.toLowerCase() != "spot");

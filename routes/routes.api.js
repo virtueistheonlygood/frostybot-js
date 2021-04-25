@@ -1,7 +1,6 @@
 var express = require('express');
 var router = express.Router();
-const api = require('../core/core.api');
-const fs = require('fs'); 
+const api = global.frostybot.api;
 
 // Create routes
 
@@ -14,17 +13,17 @@ Object.keys(api).forEach(baseapi => {
         var [method, route] = routeinfo.split('|')
 
         //route = baseapi + route
-        
+
         router[method](route, async function(req, res, next) {            
 
-            const core = global.frostybot._modules_.core
+            const core = global.frostybot.modules.core
 
             const routeparts = req.route.path.split('/')
             const baseapi = '/' + routeparts[1]
             const route = '/' + routeparts.slice(1).join('/')
-
-            const api = require('../core/core.api');
+            const api = global.frostybot.api
             var baseapis = Object.keys(route);
+
             for (var i =0; i < baseapis.count; i++) {
                 const routes = api.hasOwnProperty(baseapi) ? api[baseapi] : null
                 if (routes != null) break;
@@ -32,7 +31,10 @@ Object.keys(api).forEach(baseapi => {
             const routeinfo = [req.method.toLowerCase(), route].join('|')
 
             if (routes.hasOwnProperty(routeinfo)) {
-                var command = {command: routes[routeinfo]}
+
+                var command =  {command: routes[routeinfo]};
+                var checkperms = routes[routeinfo];
+        
             }
 
             if (req.rawBody !== undefined) {
@@ -47,11 +49,11 @@ Object.keys(api).forEach(baseapi => {
             
             // Get Remote Address 
 
-            var ip = await global.frostybot._modules_['core'].remote_ip(req);
+            var ip = await global.frostybot.modules['core'].remote_ip(req);
 
             var uuid = params.hasOwnProperty('uuid') ? params.uuid : (params.hasOwnProperty('body') && params.body.hasOwnProperty('uuid') ? params.body.uuid : null);
             var token = params.hasOwnProperty('token') ? params.token : (params.hasOwnProperty('body') && params.body.hasOwnProperty('token') ? params.body.token : null);
-            if (command.command == 'output:status') {
+            if (command.command == 'status:up') {
                 res.sendStatus(200);           // HTTP 200 (Health Check)
             } else {
                 if (await core.verify_access(ip, uuid, token, params)) {

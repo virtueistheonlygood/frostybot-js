@@ -4,8 +4,18 @@ module.exports = class frostybot_exchange_bitmex extends frostybot_exchange_base
 
     // Class constructor
 
-    constructor(stub, uuid) {
-        super(stub, uuid);
+    constructor(stub = undefined) {
+        super(stub);
+    }
+
+    // Initialize exchange
+
+    async initialize() {
+        this.ccxtmodule = 'bitmex'            // CCXT module to use
+        this.shortname = 'bitmex'             // Abbreviated name for this exchange
+        this.description = 'Bitmex'           // Full name for this exchange
+        this.has_subaccounts = false          // Subaccounts supported?
+        this.has_testnet = true               // Test supported?
         this.stablecoins = ['USD', 'USDT'];   // Stablecoins supported on this exchange
         this.order_sizing = 'quote';          // Exchange requires base size for orders
         this.collateral_assets = ['XBT'];     // Assets that are used for collateral
@@ -24,6 +34,27 @@ module.exports = class frostybot_exchange_bitmex extends frostybot_exchange_base
             'index' : 'IndexPrice'
         }
     }
+
+    ccxtparams() {
+        var params = {
+        }
+
+        if (this.stub != undefined) {
+            var stub = this.stub;
+            params['apiKey'] = stub.parameters.apikey;
+            params['secret'] = stub.parameters.secret;
+            if (String(stub.parameters.testnet) == 'true') {
+                const ccxtlib = require ('ccxt');
+                const testclass = ccxtlib['bitmex'];
+                var testobj = new testclass ();
+                var urls = testobj.urls != undefined ? testobj.urls : {};
+                params['urls'] = urls;
+                if (urls.hasOwnProperty('test')) params.urls.api = urls.test;
+            }
+        }
+        return ['bitmex', params];
+
+    }    
 
     // Get order parameters
 
@@ -53,7 +84,6 @@ module.exports = class frostybot_exchange_bitmex extends frostybot_exchange_base
     // Get list of current positions
 
     async positions() { 
-        this.set_cache_time('private_get_position', 5);    
         let results = await this.ccxt('private_get_position');
         var raw_positions = results;
         await this.markets();
@@ -80,13 +110,20 @@ module.exports = class frostybot_exchange_bitmex extends frostybot_exchange_base
     // Get list of markets from exchange
 
     async markets() {
+        var cached = this.mod.exchange.markets({exchange: 'bitmex'})
+        if (this.mod.utils.is_array(cached)) {
+            this.data.markets = cached;
+            return cached;
+        }
         if (this.data.markets != null) {
             return this.data.markets;
         }
-        let results = await this.ccxt('fetch_markets');
+        let results = await this.execute('fetch_markets');
         var raw_markets = this.mod.utils.is_array(results) ? results : [];
         this.data.markets = [];
-        raw_markets
+        var exchange = (this.shortname != undefined ? this.shortname : (this.constructor.name).split('_').slice(2).join('_'));
+        if (this.mod.utils.is_array(raw_markets))
+            raw_markets
             .filter(raw_market => raw_market.active == true)
             //.filter(raw_market => raw_market.info.typ == 'FFWCSX')
             .forEach(raw_market => {
@@ -102,7 +139,7 @@ module.exports = class frostybot_exchange_bitmex extends frostybot_exchange_base
                 const contract_size = (raw_market.info.contractSize != null ? raw_market.info.contractSize : 1);
                 const precision = raw_market.precision;
                 const raw = raw_market.info;
-                const market = new this.classes.market(id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
+                const market = new this.classes.market(exchange, id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
                 this.data.markets.push(market);
             });
         await this.index_markets();

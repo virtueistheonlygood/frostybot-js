@@ -3,714 +3,44 @@
 const frostybot_module = require('./mod.base')
 var context = require('express-http-context');
 
-// Permission defaults
-
-const default_perm = {
-  'accounts:add': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'accounts:delete': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'accounts:get': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user'
-    ],
-    'provider': []
-  },
-  'accounts:test': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'cache:flush': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'cache:stats': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'config:get': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token',
-      'local'
-    ]
-  },
-  'config:set': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token',
-      'local'
-    ]
-  },
-  'gui:chart': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'gui:content': {
-    'standard': [
-      'token',
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'token',
-      'local',
-      'remote'
-    ]
-  },
-  'gui:data': {
-    'standard': [
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'gui:login': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'gui:main': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'gui:register': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'gui:verify_recaptcha': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'output:status': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'output:node_info': {
-    'standard': [
-      'local',
-      'loopback'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'permissions:add': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'permissions:delete': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'permissions:get': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'permissions:set_type': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'permissions:reset': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'permissions:set': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'pnl:get_data': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'token'
-    ]
-  },  
-  'pnl:import_orders': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'settings:set': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:add_admin': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:add_exchange': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:add_ip': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:add_provider': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:get_providers': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:send': {
-    'standard': [
-      'providerwhitelist'
-    ],
-    'provider': [
-      'providerwhitelist'
-    ]
-  },
-  'signals:remove_admin': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:remove_exchange': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'signals:remove_ip': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'symbolmap:add': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'symbolmap:delete': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'symbolmap:get': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'trade:balances': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'trade:buy': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:cancel': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:cancelall': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:close': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'token',
-      'loopback'
-    ]
-  },
-  'trade:closeall': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'token',
-      'loopback'
-    ]
-  },
-  'trade:leverage': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'trade:long': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:market': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:markets': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:order': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:order_history': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:orders': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:pnl': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:position': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:positions': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': []
-  },
-  'trade:sell': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:short': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:stoploss': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:takeprofit': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:tpsl': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'trade:trailstop': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'local',
-      'loopback'
-    ]
-  },
-  'user:add': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'user:change_password': {
-    'standard': [
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'user:delete': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'user:disable_2fa': {
-    'standard': [
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'user:enable_2fa': {
-    'standard': [
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'user:log': {
-    'standard': [
-      'core,singleuser',
-      'multiuser,user',
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'user:login': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'user:logout': {
-    'standard': [
-      'token'
-    ],
-    'provider': [
-      'token'
-    ]
-  },
-  'user:multiuser_disable': {
-    'standard': [
-      'local'
-    ],
-    'provider': []
-  },
-  'user:multiuser_enable': {
-    'standard': [
-      'local'
-    ],
-    'provider': []
-  },
-  'user:register': {
-    'standard': [
-      'local',
-      'remote'
-    ],
-    'provider': [
-      'local',
-      'remote'
-    ]
-  },
-  'user:reset': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'whitelist:add': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'whitelist:delete': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'whitelist:disable': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'whitelist:enable': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'whitelist:get': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  },
-  'whitelist:verify': {
-    'standard': [
-      'local'
-    ],
-    'provider': [
-      'local'
-    ]
-  }
-}
-
 // Module
 
 module.exports = class frostybot_permissions_module extends frostybot_module {
+
+      constructor() {
+        super()
+        this.description = 'Security and Permissions Handler'
+      }
+
+      // Register methods with the API (called by init_all() in core.loader.js)
+
+      register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': ['local' ],
+            'provider': ['local' ]
+          }
+
+        // API method to endpoint mappings
+        var api = {
+            'permissions:get':  [
+                                    'get|/permissions',              // Retrieve all configured permissions
+                                    'get|/permissions/:cmd',         // Retrieve permissions for a specific command
+                                    'get|/permissions/:cmd/:type',   // Retrieve permissions for a specific command and permission set
+                                ],
+            'permissions:add':      'post|/permissions/:cmd/:type',   // Add permissions for a specific command and permission set
+            'permissions:delete':   'delete|/permissions/:cmd/:type', // Remove permissions for a specific command and permission set
+            'permissions:reset':    'delete|/permissions',           // Reset all permissions back to default
+            'permissions:set_type': 'post|/permissions/type',        // Set the permission set that is being uysed by the instance (standard / provider)
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+        
+    }
 
     // Check permissions for the command for the specified lockdown type
 
@@ -722,6 +52,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         var acl = {};
         //acl['ip'] = ip;
         
+        acl['any'] = true;
         var uuidparams = await this.mod.user.uuid_from_params(params);
         if (uuidparams != false) {
             acl['core']  = uuidparams.type == 'core'  ? true : false;
@@ -752,10 +83,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
           }
         }
    
-        var def = default_perm.hasOwnProperty(command) ? default_perm[command] : {
-            standard: [],    
-            provider: []     
-        }
+        var def = global.frostybot.commands[command].permissions;
         var permissions = await this.mod.settings.get('permissions', command, def);
         var perms = [];
         if (permissions.hasOwnProperty(type))
@@ -792,7 +120,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
 
         var schema = {
             type:  { optional: 'string', format: 'lowercase' },
-            cmd:   { options: 'string', format: 'lowercase' },
+            cmd:   { optional: 'string', format: 'lowercase' },
         }
 
         if (!(params = this.mod.utils.validator(params, schema))) return false; 
@@ -834,10 +162,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var [type, command, perms] = this.mod.utils.extract_props(params, ['type', 'cmd', 'perms']);   
-        var def = default_perm.hasOwnProperty(command) ? default_perm[command] : {
-            standard: [],    
-            provider: []     
-        }
+        var def = global.frostybot.commands[command].permissions;
 
         var perms = (perms + ',').replace(/ /g,'')
                      .split(',')
@@ -873,11 +198,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var [type, command, perms] = this.mod.utils.extract_props(params, ['type', 'cmd', 'perms']);   
-        var def = default_perm.hasOwnProperty(command) ? default_perm[command] : {
-            standard: [],    
-            provider: []     
-        }
-
+        var def = global.frostybot.commands[command].permissions;
 
         var perms = (perms + ',').replace(/ /g,'')
                      .split(',')

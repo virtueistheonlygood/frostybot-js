@@ -9,6 +9,39 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Accounts Managememnt Module'
+    }
+
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': [ 'core,singleuser', 'multiuser,user', 'token' ],
+            'provider': [ 'token' ]
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'accounts:get': [
+                                'get|/accounts',                    // Get all account information
+                                'get|/accounts/:stub',              // Get account information for specific stub
+            ],
+            'accounts:add':    [
+                                'post|/accounts',                   // Add new account
+                                'put|/accounts',                    // Update account
+            ],
+            'accounts:delete': 
+                                'delete|/accounts/:stub',           // Delete account for specific stub
+            'accounts:test':    'post|/accounts/:stub/test',        // Test API keys with the exchange
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+        
     }
 
 
@@ -20,6 +53,44 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             return await this.mod.utils.decrypt_values( this.mod.utils.lower_props(account), ['apikey', 'secret'])
         }
         return false;
+    }
+
+    // Get stubs for a specific account uuid (no log output, used internally)
+
+    async stubs_by_uuid(uuid, stub = undefined) {
+        var query = {
+                uuid: uuid,
+                mainkey: 'accounts'
+        }
+        if (stub != undefined) query['subkey'] = stub;
+        var result = await this.database.select('settings', query);
+        var stubs = [];
+        if (this.mod.utils.is_array(result) && result.length > 0) {
+            for (var i = 0; i < result.length; i++) {
+                var data = JSON.parse(result[i].value);
+                stubs.push(data);
+            }
+        }      
+        return stubs;
+    }
+
+    // Get all uuids and stubs
+
+    async all_uuids_and_stubs() {
+        var query = {
+            mainkey: 'accounts'
+        }
+        var result = await this.database.select('settings', query);
+        var stubs = {};
+        if (this.mod.utils.is_array(result) && result.length > 0) {
+            for (var i = 0; i < result.length; i++) {
+                var uuid = result[i].uuid;
+                var data = JSON.parse(result[i].value);
+                if (stubs[uuid] == undefined) stubs[uuid] = [];
+                stubs[uuid].push(data);
+            }
+        }      
+        return stubs;    
     }
 
 
@@ -157,7 +228,6 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     async add(params) {
         return await this.create(params);
     }
-
 
     // Update account
 

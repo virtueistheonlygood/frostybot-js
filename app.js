@@ -38,7 +38,7 @@ process.title = "fb-" + port.toString();
 // Reverse Proxy / Load Balancer Support
 
 app.set('trust proxy', function (ip) {
-  var proxies = global.frostybot._modules_['core'].get_proxies();
+  var proxies = global.frostybot.modules['core'].get_proxies();
   if (proxies !== false) {
     if (proxies.includes[ip]) return true;
   }

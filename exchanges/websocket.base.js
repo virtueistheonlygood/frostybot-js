@@ -1,332 +1,180 @@
-// Websocket Normalizer base class
+// Websocket Market Data Base Class
 
-class frostybot_websocket_base {
+const WebSocket = require('ws-reconnect');
+const EventEmitter = require('events');
+const READY_STATE = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
 
-  constructor (stub, account) {
-    this.load_modules ();
-    this.stub = stub;
-    if (account) {
-      this.account = this.mod.accounts.ccxtparams (account);
-      this.apikey = this.account.parameters.apiKey;
-      this.secret = this.account.parameters.secret;
-      this.url = this.account.parameters.urls.api;
-      this.testnet = String (this.account.parameters.testnet) == 'true'
-        ? true
-        : false;
-    }
-  }
+module.exports = class frostybot_websocket_base extends EventEmitter {
 
-  // Create module shortcuts
-
-  load_modules () {
-    Object.keys (global.frostybot._modules_).forEach (module => {
-      if (!['core'].includes (module)) {
-        this[module] = global.frostybot._modules_[module];
-      }
-    });
-  }
-
-  // Load Event Handler
-
-  load_events () {
-    if (!global.frostybot.hasOwnProperty ('wss')) global.frostybot.wss = {};
-    global.frostybot.wss.events = new frostybot_wss_events ();
-    global.frostybot.wss.events.on ('event', args => {
-    });
-  }
-
-  // Subscribe to channel 
-
-  async subscribe(channel, symbol) {
-    var type = (['orders'].includes(channel)) ? 'private' : 'public';
-    await this.ws.connect();
-    await this.ws.authenticate();
-    this.ws.subscribe(type, channel, symbol);
-    var out = {
-        'stub': this.stub,
-        'channel': channel
-    }
-    if (symbol != null) out.symbol = symbol;
-    this.mod.output.debug('ws_subscribe', this.mod.utils.serialize_object(out))
-    return true;
-  }
-
-  // Unsubscribe to channel 
-
-  async unsubscribe(channel, symbol) {
-    var type = (['orders'].includes(channel)) ? 'private' : 'public';
-    await this.ws.connect();
-    await this.ws.authenticate();
-    this.ws.unsubscribe(type, channel, symbol);
-    var out = {
-        'stub': this.stub,
-        'channel': channel
-    }
-    if (symbol != null) out.symbol = symbol;
-    this.mod.output.debug('ws_unsubscribe', this.mod.utils.serialize_object(out))
-    return true;
-  }
-
-
-}
-
-const WebSocket = require ('ws');
-const crypto = require ('crypto');
-const EventEmitter = require ('events');
-
-class frostybot_websocket_client extends EventEmitter {
-  /*
-    const WebSocket = require('ws');
-    const EventEmitter = require('events');
-    const crypto = require('crypto');
-    
-    const wait = n => new Promise(r => setTimeout(r, n));
-    
-    const PONG = '{"type": "pong"}';
-    
-    const STALE_TIMEOUT = 2000;
-    
-    // this endpoint is used by the sample code on
-    // https://github.com/ftexchange/ftx/blob/d387304bcc6f479e0ecae8273ad84eda986f5237/websocket/client.py#L13
-    const DEFAULT_ENDPOINT = 'ftx.com/ws/';
-    */
-
-  // pass optional params: { key, secret, subaccount, endpoint }
-  constructor (conf = {}) {
-    super ();
-
-    this.exchange = conf.exchange;
-    this.stub = conf.stub;
-    this.url = conf.url;
-    this.apikey = conf.apikey;
-    this.secret = conf.secret;
-    this.subaccount = conf.subaccount;
-
-    this.connected = false;
-    this.isReadyHook = false;
-    this.isReady = new Promise (r => (this.isReadyHook = r));
-    this.authenticated = false;
-    this.reconnecting = false;
-    this.afterReconnect;
-
-    this.subscriptions = {};
-    this.inflightQueue = [];
-
-    this.lastMessageAt = 0;
-    this.id = +new Date ();
-  }
-
-  nextId () {
-    return ++this.id;
-  }
-
-  wait (n) {
-    return new Promise (r => setTimeout (r, n));
-  }
-
-  _connect () {
-    if (this.connected) {
-      return;
-    }
-
-    return new Promise ((resolve, reject) => {
-      this.ws = new WebSocket (`${this.url}`);
-      this.ws.exchange = this.exchange;
-      this.ws.stub = this.stub;
-      this.ws.onmessage = this.messagehandler;
-
-      this.ws.onopen = () => {
-        this.connected = true;
-        this.isReadyHook ();
-        resolve ();
-      };
-
-      this.ws.onclose = async e => {
-        this.authenticated = false;
+    constructor(exchange, url) {
+        super()
+        this.ticker = {};
+        var time = (new Date()).getTime()
+        this.exchange = exchange;
+        this.messages = 0;
+        this.updated = time
+        this.mps = null;
+        this.last = time,
+        this.updated = time,
         this.connected = false;
-        //clearInterval(this.heartbeat);
-        this.reconnect ();
-      };
-
-      //this.heartbeat = setInterval(this.ping, 5 * 1000);
-    });
-  }
-
-  findRequest (id) {
-    for (let i = 0; i < this.inflightQueue.length; i++) {
-      const req = this.inflightQueue[i];
-      if (id === req.id) {
-        this.inflightQueue.splice (i, 1);
-        return req;
-      }
-    }
-  }
-
-  async terminate () {
-    this.ws.terminate ();
-    this.authenticated = false;
-    this.connected = false;
-  }
-
-  async reconnect () {
-    this.reconnecting = true;
-    this.pingAt = false;
-    this.pongAt = false;
-
-    let hook;
-    this.afterReconnect = new Promise (r => (hook = r));
-    this.isReady = new Promise (r => (this.isReadyHook = r));
-    await this.wait (500);
-    await this.connect ();
-    hook ();
-    this.isReadyHook ();
-
-    Object.values(this.subscriptions).forEach (sub => {
-      this._subscribe (sub);
-    });
-  }
-
-  async connect () {
-    await this._connect ();
-    if (this.apikey) {
-      this.authenticate ();
-    }
-  }
-
-  // not a proper op, but forces a response so
-  // we know the connection isn't stale
-
-  /*
-      ping() {
-        if(this.pingAt && this.pongAt > this.pingAt && this.pongAt - this.pingAt > STALE_TIMEOUT) {
-          console.error(new Date, '[FTX] did NOT receive pong in time, reconnecting', {
-            pingAt: this.pingAt,
-            pongAt: this.pongAt
-          });
-          return this.terminate();
-        }
-    
-        this.pingAt = +new Date;
-    //    this.sendMessage({op: 'ping'});
-      }
-    
-      // note: when this method returns
-      // we do not know what auth status is
-      // since FTX doesn't ACK
-      */
-
-  messagehandler (e) {
-    this.lastMessageAt = +new Date ();
-    let payload;
-
-    try {
-      payload = JSON.parse (e.data);
-    } catch (e) {
-      console.error ('Websocket sent bad json', e.data);
-    }
-
-    //payload.stub = 'STUB' + this.stub;
-    payload.frostybot = {
-      exchange: this.exchange,
-      stub: this.stub,
-    };
-
-    /*
-        if (payload.id != undefined) {
-            const request = this.findRequest(payload.id);
-
-            if(!request) {
-            return console.error('received response to request not send:', payload);
+        this.initialized = false;
+        this.lastping = null
+        this.lastpong = null
+        this.heartbeat = null;
+        this.status = null;
+        this.stats = {}
+        this.debug = false;
+        
+        var _this = this;
+        this.ws = new WebSocket(url, {reconnectInterval: 5 });
+            
+        // Statistics update timer
+        this.statsTimer = setInterval(function () {
+            var time = (new Date()).getTime();
+            _this.mps = Math.floor(_this.messages / (time - _this.updated) * 1000);
+            _this.updated = time;   
+            _this.messages = 0;
+            _this.stats = {
+                exchange:   _this.exchange,
+                symbols:    Object.keys(_this.ticker).length,
+                mps:        _this.mps,
+                last:       _this.last,
+                connected:  _this.connected,
+                status:     _this.status
             }
+            _this.event('stats', _this.stats)
+            //_this.logger(Object.keys(_this.ticker).length + ' symbols, ' + _this.mps + ' msg/s')
+            //_this.emit('statsUpdate', _this.stats);
+        }, 1000);
+
+        // Alive timer
+        setInterval(function () {
+            var status = _this.readystate();
+            _this.connected = status == 'OPEN'
+            if (status != _this.status) {
+                _this.logger('debug','Status: ' + status);
+                _this.status = status;
+            }
+        }, 1000)
+
+        // On connect handler
+        this.ws.on('connect', async function() {
+            _this.logger('success','Websocket connected');
+            _this.event('connected')
+            _this.lastpong = (new Date()).getTime();
+            _this.connected = _this.readystate() == 'OPEN';
+            if (typeof(_this.onconnected) == 'function') await _this.onconnected();
+            if (typeof(_this.onsubscribe) == 'function') await _this.onsubscribe();
+            _this.heartbeat = setInterval(async function() {
+                _this.connected = _this.readystate() == 'OPEN';
+                if (_this.connected) {
+                    _this.lastping = (new Date()).getTime();
+                    if (typeof(_this.onheartbeat) == 'function') await _this.onheartbeat();
+                    //_this.logger('ping')
+                }
+            }, 5000);    
+        });
+
+        // On reconnect handler
+        this.ws.on('reconnect', function() {
+            _this.logger('warning', 'Websocket reconnecting...');
+            _this.event('reconnecting')
+            _this.connected = false;
+        })
+
+        // On message handler
+        this.ws.on('message', function(data) {
+            if (typeof(_this.onmessage) == 'function') _this.onmessage(data);
+        })
+
+        // On error handler
+        this.ws.on('error', function(e) {
+            _this.error(e);
+        })
+
+        // On close handler
+        this.ws.on('close', function() {
+            clearInterval(this.heartbeat);
+            _this.logger('warning','Websocket disconnected');
+            _this.event('disconnected')
+            _this.connected = false;
+        })
+        
+    }
+
+    // Get Websocket Ready State
+
+    readystate() {
+        return READY_STATE[ (this.ws.socket != null ? this.ws.socket.readyState : 4) ];
+    }
+
+    // Log output
+
+    logger(type, message) {
+        var dtobj = new Date()
+        var data = {
+            timestamp: dtobj.getTime(),
+            datetime: dtobj.toJSON().split('.')[0].replace('T',' '),
+            type: type,
+            message: message
         }
-        */
-
-    global.frostybot._modules_.websocket.message (payload);
-  }
-
-  toId (type, channel, market) {
-    return type + '|' + channel + (!market ? '' : '|' + market);
-  }
-
-  async sendMessage (payload) {
-    if (!this.connected) {
-      if (!this.reconnecting) {
-        throw new Error ('Not connected.');
-      }
-
-      await this.afterReconnect;
-    }
-    this.ws.send (JSON.stringify (payload));
-  }
-
-  async subscribe (type, channel, market = undefined) {
-    const id = this.toId (type, channel, market);
-    if (!this.connected) {
-      if (!this.reconnecting) {
-        throw new Error ('Not connected.');
-      }
-
-      await this.afterReconnect;
+        this.event('log', data)
     }
 
-    /*
-    if (this.subscriptions.hasOwnProperty(id)) {
-        return console.error (
-        new Date (),
-        'refusing to channel subscribe twice',
-        market,
-        channel
-      );
-    }
-    */  
+    // Error Handler
 
-    const sub = {
-      id,
-      type,
-      channel,
-      market,
-      doneHook: false,
-      done: false,
-    };
-
-    this.subscriptions[id] = sub;
-    this._subscribe (sub);
-
-    return sub.done;
-  }
-
-  async unsubscribe (type, channel, market = undefined) {
-    const id = this.toId (type, channel, market);
-
-    if (!this.connected) {
-      if (!this.reconnecting) {
-        throw new Error ('Not connected.');
-      }
-
-      await this.afterReconnect;
+    error(e) {
+        this.logger('error', e);
+        this.event('error', e)
     }
 
-    const sub = {
-      id,
-      type,
-      channel,
-      market,
-      doneHook: false,
-      done: false,
-    };
+    // Send an event
 
-    if (this.subscriptions.hasOwnProperty(id)) {
-        this._unsubscribe (sub);
-        delete this.subscriptions[id];
+    event(type, data) {
+        var eventdata = {
+            exchange:   this.exchange,
+        }
+        if (data != undefined) eventdata['data'] = data;
+        this.emit(type, eventdata);
     }
 
-    return sub.done;
-  }
+    // Start the Websocket Interface
+
+    async start() {
+        this.logger('notice','Websocket starting...')
+        this.ws.start();
+    }
+    
+    // Update Ticker Symbol
+
+    updateticker(symbol, bid, ask) {
+        this.last = (new Date()).getTime();
+        bid = parseFloat(bid)
+        ask = parseFloat(ask)
+        this.ticker[symbol] = {
+            symbol: symbol,
+            bid:    bid,
+            ask:    ask
+        }
+        this.messages++;
+        this.event('ticker', {symbol: symbol, bid: bid, ask: ask})
+    }
+
+    // Get statistics
+
+    stats() {
+        var stats = {
+            exchange:   this.exchange,
+            symbols:    Object.keys(this.ticker).length,
+            mps:        this.mps,
+            last:       this.last,
+            connected:  this.connected,
+            status:     this.status
+        }
+        return stats;
+    }
+    
 
 }
 
 
-module.exports = {
-  base: frostybot_websocket_base,
-  client: frostybot_websocket_client,
-};

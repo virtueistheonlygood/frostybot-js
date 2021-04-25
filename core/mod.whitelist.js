@@ -9,8 +9,41 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Whitelist Verification and Management'
     }
     
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': ['local' ],
+            'provider': ['local' ]
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'whitelist:get':    [
+                                  'get|/whitelist',                      // Get all whitelist entries
+                                  'get|/whitelist/:ip',                  // Get whitelist entry for specific IP address or range (CIDR notation should be urlencoded)
+                                ],
+            'whitelist:add':    [
+                                  'post|/whitelist',                     // Add a whitelist entry (IP address or CIDR range)
+                                  'put|/whitelist',                      // Update a whitelist entry
+                                ],
+            'whitelist:delete'  : 'delete|/whitelist/:ip',               /// Delete whitelist entry for specific IP address or CIDR range CIDR notation should be urlencoded)
+            'whitelist:verify'  : 'get|/whitelist/verify/:ip',           // Verify that an IP or CIDR range is whitelisted (CIDR notation should be urlencoded)
+            'whitelist:enable'  : 'post|/whitelist/enable',              // Globally enable whitelist verification
+            'whitelist:disable' : 'post|/whitelist/disable',             // Globally disable whitelist verification
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+        
+    }
 
     // Add TradingView IPs
 

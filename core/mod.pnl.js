@@ -10,9 +10,47 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Statistics and Reporting'
         this.exchange = [];
     }
 
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions for each command
+        var permissions = {
+            'pnl:import': {
+                'standard': ['local', 'loopback' ],
+                'provider': ['local', 'loopback' ],
+            },
+            'pnl:get': {
+                'standard': [ 'core,singleuser', 'multiuser,user', 'local', 'token', 'loopback' ],
+                'provider': [ 'local', 'token', 'loopback' ],    
+            }
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'pnl:import':   [
+                                'post|/pnl/import',                      // Trigger PNL import for all users and all stubs
+                                'post|/pnl/import/:user',                // Trigger PNL import for specific user
+                                'post|/pnl/import/:user/:stub',          // Trigger PNL import for specific user and stub
+                                'post|/pnl/import/:user/:stub/:market',  // Trigger PNL import for specific user, stub and market
+                            ],
+            'pnl:get':      [
+                                'get|/pnl/:user',                        // Get PNL data for a specific user
+                                'get|/pnl/:user/:stub',                  // Get PNL data for a specific user and stub
+                                'get|/pnl/:user/:stub/:market',          // Get PNL data for a specific user, stub and market
+                            ],
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions[method]); // Defined in mod.base.js
+        }
+        
+    }
 
     // Load exchange for a given user uuid and stub
 
@@ -42,7 +80,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
     // Import orders for every user, stub and symbol
 
-    async import_orders(params) {
+    async import(params) {
 
         var schema = {
             user:        { optional: 'string', format: 'lowercase', },
@@ -54,7 +92,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         var [user, stub, market, days] = this.mod.utils.extract_props(params, ['user', 'stub', 'market', 'days']);
-        var url = await global.frostybot._modules_['core'].url();
+        var url = await global.frostybot.modules['core'].url();
 
         if (user == undefined) {
 
@@ -97,7 +135,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
     
                         var payload = {
                             uuid        : uuid,
-                            command     : 'pnl:import_orders',
+                            command     : 'pnl:import',
                             user        : user,
                             stub        : stub,
                             days        : days
@@ -286,7 +324,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
     // Generate PNL report data from order history in database
 
     
-    async get_data(params) {
+    async get(params) {
 
         var schema = {
             stub:        { required: 'string', format: 'lowercase', },

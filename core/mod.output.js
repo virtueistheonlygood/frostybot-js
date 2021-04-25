@@ -17,6 +17,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     constructor() {
         super();
+        this.description = 'Output Handler'
         /*this.output_obj = {
             result: 'success',
             message: null,
@@ -42,7 +43,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
     // Load language if required
 
     async load_language() {
-        this.settings = global.frostybot._modules_.settings;
+        this.settings = global.frostybot.modules.settings;
         if (this.language == undefined) {
             var language = await this.mod.settings.get('core', 'language', 'en');
             if (language == undefined) language = 'en';
@@ -174,7 +175,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
                 str = str.split(placeholder).join(data).trim();
                 str = str.slice(-1) == ':' ? str.substr(0, str.length - 1) : str;
             });
-            if ((!this.checkonce(str)) && (!expanded))
+            if (((!this.checkonce(str)) && (!expanded)) || (['debug','warning','error'].includes(type)))
                 this.add_message(type, str);
             return (type == 'error' ? false : true);
         }
@@ -208,7 +209,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
     exception(e) {
         var type = e.constructor.name;
         var stack = e.stack.split('\n')[1].trim(' ');
-        var fileinfo = stack.split('(')[1].replace(')','')
+        var fileinfo = stack //.split('(')[1].join('').split(')')[0].join('')
         var funcname = stack.split('(')[0];
         var [filename, line, col] = fileinfo.split(':');
         var basename = path.basename(filename);
@@ -467,39 +468,6 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
         return output;         
     }
-
-    // Output health status (for load balancers)
-
-    async status() {
-        return true;
-    }
-
-    // Node status
-
-    async node_info() {
-        const os = require('os');
-        const host = os.hostname().toLowerCase();
-        const nets = os.networkInterfaces();
-        const ips = [];
-        for (const name of Object.keys(nets)) {
-            for (const net of nets[name]) {
-                // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
-                if (net.family === 'IPv4' && !net.internal) {
-                    ips.push(net.address);
-                }
-            }
-        }
-        var d = new Date();
-        var ts = d.getTime();
-        var hostinfo = {
-            hostname: host,
-            ip: ips,
-            timestamp: ts
-        }
-        await this.mod.settings.set('node', host, hostinfo);
-    }
-
-
 
     // Parse raw output into a frostybot_output object
 

@@ -7,47 +7,123 @@ var context = require('express-http-context');
 // The base class (All Frostybot classes are derived from this)
 class frostybot_base {
   constructor () {}
+
+   // Create mapping to other modules
+
+  fromdatasource(data) {
+    Object.keys(data).forEach(key => {
+      this[key] = data[key];
+    })
+    if (typeof(this['update']) == 'function') this.update();
+    return this;
+  }
+
 }
 
+
+// API Command Object
+
+class frostybot_command extends frostybot_base {
+
+    constructor(command, permissions = null) {
+        super();
+        var[module, method] = command.split(':');
+        this.command = command
+        this.module = module
+        this.method = method
+        if (permissions != null) this.permissions = permissions;
+
+    }
+
+    // Set command caching
+
+    cache(ttl = 30, autorefresh = false) {
+        this.ttl = ttl;
+        this.autorefresh = autorefresh;
+    }
+
+}
 
 // Account Balance Object
 
 class frostybot_balance extends frostybot_base {
-  constructor (currency, price, free, used, total) {
+
+  constructor (user, stub, exchange, currency, free, used, total) {
     super ();
     total = total * 1;
     if (used == false && free != false && total != false) {
       used = total - (free * 1);
-      //console.log('Used balance calculated using available and total balances')
     }
     if (free == false && used != false && total != false) {
       free = total - (used * 1);
-      //console.log('Available balance calculated using used and total balances')
     }
-    //console.log('used: ' + typeof(used) + ': ' + used)
-    //console.log('free: ' + typeof(free) + ': ' + free)
-    //console.log('total: ' + typeof(total) + ': ' + total)
+    this.user = user;
+    this.stub = stub;
+    this.exchange = exchange;
     this.currency = currency;
-    this.price = price;
     this.base = {
       free: parseFloat(free),
       used: parseFloat(used),
       total: parseFloat(total),
     };
-    this.usd = {
-      free: parseFloat(free * price),
-      used: parseFloat(used * price),
-      total: parseFloat(total * price),
-    };
   }
+
+  // Find market
+  find(symbol) {
+    var markets = global.frostybot.markets[this.exchange];
+    var mapping = global.frostybot.mapping[this.exchange];
+    if (markets != undefined)
+      return markets[mapping[symbol]] != undefined ? markets[mapping[symbol]] : false;
+  }
+  
+
+  // Update USD prices
+  update() {
+    var stablecoins = global.frostybot.exchanges[this.exchange].stablecoins;
+    var balances_market_map = global.frostybot.exchanges[this.exchange].balances_market_map;
+    var price = null;
+    if (stablecoins.includes(this.currency)) {
+        price = 1;
+    } else {
+        for (var i = 0; i < stablecoins.length; i++) {
+            var stablecoin = stablecoins[i];
+            var mapsymbol = balances_market_map.replace('{currency}', this.currency).replace('{stablecoin}', stablecoin);
+            var market = this.find(mapsymbol);
+            if (market != false) {
+                global.frostybot.modules.output.debug('custom_object', ['Converting using symbol', mapsymbol]);
+                price = ((market.bid * 1) + (market.ask * 1)) / 2;
+                break;
+            }
+        };
+    }
+    if (price == null) {
+      global.frostybot.modules.debug('custom_object', ['Cannot find conversion market for currency: ', this.currency]);
+      this.usd = {
+        free: null,
+        used: null,
+        total: null,
+      };  
+    } else {
+      this.price = price;
+      this.usd = {
+        free: parseFloat(this.base.free * this.price),
+        used: parseFloat(this.base.used * this.price),
+        total: parseFloat(this.base.total * this.price),
+      };  
+    }
+  }
+
+
 }
 
 // Market Object
 
 class frostybot_market extends frostybot_base {
+
   constructor (
-    id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw) {
+    exchange, id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw) {
     super ();
+    this.exchange = exchange;
     this.id = id;
     this.symbol = symbol;
     this.tvsymbol = tvsymbol;
@@ -63,35 +139,133 @@ class frostybot_market extends frostybot_base {
     this.precision = precision;
     //this.raw = raw;
   }
+
+  // Find market
+  find(symbol) {
+    var markets = global.frostybot.markets[this.exchange];
+    var mapping = global.frostybot.mapping[this.exchange];
+    if (markets != undefined)
+        return markets[mapping[symbol]] != undefined ? markets[mapping[symbol]] : false;
+
+  }
+
+  // Update tickers and USD pricing
+  update() {
+    var ticker_by_id = global.frostybot.tickers[this.exchange][this.id];
+    var ticker_by_symbol = global.frostybot.tickers[this.exchange][this.symbol];
+    var ticker = ticker_by_id != undefined ? ticker_by_id : (ticker_by_symbol != undefined ? ticker_by_symbol : undefined);
+    if (ticker != undefined) {
+      this.bid = ticker.bid;
+      this.ask = ticker.ask;
+      this.avg = (ticker.bid + ticker.ask) / 2
+      this.update_usd_pricing();
+    }
+  }
+
+
+  // Update USD pricing
+  update_usd_pricing() {
+    var stablecoins = global.frostybot.exchanges[this.exchange].stablecoins;
+    if (this.usd == undefined) this.usd = {};
+    if (!stablecoins.includes(this.quote)) {
+      this.usd.pairs = {}
+      'base:quote'.split(':').forEach(type => {
+        var pair = this.find_usd_value_pair(type);
+        var search = pair != false ? this.find(pair) : false;
+        if (search != false) {
+          search.update();
+          this.usd.pairs[type] = pair; 
+          this.usd[type] = search.avg
+        }
+      });
+    } else {
+      if (isNaN(this.avg) || this.avg == null) this.avg = (this.bid + this.ask) / 2;
+      this.usd = this.avg;
+    }
+  }
+
+  // Get USD pair 
+  find_usd_value_pair(type) {
+    if (this.usd.pairs[type] != undefined) {
+      return this.usd.pairs[type];
+    } else {
+      var pair = null
+      var stablecoins = global.frostybot.exchanges[this.exchange].stablecoins;
+      for (var i = 0; i < stablecoins.length; i++) {
+        pair = this[type] + '/' + stablecoins[i];
+        if (this.find(pair) != false) return pair;
+      }
+    }
+    return false;
+  }
+  
+
 }
 
 // Position Base Object
 
 class frostybot_position extends frostybot_base {
 
-  constructor (market, direction, base_size, quote_size, price, raw = null) {
+  constructor (user, stub, exchange, symbol, type, direction, base_size, quote_size, raw = null) {
     super ();
-    var usdbase = market.usd.hasOwnProperty ('base') ? market.usd.base : market.usd;
-    var usdquote = market.usd.hasOwnProperty ('quote') ? market.usd.quote : market.usd;
-    //this.raw = raw;
-
-    this.symbol = market.symbol;
-    this.type = market.type;
-    this.direction = direction;
-
-    var sizing = base_size == null ? 'quote' : quote_size == null ? 'base' : 'unknown';
-    switch (sizing) {
-      case 'base':
-        this.base_size = Math.abs(base_size);
-        this.quote_size = Math.abs(this.base_size * price);
-        this.usd_size = Math.abs(this.base_size * usdbase);
-        break;
-      case 'quote':
-        this.base_size = Math.abs(quote_size / price);
-        this.quote_size = Math.abs(quote_size);
-        this.usd_size = Math.abs(this.base_size * usdquote);
-        break;
+    if (user == undefined) return this;
+    if (user.user != undefined) { 
+      this.fromdatasource(user) 
+      this.user = user.user;
+    } else {
+      this.user = user;
     }
+    this.stub = stub;
+    this.exchange = exchange;
+//    this.market = null;
+    this.symbol = symbol;
+    this.type = type; 
+    this.direction = direction;
+    this.base_size = base_size;
+    this.quote_size = quote_size;
+    this.update();
+  }
+
+  // Find market
+  find(symbol) {
+    var markets = global.frostybot.markets[this.exchange];
+    var mapping = global.frostybot.mapping[this.exchange];
+    if (markets != undefined)
+        return markets[mapping[symbol]] != undefined ? markets[mapping[symbol]] : false;
+
+  }
+
+  async update() {
+
+    var market = this.find(this.symbol);
+    if (market != undefined) {
+      this.symbol = market.symbol;
+      market.update();
+      //this.market = market;
+      //this.type = market.type
+      if (![undefined, null].includes(market.usd)) {
+        var usdbase =  ![undefined, null].includes(market.usd.base)  ? market.usd.base  : (![undefined, null].includes(market.usd) ? market.usd : undefined);
+        var usdquote = ![undefined, null].includes(market.usd.quote) ? market.usd.quote : (![undefined, null].includes(market.usd) ? market.usd : undefined);
+      }
+      var sizing = global.frostybot.exchanges[this.exchange]['order_sizing'];
+      switch (sizing) {
+        case 'base':
+          this.base_size = Math.abs(this.base_size);
+          this.quote_size = Math.abs(this.base_size * market.avg);
+          this.usd_size = usdbase != undefined ? Math.abs(this.base_size * usdbase) : null;
+          break;
+        case 'quote':
+          this.base_size = Math.abs(this.quote_size / market.avg);
+          this.quote_size = Math.abs(this.quote_size);
+          this.usd_size = usdquote != undefined ? Math.abs(this.base_size * usdquote) : null;
+          break;
+      }
+  }
+  if (this.type == 'futures') {
+      this.updatepnl();
+    }
+
+
   }
 
 }
@@ -100,14 +274,27 @@ class frostybot_position extends frostybot_base {
 
 class frostybot_position_futures extends frostybot_position {
 
-  constructor (market, direction, base_size, quote_size, entry_price, liquidation_price, raw = null) {
-    super (market, direction, base_size, quote_size, entry_price, raw);
+  constructor (user, stub, exchange, symbol, direction, base_size, quote_size, entry_price, liquidation_price, raw = null) {
+    super (user, stub, exchange, symbol, 'futures', direction, base_size, quote_size, entry_price, raw);
+    if (user == undefined) return this;
     this.entry_price = entry_price;
     this.entry_value = Math.abs(this.base_size * this.entry_price);
-    this.current_price = market.avg != null ? market.avg : (market.bid + market.ask) / 2;
-    this.current_value = Math.abs(this.base_size * this.current_price);
+    this.current_price = null;
+    this.current_value = null;
     this.liquidation_price = liquidation_price;
     this.pnl = (this.direction == "short" ? -1 : 1) * (this.current_value - this.entry_value); // Calculate PNL is not supplied by exchange
+  }
+
+  // Update pricing
+
+  async updatepnl() {
+    var market = this.find(this.symbol);
+    if (market != undefined) {
+      this.symbol = market.symbol;
+      this.current_price =  market.avg != null ? market.avg : (market.bid + market.ask) / 2;
+      this.current_value = Math.abs(this.base_size * this.current_price);
+      this.pnl = (this.direction == "short" ? -1 : 1) * (this.current_value - this.entry_value); // Calculate PNL is not supplied by exchange
+    }
   }
 
 }
@@ -116,8 +303,9 @@ class frostybot_position_futures extends frostybot_position {
 
 class frostybot_position_spot extends frostybot_position {
 
-  constructor (market, direction, base_size, quote_size, raw = null) {
-    super (market, direction, base_size, quote_size, market.avg, raw);
+  constructor (user, stub, exchange, symbol, direction, base_size, quote_size, raw = null) {
+    super (user, stub, exchange, symbol, 'spot', direction, base_size, quote_size, raw);
+    if (user == undefined) return this;
   }
 
 }
@@ -125,15 +313,24 @@ class frostybot_position_spot extends frostybot_position {
 // Order Object
 
 class frostybot_order extends frostybot_base {
-  constructor (market, id, timestamp, type, direction, price, trigger, size_base, size_quote, filled_base, filled_quote, status, raw = null) {
+  constructor (user, stub, exchange, symbol, id, timestamp, type, direction, price, trigger, size, filled, status, raw = null) {
     super ();
-    this.symbol = market.symbol;
+    if (user == undefined) return this;
+    if (user.user != undefined) { 
+      this.fromdatasource(user) 
+      this.user = user.user;
+    } else {
+      this.user = user;
+    }
+    this.stub = stub;
+    this.exchange = exchange;
+    this.symbol = symbol;
     this.id = id;
     if (timestamp.length < 13) {
       // Convert epoch timestamp to millisecond timestamp
       timestamp = timestamp * 100;
     }
-    let dateobj = new Date (timestamp);
+    let dateobj = new Date (parseInt(timestamp) * 1);
     /*
             let day = ("0" + dateobj.getDate()).slice(-2);
             let month = ("0" + (dateobj.getMonth() + 1)).slice(-2);
@@ -143,19 +340,62 @@ class frostybot_order extends frostybot_base {
             let second = dateobj.getSeconds();
             this.datetime = year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second;
         */
-    this.timestamp = timestamp;
+    this.timestamp = (timestamp * 1);
     this.datetime = dateobj;
     this.type = type;
     this.direction = direction;
     this.price = price;
     this.trigger = trigger;
-    this.size_base = size_base;
-    this.size_quote = size_quote;
-    this.filled_base = filled_base;
-    this.filled_quote = filled_quote;
+    this.size = size;
+    this.filled = filled;
     this.status = status;
+    this.update();
     //this.raw = raw;
   }
+
+  // Find market
+  find(symbol) {
+    var markets = global.frostybot.markets[this.exchange];
+    var mapping = global.frostybot.mapping[this.exchange];
+    if (markets != undefined)
+        return markets[mapping[symbol]] != undefined ? markets[mapping[symbol]] : false;
+  }
+
+  async update() {
+    var market = this.find(this.symbol);
+    if (market != undefined) {
+      this.symbol = market.symbol;
+      market.update();
+      if (![undefined, null].includes(market.usd)) {
+        var usdbase =  ![undefined, null].includes(market.usd.base)  ? market.usd.base  : (![undefined, null].includes(market.usd) ? market.usd : undefined);
+        var usdquote = ![undefined, null].includes(market.usd.quote) ? market.usd.quote : (![undefined, null].includes(market.usd) ? market.usd : undefined);
+      }
+      var sizing = global.frostybot.exchanges[this.exchange]['order_sizing'];
+      switch (sizing) {
+        case 'base':
+          this.size = this.size_base != undefined ? this.size_base : (this.size != undefined ? this.size : undefined);
+          this.size_base = Math.abs(this.size);
+          this.size_quote = Math.abs(this.size * this.price);
+          this.size_usd = usdbase != undefined ? Math.abs(this.size * usdbase) : null;
+          this.filled_base = Math.abs(this.filled);
+          this.filled_quote = Math.abs(this.filled * this.price);
+          this.filled_usd = usdbase != undefined ? Math.abs(this.filled * usdbase) : null;
+          delete this.size;
+          break;
+        case 'quote':
+          this.size = this.size_quote != undefined ? this.size_quote : (this.size != undefined ? this.size : undefined);
+          this.size_base = Math.abs(this.size / this.price);
+          this.size_quote = Math.abs(this.size);
+          this.size_usd = usdquote != undefined ? Math.abs(this.size * usdquote) : null;
+          this.filled_base = Math.abs(this.filled / this.price);
+          this.filled_quote = Math.abs(this.filled);
+          this.filled_usd = usdquote != undefined ? Math.abs(this.filled * usdquote) : null;
+          delete this.size;
+          break;
+      }
+    }
+  }
+
 }
 
 // PNL Object
@@ -213,15 +453,24 @@ class frostybot_metric extends frostybot_base {
 
 }
 
+/*
 // Frostybot Exchange Handler
 
 class frostybot_exchange extends frostybot_base {
 
     // Constructor
 
-    constructor (stub) {
+    // The exchange can me initialized using either just a stub (in which case the exchange type will be retirved from the stub
+    // or by providing the exchange type (for accessing public functions without authentication). Authentication can be done later using 
+    // the auth(stub, uuid) method.
+
+    constructor (stub_or_name) {  
       super ();
-      this.stub = stub;
+      if (typeof(stub_or_name) == 'string' ) {
+        this.name = name
+      } else {
+        this.stub = stub;
+      }
       this.exchanges = {};
       this.exhandler = null;
       this.load_modules();
@@ -231,9 +480,9 @@ class frostybot_exchange extends frostybot_base {
     // Create module shortcuts
 
     load_modules () {
-      Object.keys (global.frostybot._modules_).forEach (module => {
+      Object.keys (global.frostybot.modules).forEach (module => {
         if (!['core', 'classes'].includes (module)) {
-          this['mod'] = global.frostybot._modules_;
+          this['mod'] = global.frostybot.modules;
         }
       });
     }
@@ -242,7 +491,7 @@ class frostybot_exchange extends frostybot_base {
 
     async load_handler (stub) {
       this.load_modules ();
-      //this['accounts'] = global.frostybot._modules_['accounts'];
+      //this['accounts'] = global.frostybot.modules['accounts'];
       if (stub == undefined) {
         stub = context.get('stub');
       }
@@ -371,7 +620,10 @@ class frostybot_websocket_order extends frostybot_base {
   }
 }
 
+  */
+
 module.exports = {
+  command: frostybot_command,
   balance: frostybot_balance,
   position_futures: frostybot_position_futures,
   position_spot: frostybot_position_spot,
@@ -380,8 +632,8 @@ module.exports = {
   pnl: frostybot_pnl,
   metric: frostybot_metric,
   output: frostybot_output,
-  exchange: frostybot_exchange,
-  websocket_trade: frostybot_websocket_trade,
-  websocket_ticker: frostybot_websocket_ticker,
-  websocket_order: frostybot_websocket_order,
+  //exchange: frostybot_exchange,
+  //websocket_trade: frostybot_websocket_trade,
+  //websocket_ticker: frostybot_websocket_ticker,
+  //websocket_order: frostybot_websocket_order,
 };

@@ -8,89 +8,6 @@ const axios = require('axios')
 // Methods exported to the API
 
 const api_methods = {
-    
-    accounts: [
-        'get', 
-        'add', 
-        'delete', 
-        'test',
-    ],
-
-    cache: [
-        'flush', 
-        'stats', 
-    ],
-
-    config: [
-        'get',
-        'set',
-    ],
-
-    trade: [
-        'long', 
-        'short', 
-        'buy', 
-        'sell', 
-        'stoploss', 
-        'takeprofit', 
-        'trailstop', 
-        'tpsl',
-        'close', 
-        'closeall',
-        'market', 
-        'markets', 
-        'balances', 
-        'position', 
-        'positions', 
-        'order', 
-        'orders', 
-        'cancel', 
-        'cancelall',
-        'leverage',
-        'pnl',
-        'order_history',
-    ],
-
-    settings: [
-        'get',
-        'set',
-    ],
-    
-    symbolmap:  [
-        'get', 
-        'add', 
-        'delete', 
-    ],
-
-    whitelist:  [
-        'get', 
-        'add', 
-        'delete',
-        'verify',
-        'enable',
-        'disable', 
-    ],
-
-    user: [
-        'multiuser_enable',
-        'multiuser_disable',
-        'enable_2fa',
-        'disable_2fa',
-        //'verify_2fa',
-        'register',
-        'login',
-        'logout',
-        'add',
-        'delete',
-        'change_password',
-        'reset',
-        'log',
-    ],
-
-    websocket: [
-        'subscribe',
-        'unsubscribe',
-    ],
 
     gui: [
         'enable',
@@ -105,37 +22,6 @@ const api_methods = {
         'chart',
     ],
 
-    signals: [
-        'add_provider',
-        'get_providers',
-        'add_exchange',
-        'remove_exchange',
-        'add_admin',
-        'remove_admin',
-        'add_ip',
-        'remove_ip',
-        'send',
-        //'is_provider_admin',
-    ],
-
-    output: [
-        'status',
-        'node_info',
-    ],
-
-    permissions: [
-        'add',
-        'delete',
-        'get',
-        'reset',
-        'set_type',
-    ],
-
-    pnl: [
-        'get_data',
-        'import_orders',
-    ],
-
 }
 
 const frostybot_module = require('./mod.base')
@@ -148,17 +34,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
     constructor() {
         super()
     }
-
-    // Initalize
-
-    initialize() {
-//        setInterval(async () => {
-//            await global.frostybot._modules_['utils'].loopback('output:node_info', {}, function(result) {
-//                console.log(result.data)
-//            });
-//        }, 10000);
-    }
-
 
     // Check if IP address is local to the cluster
 
@@ -251,6 +126,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var all_ip_allowed = [
             'gui:main',
             'gui:login',
+            'gui:logo',
             'gui:register',
             'gui:verify_recaptcha',
             'gui:content',
@@ -382,7 +258,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                 var [stub, cmd] = cmd.split(':');
                 params['stub'] = stub;
             }
-            if ((numparts == 2) && (api_methods.trade.includes(cmd)) && (parts[0] !== 'trade')) {
+            if ((numparts == 2) && (global.frostybot.methodmap.trade.includes(cmd)) && (!['trade','exchange'].includes(parts[0]))) {
                 // "trade:" was excluded from the command, add it
                 var stub = mod;
                 var mod = "trade";
@@ -402,6 +278,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Check if module exists and initialize it
 
     load_module(module) {
+        /*
         if (api_methods.hasOwnProperty(module) && this.mod.hasOwnProperty(module)) {
             var mod = require('./mod.'+module)
             this.mod[module] = new mod();
@@ -409,18 +286,26 @@ module.exports = class frostybot_core_module extends frostybot_module {
         } else {
             return false;
         }
+        */
+        if (global.frostybot.modules[module] != undefined) {
+            this.mod[module] = global.frostybot.modules[module];
+            return true;
+        }
+        return false;
     }
 
 
     // Check if a given method exists in a given module
 
     method_exists(module, method) {
-        const loader = require('./core.loader');
+        /*const loader = require('./core.loader');
         loader.map_all();
         if (api_methods[module].includes(method)) {
             return true;
         }
         return false;
+        */
+        return global.frostybot.methodmap[module].includes(method)
     }
     
 
@@ -464,6 +349,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var parsed = this.parse_obj(params);
         if (parsed.length == 3) {
             var [module, method, params] = parsed;
+            context.set('command', module + ':' + method);
             this.mod.output.section('executing_command', [module, method]);
             this.mod.output.notice('executing_command', [module, method]);
             //this.mod.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...(this.mod.utils.remove_props(params,['_raw_'])) }]);
@@ -489,10 +375,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
 
                     // Start execution
                     var start = (new Date).getTime();
-                    global.frostybot['command'] = {
-                        module: module,
-                        method: method
-                    };
 
                     // If no symbol is supplied, use the default symbol
                     if (module != 'symbolmap' && !params.hasOwnProperty('symbol') && params.hasOwnProperty('stub')) {
@@ -517,6 +399,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
                     }
 
                     // Check for symbol mapping and use it if required, verify that market exists
+                                /*
                     if (module != 'symbolmap' && (params.hasOwnProperty('symbol') || params.hasOwnProperty('tvsymbol')) && params.hasOwnProperty('stub')) {
                         var exchangeid = await this.mod.accounts.get_exchange_from_stub(params.stub);
                         if (exchangeid !== false) {
@@ -555,12 +438,13 @@ module.exports = class frostybot_core_module extends frostybot_module {
                         }
                     }
 
+                                */
                     if (params.hasOwnProperty('uuid')) delete params.uuid;
                     if (raw !== null) 
                         params['_raw_'] = raw;
                     var result = null;
                     try {
-                        result = await global.frostybot._modules_[module][method](params);
+                        result = await global.frostybot.modules[module][method](params);
                     } catch (e) {
                         this.mod.output.exception(e);
                         result = false;

@@ -9,6 +9,7 @@ module.exports = class frostybot_queue_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Order Queue Processor'
     }
 
     // Initialize a queue
@@ -70,22 +71,20 @@ module.exports = class frostybot_queue_module extends frostybot_module {
 
     async check(stub, symbol, id) {
         await this.mod.utils.sleep(3);
-        var exchange = new this.classes.exchange(stub);
-        let result = await exchange.execute(stub, 'order', {id: id, symbol: symbol}, true);
+        let result = await this.mod.exchange.execute(stub, 'order', {id: id, symbol: symbol});
         return (result !== false ? true : false);
     }
 
     // Submit an order to the exchange
 
     async submit(stub, symbol, order) {
-        var exchange = new this.classes.exchange(stub);
-        let result = await exchange.execute(stub, 'create_order', order);
+        let result = await this.mod.exchange.execute(stub, 'create_order', order);
             
         if (result.result == 'success') {
             var id = result.order.id;
             this.mod.output.debug('order_submitted', [id]);
-        
-            let doublecheck = await exchange.get(stub, 'doublecheck');
+            var exchange = await this.mod.exchange.get_exchange_from_stub(stub)
+            let doublecheck = await this.mod.exchange.setting(exchange, 'doublecheck');
             
             if (doublecheck == true) {
                 this.mod.output.debug('order_check_enabled', [id]);

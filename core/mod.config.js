@@ -3,11 +3,17 @@
 const frostybot_module = require('./mod.base')
 
 var context = require('express-http-context');
+var cron = require('node-cron');
 
 const config_keys = {
     'dummy:unittest': 'string',                   // Dummy key for unit testing
-    'core:proxy': 'string',                       // Comma-separated list of proxies/load balances
+    'core:proxy': 'string',                       // Comma-separated list of proxies/load balancer IP addresses for CIDR ranges
     'core:url': 'string',                         // The Base URL of this Frostybot (used for loopback requests) - Default: http://localhost
+    'core:webhook': 'string',                     // The Base Path of the Webhook endpoint (Default: /frostybot)
+    'core:rest': 'string',                        // The Base Path of the REST endpoint (Default: /rest)
+    'core:refreshmarkets': 'cron',                // The refresh cron for market data
+    'core:refreshpositions': 'cron',              // The refresh cron for position data
+    'core:refreshbalances': 'cron',               // The refresh cron for balance data
     'output:messages': 'oneof:none,brief,full',   // (none/brief/full) Include messages in result JSON object
     'output:debug': 'boolean',                    // (Boolean) Enable debug output
     'output:stats': 'boolean',                    // (Boolean) Enable debug output
@@ -38,8 +44,31 @@ module.exports = class frostybot_config_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Configuration Module (User-Level)'
     }
     
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': ['core,singleuser', 'multiuser,user', 'token'],
+            'provider': ['token', 'local' ],
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'config:get':  'get|/config/:key',      // Get configuration setting
+            'config:set':  'post|/config/:key',     // Set configuration setting
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+        
+    }
 
     // Get all config parameters for a user
     
@@ -124,8 +153,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
 
     async validatesymbol(stub, symbol) {
         if (stub != undefined) {
-            var exchange = new this.classes.exchange(stub);
-            var market = await exchange.execute(stub, 'get_market_by_symbol',symbol.toUpperCase());
+            var market = this.mod.trade.get_market(stub, symbol);
             if (market !== null) return symbol.toUpperCase();
         }
         return false;
@@ -208,7 +236,13 @@ module.exports = class frostybot_config_module extends frostybot_module {
             else
                 var valtype = valstr;
             switch (valtype) {
-                case 'boolean'  :   if (this.mod.utils.is_bool(val) || String(val) == 'null') {
+                case 'cron'     :   val = this.mod.utils.is_json(val) ? JSON.parse(val) : val;
+                                    if (cron.validate(val)) {
+                                        validated = true;
+                                    } else
+                                        this.mod.output.error('config_invalid_value', [key, 'in crontab format']);
+                                    break;
+                case 'boolean'  :   if ((!['0','1'].includes(String(val)) && ['true','false'].includes(String(val).toLowerCase())) || String(val) == 'null')  {
                                         validated = true;
                                         val = String(val) == 'true' ? true : String(val) == 'null' ? null : false;
                                     } else
@@ -225,7 +259,13 @@ module.exports = class frostybot_config_module extends frostybot_module {
                                     else
                                         this.mod.output.error('config_invalid_value', [key, 'a string']);
                                     break;
-                case 'oneof'    :   if (valopt.split(',').includes(val))
+                case 'number'   :   if (this.mod.utils.is_numeric(val)) {
+                                        validated = true;
+                                        val = Number(val);
+                                    } else
+                                        this.mod.output.error('config_invalid_value', [key, 'an integer']);
+                                    break;
+                case'oneof'     :   if (valopt.split(',').includes(val))
                                         validated = true;
                                     else
                                         this.mod.output.error('config_invalid_value', [key, 'one of [' + valopt + ']']);

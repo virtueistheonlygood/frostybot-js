@@ -8,8 +8,38 @@ module.exports = class frostybot_symbolmap_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Symbol Mapping Module'
     }
     
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'standard': ['local' ],
+            'provider': ['local' ]
+          }
+
+        // API method to endpoint mappings
+        var api = {
+            'symbolmap:get':  [
+                                'get|/symbolmap/:exchange',            // Retrieve all symbol mapping for an exchange
+                                'get|/symbolmap/:exchange/:symbol',    // Retrieve specific symbol mapping for an exchange and symbol
+                              ],
+            'symbolmap:add':  [
+                                'post|/symbolmap/:exchange',           // Create new symbol mapping for an exchange
+                                'put|/symbolmap/:exchange',            // Update symbol mapping for an exchange
+                              ],
+            'symbolmap:delete': 'delete|/symbolmap/:exchange/:symbol', // Delete specific symbol mapping for an exchange and symbol
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+        }
+        
+    }
 
     // Get mappings
 

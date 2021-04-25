@@ -87,8 +87,6 @@ CREATE TABLE orders (
     metadata        TEXT
 );
 
-GO;
-
 CREATE UNIQUE INDEX IDX_ORDERS_UUID_STUB_ORDERID ON orders (
     uuid,
     stub,
@@ -107,37 +105,49 @@ CREATE INDEX IDX_ORDERS_UUID_STUB_TS ON orders (
     timestamp
 );
 
-CREATE INDEX IDX_ORDERS_UUID_STUB_SYMBOL ON orders (
+CREATE INDEX IF NOT EXISTS IDX_ORDERS_UUID_STUB_SYMBOL ON orders (
     uuid,
     stub,
     symbol
 );
 
--- Ensure that indexes are all created
+-- Create datasources table
 
-CREATE INDEX IF NOT EXISTS IDX_UUID_TS ON logs (
-    uuid,
-    timestamp
+CREATE TABLE datasources (
+    uid         INTEGER      PRIMARY KEY AUTOINCREMENT
+                             UNIQUE
+                             NOT NULL,
+    datasource  VARCHAR (20) NOT NULL,
+    objectclass VARCHAR (20) NOT NULL,
+    timestamp   BIGINT       NOT NULL,
+    expiry      BIGINT       NULL,
+    ttl         INTEGER      NULL,
+    unqkey      VARCHAR (40) NOT NULL,
+    idxkey1     VARCHAR (20) NULL,
+    idxkey2     VARCHAR (20) NULL,
+    idxkey3     VARCHAR (20) NULL,
+    data        TEXT         NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS IDX_TIMESTAMP ON signals (
-    timestamp
+CREATE UNIQUE INDEX UNQ_DATASOURCE_UNQKEY ON datasources (
+    datasource,
+    unqkey
 );
 
-CREATE INDEX IF NOT EXISTS IDX_PROVIDER ON signals (
-    provider
+CREATE INDEX IDX_DATASOURCE_IDXKEYS ON datasources (
+    datasource,
+    idxkey1,
+    idxkey2,
+    idxkey3
 );
 
-CREATE INDEX IF NOT EXISTS IDX_USER ON signals (
-    user
+CREATE INDEX IDX_OBJECTCLASS_IDXKEYS ON datasources (
+    objectclass,
+    idxkey1,
+    idxkey2,
+    idxkey3
 );
 
-CREATE INDEX IF NOT EXISTS IDX_RESULT ON signals (
-    result
-);
-
-
-GO;
 -- Update version
 
 INSERT OR REPLACE INTO `settings` (mainkey, subkey, value) VALUES ('core', 'sqlite:dbver', 5);

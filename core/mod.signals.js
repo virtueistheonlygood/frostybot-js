@@ -6,6 +6,63 @@ const axios = require('axios')
 
 module.exports = class frostybot_signals_module extends frostybot_module {
 
+    // Constructor
+
+    constructor() {
+        super()
+        this.description = 'Signal Processor'
+    }
+    
+    // Register methods with the API (called by init_all() in core.loader.js)
+
+    register_api_endpoints() {
+
+        // Permission templates for reuse
+        var templates = {
+            'localonly':         { 'standard': ['local' ], 'provider': ['local' ]  },
+            'providerwhitelist': {'standard': ['providerwhitelist'],'provider': ['providerwhitelist']},
+        }
+
+        // Method permissions 
+
+        var permissions = {
+            'signals:add_provider':     templates.localonly,
+            'signals:get_provider':     templates.localonly,
+            'signals:get_providers':    templates.localonly,
+            'signals:add_exchange':     templates.localonly,
+            'signals:remove_exchange':  templates.localonly,
+            'signals:add_admin':        templates.localonly,
+            'signals:remove_admin':     templates.localonly,
+            'signals:add_ip':           templates.localonly,
+            'signals:remove_ip':        templates.localonly,
+            'signals:send':             templates.providerwhitelist,
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'signals:add_provider'      :  'post|/signals/provider',                      // Add new signal provider
+            'signals:get_providers'     :  'get|/signals/provider',                       // Get all signal providers
+            'signals:get_provider'      :  'get|/signals/provider/:provider',             // Get specific signal provider by provider uuid
+            'signals:add_exchange'      :  'post|/signals/provider/:provider/exchange',   // Add exchange to a signal provider
+            'signals:remove_exchange'   :  'delete|/signals/provider/:provider/exchange', // Remove exchange from a signal provider
+            'signals:add_admin'         :  'post|/signals/provider/:provider/admin',      // Add admin to a signal provider
+            'signals:remove_admin'      :  'delete|/signals/provider/:provider/admin',    // Remove admin from a signal provider
+            'signals:add_ip'            :  'post|/signals/provider/:provider/ip',         // Add IP address to a signal provider whitelist
+            'signals:remove_ip'         :  'delete|/signals/provider/:provider/ip',       // Remove IP address from signal provider whitelist
+            'signals:send'              :  [
+                                            'post|/signal/send',                          // Send a signal
+                                            'post|/signals/send'                          // Alias to the above endpoint
+                                           ]
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions[method]); // Defined in mod.base.js
+        }
+        
+    }
+
+
     // Get signal provider by UUID
 
     async get_provider(uuid) {
@@ -505,7 +562,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                                     }
                     }
 
-                    var url = await global.frostybot._modules_['core'].url();
+                    var url = await global.frostybot.modules['core'].url();
                     this.mod.output.debug('loopback_url', [url]);
 
                     // Create new request for the signal processing
@@ -521,13 +578,13 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                             result: result.result == 'error' ? 0 : 1,
                             message: result.message != undefined ? result.message : ''
                         }
-                        var database = global.frostybot._modules_['database'];
-                        var output = global.frostybot._modules_['output'];
+                        var database = global.frostybot.modules['database'];
+                        var output = global.frostybot.modules['output'];
                         database.insert('signals',data);
                         output.debug('signal_exec_result', [data]);
                     });
 
-                    //var core = global.frostybot._modules_['core'];
+                    //var core = global.frostybot.modules['core'];
                     //core.execute_single(cmd, true);
             
                 });

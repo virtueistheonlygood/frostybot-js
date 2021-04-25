@@ -25,10 +25,11 @@ module.exports = {
 
     debug: {
 
+        custom_message:     '{0}',
         custom_object:      '{0}: {1}',
         context_uuid:       'Context: {0}',
         trade_cmd_shortcut: 'Converting command shortcut \'{0}:{1}\' to \'trade:{0}:{1}\'',
-        loaded_module:      'Loaded module: {0}',
+        loaded_module:      'Loaded Module: {0}',
         source_ip:          'Connection from IP: {0} (Context ID: {1})',
         whitelist_verify:   'API Access Granted: {0} is whitelisted: {0}',
         whitelist_get:      'Retrieved IP address from the whitelist: {0}: {1}',
@@ -69,12 +70,20 @@ module.exports = {
         cache_flush:        'Successfully flushed cache: {0} items deleted',
         cache_stats:        'Sucessfully retrieved cache stats: {0}',
         orders_imported:    'Order history imported/updated: {0}',
+        datasource_refreshing:'Refreshing datasource: {0}',
+        datasource_refreshed: 'Data refreshed: {0}',
+        datasource_results: 'Fetched {1} pre-cached records from datasource {0}',
+        datasource_expired: 'Removed {1} expired entries from datasource: {0}',
+        websocket_message:  'Websocket: {0}: {1}',
     },
 
     notice: {
 
-        output_debug:       'Debug Output: {0}',
-        using_language:     'Using Language: {0}',
+        custom_message:     '{0}',
+        output_debug:       'Debug Output:    {0}',
+        using_language:     'Using Language:  {0}',
+        loaded_module:      'Loaded Module:   {0}',
+        loaded_exchanges:   'Exchange Support Modules Loaded: {0}',
         executing_command:  'Executing Command: {0}:{1}', 
         command_params:     'Command Parameters: {0}', 
         command_completed:  'Command Completed: Execution Time: {0} seconds',
@@ -95,11 +104,16 @@ module.exports = {
         database_type:      'Database Type:  {0}',
         database_name:      'Database Name:  {0}',
         position_nopotential:'No open positions or orders on {0}',
+        datasource_registered: 'Datasource registered and started: {0}',
+        websocket_connected: 'Websocket Connected: {0}',
+        websocket_message:  'Websocket: {0}: {1}',
+        exchange_refresh_markets: 'Refreshed markets for exchange: {0} ({1} markets)',
 
     },
 
     warning: {
 
+        custom_message:     '{0}',
         unhandled_exception: 'Unhandled Exception: {0}: {1}',
         testnet_not_avail:  'The exchange {0} does not have a testnet, using mainnet instead.',
         order_over_maxsize: 'The order size of {0} would exceed maxsize. Adjusting order size to {1}.',
@@ -111,10 +125,15 @@ module.exports = {
         order_retry_wait:   'Order failed, waiting {0} seconds before retrying...',
         order_retry_num:    'Retrying order (Retry {0} of {1})...',
         order_submit:       'Order submission failed: {0}',
+        datasource_invalid: 'Invalid interval/cron supplied for datasource: {0} (Background polling will not be performed)',
+        websocket_reconnecting: 'Websocket Reconnecting: {0}',
+        websocket_message:  'Websocket: {0}: {1}',
+
     },
 
     error: {
 
+        custom_message:     '{0}',
         required_param:     'Parameter Required: {0}',  
         required_oneof:     'At least one of the following parameters is required: {0}',  
         param_val_oneof:    'The {0} parameter should be one of {1}',
@@ -227,11 +246,20 @@ module.exports = {
 
         init_exchange_nouuid: 'Cannot initialize exchange: Undefined UUID.',
         init_exchange_nostub: 'Cannot initialize exchange: Undefined stub.',
+
+        websocket_disconnected: 'Websocket Disconencted: {0}',
+        websocket_error:      'Websocket Disconnected: {0}: {1}',
+        websocket_message:  'Websocket: {0}: {1}',
+
+        datasource_notfound:  'The requested datasource is not registered: {0}',
         
+        exchange_refresh_markets: 'Failed to refresh markets for exchange: {0}',
+        position_ambigous:    'Ambigous position requested: {0}',
     },
 
     success: {
 
+        custom_message:     '{0}',
         account_retrieve:   'Account(s) retrieved successfully: {0}',
         account_create:     'Account created successfully: {0}',
         account_update:     'Account updated successfully: {0}',
@@ -242,7 +270,7 @@ module.exports = {
         permissions_delete: 'Permissions removed successfully: {0}:{1} => {2}',
 
         cache_flush:        'Successfully flushed cache: {0} items deleted',
-        cache_stats:        'Sucessfully retrieved cache stats: {0}',
+        cache_stats:        'Successfully retrieved cache stats: {0}',
 
         whitelist_add:      'Added IP address to the whitelist: {0}',
         whitelist_delete:   'Deleted IP address from the whitelist: {0}',
@@ -289,6 +317,7 @@ module.exports = {
         signal_queued:       'Signal Queued: Provider: {0}, User: {1}',
         add_signal_admin:    'Added user {1} as an admin for provider {0}',
         del_signal_admin:    'Removed user {1} as an admin for provider {0}',
+        websocket_message:  'Websocket: {0}: {1}',
 
     }
     

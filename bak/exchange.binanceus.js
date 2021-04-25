@@ -1,15 +1,25 @@
 frostybot_exchange_binance_base = require('./exchange.binance.base');
 
-module.exports = class frostybot_exchange_binance_margin extends frostybot_exchange_binance_base {
+module.exports = class frostybot_exchange_binanceus extends frostybot_exchange_binance_base {
 
     // Class constructor
 
-    constructor(stub, uuid) {
-        super(stub, uuid);
+    constructor(stub = undefined) {
+        super(stub);
+    }
+
+    // Initialize exchange
+
+    async initialize() {
+        this.ccxtmodule = 'binanceus'                // CCXT module to use
+        this.shortname = 'binanceus'                 // Abbreviated name for this exchange
+        this.description = 'Binance US'              // Full name for this exchange
+        this.has_subaccounts = false                 // Subaccounts supported?
+        this.has_testnet = false                     // Test supported?
         this.stablecoins = ['USDT','BUSD'];          // Stablecoins supported on this exchange
         this.order_sizing = 'base';                  // Exchange requires base size for orders
         this.collateral_assets = ['USDT','BUSD'];    // Assets that are used for collateral
-        this.balances_market_map = '{currency}/{stablecoin}' // Which market to use to convert non-USD balances to USD
+        this.balances_market_map = '{currency}/USDT' // Which market to use to convert non-USD balances to USD
         this.param_map = {                           // Order parameter mappings
             limit             : 'LIMIT',
             market            : 'MARKET',
@@ -25,6 +35,29 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
             trigger           : 'stopPrice',
         };
     }
+
+    // Get CCXT Parameters
+
+    ccxtparams() {
+        var params = {
+        }
+
+        if (this.stub != undefined) {
+            var stub = this.stub;
+            params['apiKey'] = stub.parameters.apikey;
+            params['secret'] = stub.parameters.secret;
+            if (String(stub.parameters.testnet) == 'true') {
+                const ccxtlib = require ('ccxt');
+                const testclass = ccxtlib['binanceus'];
+                var testobj = new testclass ();
+                var urls = testobj.urls != undefined ? testobj.urls : {};
+                params['urls'] = urls;
+                if (urls.hasOwnProperty('test')) params.urls.api = urls.test;
+            }
+        }
+        return ['binanceus', params];
+
+    }    
 
 
     // Custom params
@@ -79,23 +112,19 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
     // Get list of markets from exchange
 
     async markets() {
-        var marginpairs = [];
-        this.set_cache_time('sapiGetMarginAllPairs', 3600);
-        var marginpairsresult = await this.ccxt('sapiGetMarginAllPairs');
-        if (Array.isArray(marginpairsresult)) {
-            for(var i = 0; i < marginpairsresult.length; i++) {
-                marginpairs.push(marginpairsresult[i].symbol);
-            }
-        }
-        if (this.data.markets != null) {
-            return this.data.markets;
+        var cached = this.mod.exchange.markets({exchange: 'binanceus'})
+        if (this.mod.utils.is_array(cached)) {
+            this.data.markets = cached;
+            return cached;
         }
         await this.fetch_tickers();
-        let results = await this.ccxt('fetch_markets')
+        let results = await this.execute('fetch_markets')
         var raw_markets = results;
         this.data.markets = [];
-        raw_markets
-            .filter(raw_market => raw_market.active == true && marginpairs.includes(raw_market.id))
+        var exchange = (this.shortname != undefined ? this.shortname : (this.constructor.name).split('_').slice(2).join('_'));
+        if (this.mod.utils.is_array(raw_markets))
+            raw_markets
+            .filter(raw_market => raw_market.active == true)
             .forEach(raw_market => {
                 const id = raw_market.id;
                 const symbol = raw_market.symbol;
@@ -116,7 +145,7 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
                     amount: (amount_filter[0].stepSize * 1)
                 }
                 const raw = raw_market.info;
-                const market = new this.classes.market(id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
+                const market = new this.classes.market(exchange, id, symbol, type, base, quote, bid, ask, expiration, contract_size, precision, tvsymbol, raw)
                 this.data.markets.push(market);
             });
         await this.index_markets();
@@ -130,8 +159,7 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
     async fetch_tickers() {
         var results = {};
         this.data.tickers = {};
-        this.set_cache_time('v3_get_ticker_bookticker', 10);
-        var tickersRaw = await this.ccxt('v3_get_ticker_bookticker')
+        var tickersRaw = await this.execute('v3_get_ticker_bookticker')
         for (var i = 0; i < tickersRaw.length; i++) {
             var tickerRaw = tickersRaw[i];
             var symbol = tickerRaw.symbol;
@@ -149,7 +177,7 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
 
     async open_orders(params) {
         var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
-        let raworders = await this.ccxt('fetch_open_orders',[symbol, since, limit]);
+        let raworders = await this.execute('fetch_open_orders',[symbol, since, limit]);
         return this.parse_orders(raworders);
     }
 
@@ -157,7 +185,7 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
 
     async all_orders(params) {
         var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
-        let raworders = await this.ccxt('fetch_orders',[symbol, since, limit]);
+        let raworders = await this.execute('fetch_orders',[symbol, since, limit]);
         return this.parse_orders(raworders);
     }
 
@@ -167,7 +195,7 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
         var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         var orders = await this.open_orders({symbol: symbol});
         if (id.toLowerCase() == 'all') {
-            let cancel = await this.ccxt('cancel_all_orders',[symbol]);
+            let cancel = await this.execute('cancel_all_orders',[symbol]);
             orders.forEach((order, idx) => {
                 order.status = 'cancelled';
                 orders[idx] = order;
@@ -176,7 +204,7 @@ module.exports = class frostybot_exchange_binance_margin extends frostybot_excha
             orders = orders.filter(order => ['all',order.id].includes(id));
             await orders.forEach(async (order) => {
                 var id = order.id;
-                let orders = await this.ccxt('cancel_order',[{market: symbol, id: id}]);
+                let orders = await this.execute('cancel_order',[{market: symbol, id: id}]);
             });
             orders.forEach((order, idx) => {
                 order.status = 'cancelled';

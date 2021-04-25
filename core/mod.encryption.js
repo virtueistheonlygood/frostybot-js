@@ -1,6 +1,9 @@
 // Encryption/Decryption Subsystem
 
+// IMPORTANT: This is a Frostybot internal-only module. Under no circumstance should you expose any of these methods to the API.
+
 const crypto = require('crypto');
+const sha1 = require('sha1');
 const { v4: uuidv4 } = require('uuid');
 md5 = require('md5');
 const frostybot_module = require('./mod.base')
@@ -11,6 +14,7 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
 
     constructor() {
         super()
+        this.description = 'Encryption Subsystem'
     }
 
     // Initialize
@@ -95,6 +99,12 @@ module.exports = class frostybot_encryption_module extends frostybot_module {
             return decrypted.toString();
         }
         return this.mod.output.error('decryption_failed')
+    }
+
+    // Generate a SHA-1 hash of a string
+
+    async sha1(str) {
+        return sha1(str);
     }
 
 

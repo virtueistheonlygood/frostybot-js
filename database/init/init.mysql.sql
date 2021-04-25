@@ -172,6 +172,30 @@ CREATE TABLE `orders` (
 
 
 --
+-- Table structure for table `datasources`
+--
+
+CREATE TABLE `datasources` (
+  `uid` BIGINT NOT NULL AUTO_INCREMENT,
+  `datasource` VARCHAR(20) NOT NULL,
+  `objectclass` VARCHAR(20) NOT NULL,
+  `timestamp` BIGINT NOT NULL,
+  `expiry` BIGINT NULL,
+  `ttl` INT NULL,
+  `unqkey` VARCHAR(40) NOT NULL,
+  `idxkey1` VARCHAR(20) NULL,
+  `idxkey2` VARCHAR(20) NULL,
+  `idxkey3` VARCHAR(20) NULL,
+  `data` TEXT NOT NULL,
+  PRIMARY KEY (`uid`),
+  UNIQUE INDEX `uid_UNIQUE` (`uid` ASC) VISIBLE,
+  UNIQUE INDEX `UNQ_DATASOURCE_UNQKEY` (`datasource` ASC, `unqkey` ASC) INVISIBLE,
+  INDEX `DX_DATASOURCE_IDXKEYS` (`datasource` ASC, `idxkey1` ASC, `idxkey2` ASC, `idxkey3` ASC) INVISIBLE,
+  INDEX `DX_OBJECTCLASS_IDXKEYS` (`idxkey1` ASC, `idxkey2` ASC, `objectclass` ASC) VISIBLE);
+
+
+
+--
 -- Update version
 --
 

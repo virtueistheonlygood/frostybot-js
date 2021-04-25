@@ -1,106 +1,89 @@
-// Websocket Server
+// Websocket handler module
 
-frostybot_websocket_ftx = require('../exchanges/websocket.ftx')
-frostybot_websocket_deribit = require('../exchanges/websocket.deribit')
-
-const frostybot_module = require('./mod.base')
+const frostybot_module = require('./mod.base');
 
 module.exports = class frostybot_websocket_module extends frostybot_module {
 
-  // Constructor
+    // Constructor
 
-  constructor() {
-      super()
-  }
+    constructor() {
+        super()
+        this.description = 'Websocket Handler'
+        this.websockets = {}
+        global.frostybot.tickers = {}
 
-
-  // Initialize Module
-
-  initialize() {
-      this.connect_all();
-  }
-
-
-  // Load all account stubs and connect to the relevant websocket APIs
-
-  async connect_all() {
-      /* 
-      var accounts = await this.mod.accounts.get()
-      var stubs = Object.keys(accounts);
-      if (!this.hasOwnProperty('ws')) {
-        this.ws = {}
-      }
-      for (var i = 0; i < stubs.length; i++) {
-        var stub = stubs[i];
-        await this.connect_stub(stub)
-      }
-      var account = this.mod.accounts.getaccount('deribit');
-      if (account != false) {
-        var params = this.mod.accounts.ccxtparams(account);
-        var conf = {
-          exchange: 'deribit',
-          stub: 'deribit',
-          apikey: params.parameters.apiKey,
-          secret: params.parameters.secret,
-          url: 'wss://' + params.parameters.urls.api.replace ('https://', '') + '/ws/api/v2',
-        }
-        const frostybot_wss_client_deribit = require('../exchanges/wss.client.deribit')
-        this.ws['test'] = new frostybot_wss_client_deribit(conf)
-        await this.ws['test'].connect()
-        this.ws['test'].subscribe('trades','BTC-PERPETUAL')
-      }
-      */
-  }
-
-
-  // Load Websocket API for a specific stub
-
-  async connect_stub(stub) {
-      var account = this.mod.accounts.getaccount(stub);
-      var base_dir = this.mod.utils.base_dir()
-      if (['ftx'].includes(account.exchange)) {
-        var frostybot_websocket = require(base_dir + '/exchanges/websocket.' + account.exchange)
-        this.ws[stub] = new frostybot_websocket(stub, account)
-      } 
-  }
-
-  // Websocket message receiver
-
-  async message(params) {
-    if (params.hasOwnProperty('frostybot')) {
-      const stub = params.frostybot.stub;
-      if (this.hasOwnProperty('ws')) {
-        if (this.ws.hasOwnProperty(stub)) {
-          var results = this.ws[stub].parse(params);
-          results.forEach (result => {
-            global.frostybot.wss.emit('proxy', result)
-          });
-        }
-      }
+        this.stats = {}
     }
+
+    // Initialize Module
+
+    async initialize() {
+
+        var _this = this;
+        var exchanges = ['ftx', 'binance_futures'];
+
+        for (var i = 0; i < exchanges.length; i++) {
+            var exchange = exchanges[i];
+            global.frostybot.tickers[exchange] = {}
+
+            this.websockets[exchange] = require('../exchanges/websocket.' + exchange.replace('_','.'));
+            this.websockets[exchange].start();
+
+            this.websockets[exchange].on('ticker', function(e) {
+                global.frostybot.tickers[e.exchange][e.data.symbol] = {
+                    symbol: e.data.symbol,
+                    bid: e.data.bid,
+                    ask: e.data.ask
+                }
+            })
+
+            this.websockets[exchange].on('stats', function(e) {
+                _this.stats[e.exchange] = e.data;
+            })
+
+            this.websockets[exchange].on('log', function(e) {
+                var type = String(e.data.type).toLowerCase();
+                var exchange= e.exchange
+                var message = e.data.message;
+                if (['debug', 'notice', 'success', 'warning', 'error'].includes(type)) {
+                    _this.mod.output[type]('websocket_message', [exchange, message]);
+                }
+            })
+            
+        }
     
-  }
-
-  // Subscribe to channel
-
-  async subscribe(params) {
-    var [stub, channel, symbol] = this.mod.utils.extract_props(params, ['stub', 'channel', 'symbol']);
-    if (this.ws.hasOwnProperty(stub)) {
-      return await this.ws[stub].subscribe(channel, symbol);
     }
-    return false;
-  }
 
+    // Register methods with the API (called by init_all() in core.loader.js)
 
-  // Unsubscribe 
+    register_api_endpoints() {
 
-  async unsubscribe(params) {
-    var [stub, channel, symbol] = this.mod.utils.extract_props(params, ['stub', 'channel', 'symbol']);
-    if (this.ws.hasOwnProperty(stub)) {
-      return await this.ws[stub].unsubscribe(channel, symbol);
+        // Permissions are the same for all methods, so define them once and reuse
+        var permissions = {
+            'websocket:status': {
+                'standard': ['any' ],
+                'provider': ['any' ],
+            }
+        }
+
+        // API method to endpoint mappings
+        var api = {
+            'websocket:status':  'get|/websocket/status',            // Get all markets for an exchange 
+        }
+
+        // Register endpoints with the REST and Webhook APIs
+        for (const [method, endpoint] of Object.entries(api)) {   
+            this.register_api_endpoint(method, endpoint, permissions[method]); // Defined in mod.base.js
+        }
+        
     }
-    return false;
-  }
 
+    // Get status of websocket clients
+
+    async status() {
+
+        return this.stats;
+
+    }
 
 }
