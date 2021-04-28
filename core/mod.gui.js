@@ -17,7 +17,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
         // Permission templates for reuse
         var templates = {
-            'localonly':  { 'standard': ['local' ], 'provider': ['local' ]  },
+            'localonly':  { 'standard': ['local', 'any' ], 'provider': ['local' ]  },
             'tokenonly':  { 'standard': ['token'],  'provider': ['token']   },
             'tokenorany': { 'standard': ['any','token'],  'provider': ['any','token'] },
             'any':        { 'standard': ['any'], 'provider': ['any'] }
@@ -60,8 +60,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Enable GUI
 
     async enable(params) {
-        var ip = context.get('srcIp');
-        if (['127.0.0.1','::1'].includes(ip)) {
+        //var ip = context.get('srcIp');
+        //if (['127.0.0.1','::1'].includes(ip)) {
             var schema = {
                 email: {
                     required: 'string',
@@ -90,8 +90,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                 }
             }
             return this.mod.output.error('gui_enable');
-        }
-        return this.mod.output.error('local_only');
+        //}
+        //return this.mod.output.error('local_only');
     }
 
     // Disable GUI
@@ -415,9 +415,18 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
     }
 
+    // Force Refresh of Balance Data
+
+    async data_refresh_balances(params) {
+        await this.mod.datasources.refresh('exchange:balances', { user : params.token.uuid, stub : params.stub });
+        return await this.data_griddata_balances(params);
+    }
+
+
     // Balance Grid Data
 
     async data_griddata_balances(params) {
+        await this.mod.datasources.refresh('exchange:balances', { user : params.token.uuid, stub : params.stub });
         var stub = params.stub;
         var balances = await this.mod.exchange.balances(stub);
         var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
@@ -436,9 +445,23 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return balances;
     }
 
+    // Force Refresh of Position Data
+
+    async data_refresh_positions(params) {
+        await this.mod.datasources.refresh('exchange:positions', { user : params.token.uuid, stub : params.stub });
+        return await this.data_griddata_positions(params);
+    }
+
+    // Force Refresh of Position Data
+
+    async data_refresh_positions(params) {
+        return await this.data_griddata_positions(params);
+    }
+
     // Position Grid Data
 
     async data_griddata_positions(params) {
+        await this.mod.datasources.refresh('exchange:positions', { user : params.token.uuid, stub : params.stub });
         var stub = params.stub;
         var showspot = params.hasOwnProperty('showspot') ? params.showspot : 'false';
         this.mod.config.set({'gui:showspotpositions': showspot});

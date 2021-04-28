@@ -77,11 +77,19 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     // Get all uuids and stubs
 
     async all_uuids_and_stubs() {
+        return await this.uuids_and_stubs({});
+    }
+
+    // Get uuid and stubs
+
+    async uuids_and_stubs(filter = {}) {
         var query = {
             mainkey: 'accounts'
         }
+        if (filter['user'] != undefined) query['uuid'] = filter['user'];
+        if (filter['stub'] != undefined) query['subkey'] = filter['stub'];
         var result = await this.database.select('settings', query);
-        var stubs = {};
+        var stubs = {}
         if (this.mod.utils.is_array(result) && result.length > 0) {
             for (var i = 0; i < result.length; i++) {
                 var uuid = result[i].uuid;
@@ -90,7 +98,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
                 stubs[uuid].push(data);
             }
         }      
-        return stubs;    
+        return stubs;            
     }
 
 
@@ -215,6 +223,8 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             data = await this.mod.utils.encrypt_values(data, ['apikey', 'secret']);
             if (await this.mod.settings.set('accounts', stub, data)) {
                 this.mod.output.success('account_create', stub);
+                this.mod.datasources.refresh('exchange:positions', {user: context.get('uuid'), stub: stub});
+                this.mod.datasources.refresh('exchange:balances', {user: context.get('uuid'), stub: stub});
                 return true;
             }
             this.mod.output.error('account_create', stub);

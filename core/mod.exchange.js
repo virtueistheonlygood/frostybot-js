@@ -394,10 +394,10 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Get position data for the exchange:positions datasource
 
-    async refresh_positions_datasource() {
+    async refresh_positions_datasource(params = {}) {
         var positions = [];
-        var alluuidstubs = await this.mod.accounts.all_uuids_and_stubs();
-        for (const [user, stubs] of Object.entries(alluuidstubs)) {
+        var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
+        for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
                 var encrypted = stubs[i];
                 var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret'], user);
@@ -427,10 +427,10 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Get position data for the exchange:positions datasource
 
-    async refresh_balances_datasource() {
+    async refresh_balances_datasource(params = {}) {
         var balances = [];
-        var alluuidstubs = await this.mod.accounts.all_uuids_and_stubs();
-        for (const [user, stubs] of Object.entries(alluuidstubs)) {
+        var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
+        for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
                 var encrypted = stubs[i];
                 var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret'], user);

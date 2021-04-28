@@ -113,7 +113,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
 
     // Refresh datasource from the callback function
 
-    async refresh(params) {
+    async refresh(params, callbackparams = {}) {
         var name = (params.name != undefined ? params.name : params);
         if ((this.datasources[name] != undefined)) {
             var cachetime = this.datasources[name].cachetime;
@@ -123,7 +123,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                     this.mod.output.debug('datasource_expired', [name, deleted]);
                 }
                 var start = (new Date()).getTime();
-                var data = await this.datasources[name].callback();
+                var data = await this.datasources[name].callback(callbackparams = {});
                 this.datasources[name].data = data;
                 var timestamp = (new Date).getTime();
                 var ttl = (cachetime * 1000)
