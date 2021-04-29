@@ -38,26 +38,8 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Check if IP address is local to the cluster
 
     async is_cluster_local_ip(ip) {
-        var nodes = await this.mod.settings.get('node');
-        if (nodes == null) {
-            return true;
-        } else {
-            if (this.mod.utils.is_object(nodes)) {
-                nodes = nodes.hasOwnProperty('hostname') ? [nodes] : Object.values(nodes);
-            }
-        }
-        if (!Array.isArray(nodes)) nodes = [];
-        var ips = [];
-        try {
-            nodes.forEach(node => {
-                node.ip.forEach(nodeip => {
-                    ips.push(nodeip);
-                })
-            })
-        } catch {
-        
-        }
-        return ips.includes(ip);        
+        var clusterips = await this.mod.status.clusterips();
+        return clusterips.includes(ip);        
     }
 
     // Get proxies
@@ -278,15 +260,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Check if module exists and initialize it
 
     load_module(module) {
-        /*
-        if (api_methods.hasOwnProperty(module) && this.mod.hasOwnProperty(module)) {
-            var mod = require('./mod.'+module)
-            this.mod[module] = new mod();
-            return true;
-        } else {
-            return false;
-        }
-        */
         if (global.frostybot.modules[module] != undefined) {
             this.mod[module] = global.frostybot.modules[module];
             return true;
@@ -298,13 +271,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
     // Check if a given method exists in a given module
 
     method_exists(module, method) {
-        /*const loader = require('./core.loader');
-        loader.map_all();
-        if (api_methods[module].includes(method)) {
-            return true;
-        }
-        return false;
-        */
         return global.frostybot.methodmap[module].includes(method)
     }
     

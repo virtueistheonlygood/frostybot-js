@@ -3,7 +3,6 @@
 const frostybot_module = require('./mod.base');
 const fs = require('fs');
 var context = require('express-http-context');
-const { Console } = require('console');
 
 module.exports = class frostybot_exchange_module extends frostybot_module {
 
