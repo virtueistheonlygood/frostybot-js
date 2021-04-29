@@ -26,6 +26,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         // API method to endpoint mappings
         var api = {
             'datasources:refresh':  [],  // Refresh a datasource manually
+            'datasources:active':   [],  // Get datasource/node distribution
             'datasources:data':     [],  // Get data from a datasource
             'datasources:start':    [],  // Start datasource autofresh
             'datasources:stop':     [],  // Stop datasource autorefresh
@@ -59,6 +60,8 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             indexes:    indexes
         }
         await this.redistribute();
+        var active = await this.isactive(name);
+
         await this.refresh(name);
         this.mod.output.notice('datasource_registered', name);
     }
@@ -115,6 +118,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     async isactive(name) {
         var distribution = await this.mod.settings.get('core','distributer',false);
         if (distribution == false) distribution = {};
+        console.log(distribution)
         if (distribution.hasOwnProperty(name)) {
             var thisnode = (await this.mod.status.get_node_info())[0].hostname;
             var activenode = distribution[name].active;
@@ -192,6 +196,14 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     async refresh(params, callbackparams = {}) {
         var name = (params.name != undefined ? params.name : params);
         if ((this.datasources[name] != undefined)) {
+            if (callbackparams == {}) {
+                var check = this.isactive();
+                console.log('Is Active? ' + check)
+                if (check == false) {
+                    return true;
+                }
+            }
+            this.mod.output.debug('datasource_refreshing', [name])
             var cachetime = this.datasources[name].cachetime;
             try {
                 var deleted = await this.database.exec('DELETE FROM datasources WHERE datasource=? AND expiry < ?', [ name, (new Date()).getTime()])
@@ -258,10 +270,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                 var valid = cron.validate(refreshtime);
                 if (valid) {
                     this.crontab[name] = cron.schedule(refreshtime, async () =>  {
-                        if (await this.isactive(name)) {
-                            this.mod.output.debug('datasource_refreshing', [name])
-                            await this.refresh(name);
-                        }
+                        await this.refresh(name);
                     });                   
                     this.crontab[name].start();
                     this.mod.output.notice('datasource_registered', [name]);
