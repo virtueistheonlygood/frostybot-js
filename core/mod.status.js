@@ -89,7 +89,7 @@ module.exports = class frostybot_status_module extends frostybot_module {
         for (var i = 0; i< nodes.length; i++) {
             var ips = nodes[i].ip;
             for (var j = 0; j < ips.length; j++) {
-                if (!ip.includes(ips[j])) ip.push[ips[j]];
+                if (!ip.includes(ips[j])) ip.push(ips[j]);
             }
         }
         return ip;
