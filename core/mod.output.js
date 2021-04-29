@@ -399,7 +399,13 @@ module.exports = class frostybot_output_module extends frostybot_module {
             }
             var uuid = context.get('uuid');
             if (uuid == undefined) uuid = '00000000-0000-0000-0000-000000000000';
-            this.outdb(uuid, type, message);
+            if (typeof(message) == 'string') {
+                try {
+                    this.outdb(uuid, type, message);
+                } catch (e) {
+                    this.exception(e);
+                }
+            }
             var logentry = {
                 uuid :  uuid,
                 message_type : 'log',

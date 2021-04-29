@@ -240,7 +240,7 @@ class frostybot_position extends frostybot_base {
     var market = this.find(this.symbol);
     if (market != undefined) {
       this.symbol = market.symbol;
-      market.update();
+      if (typeof(market['update']) == 'function') market.update();
       //this.market = market;
       //this.type = market.type
       if (![undefined, null].includes(market.usd)) {

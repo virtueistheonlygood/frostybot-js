@@ -70,14 +70,33 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     }
 
+    // Convert symbol param into the format required by the exchange
+
+    async convert_symbol(stub, params = {}) {
+        if (params.symbol != undefined) {
+            var exchange= await this.get_exchange_from_stub(stub);
+            var market = await this.findmarket(exchange, params.symbol);
+            var field = await this.setting(exchange, 'exchange_symbol')
+            if (field == undefined) field = 'symbol';
+            if (market[field] != undefined) {
+                if (params.symbol != market[field]) {
+                    //this.mod.output.debug('custom_message', 'Converted symbol ' + params.symbol + ' to ' + market[field])
+                    params['symbol'] = market[field]
+                }
+            }
+        }
+        return params;
+    }
+
     // Execute method on the exchange normalizer
 
     async execute(stub, method, params) {
         var uuid = context.get('uuid');
+        var params = await this.convert_symbol(stub, params);
         var stubs = await this.mod.accounts.stubs_by_uuid(uuid, stub);
         if (stubs.length == 1) {
             var encrypted = stubs[0];
-            var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret'], uuid);
+            var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret']);
             decrypted.uuid = uuid;
             var file = await this.get_normalizer_module_by_stub(decrypted);
             const fs = require('fs');
@@ -175,7 +194,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             var exclass = require(file);
             this.normalizers[exchange] = new exclass();
             global.frostybot.exchanges[exchange] = {};
-            var settings = ['type', 'shortname', 'description', 'ccxtmodule', 'has_subaccounts', 'has_testnet', 'stablecoins', 'order_sizing', 'collateral_assets', 'balances_market_map', 'doublecheck', 'param_map'];
+            var settings = ['type', 'shortname', 'description', 'ccxtmodule', 'has_subaccounts', 'has_testnet', 'stablecoins', 'order_sizing', 'collateral_assets', 'balances_market_map', 'doublecheck', 'param_map', 'exchange_symbol'];
             for (var k = 0; k < settings.length; k++) {
                 var setting = settings[k];
                 global.frostybot.exchanges[exchange][setting] = this.normalizers[exchange][setting];
@@ -400,7 +419,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
                 var encrypted = stubs[i];
-                var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret'], user);
+                var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
                 decrypted.uuid = user;
                 var file = await this.get_normalizer_module_by_stub(decrypted);
                 const fs = require('fs');
@@ -433,7 +452,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
                 var encrypted = stubs[i];
-                var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret'], user);
+                var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
                 decrypted.uuid = user;
                 var file = await this.get_normalizer_module_by_stub(decrypted);
                 const fs = require('fs');

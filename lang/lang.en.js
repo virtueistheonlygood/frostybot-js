@@ -87,6 +87,7 @@ module.exports = {
         executing_command:  'Executing Command: {0}:{1}', 
         command_params:     'Command Parameters: {0}', 
         command_completed:  'Command Completed: Execution Time: {0} seconds',
+        order_completed:    'Order Completed: Execution Time: {0} seconds',
         processing_queue:   'Processing order queue: {0} order(s) queued',
         processed_queue:    'Processed order queue:  {0}/{1} order(s) submitted successfully.',
         order_sizing_cur:   'Current position {0} size is: {1} {2}',

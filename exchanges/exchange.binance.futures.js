@@ -14,7 +14,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         this.stablecoins = ['USDT','BUSD'];          // Stablecoins supported on this exchange
         this.order_sizing = 'base';                  // Exchange requires base size for orders
         this.collateral_assets = ['USDT','BUSD'];    // Assets that are used for collateral
-        this.ccxtfield = 'id';                       // Does CCXT use the ID or the Symbol field?
+        this.exchange_symbol = 'symbol';             // Does CCXT use the ID or the Symbol field?
         this.balances_market_map = '{currency}USDT'  // Which market to use to convert non-USD balances to USD
         this.param_map = {                           // Order parameter mappings
             limit              : 'LIMIT',
@@ -47,15 +47,15 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
 
     ccxtparams() {
         var params = {
+            options: {
+                defaultType : 'future',
+            }
         }
 
         if (this.stub != undefined) {
             var stub = this.stub;
             params['apiKey'] = stub.parameters.apikey;
             params['secret'] = stub.parameters.secret;
-            params['options'] = {
-                defaultType : 'future',
-            };
             if (String(stub.parameters.testnet) == 'true') {
                 const ccxtlib = require ('ccxt');                
                 const testclass = ccxtlib['binance'];
@@ -170,7 +170,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
 
     async fetch_tickers() {
         var results = {};
-       var tickersRaw = await this.execute('fapiPublic_get_ticker_bookticker')
+        var tickersRaw = await this.execute('fapiPublic_get_ticker_bookticker')
         for (var i = 0; i < tickersRaw.length; i++) {
             var tickerRaw = tickersRaw[i];
             var symbol = tickerRaw.symbol;
@@ -187,16 +187,17 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
 
     async open_orders(params) {
         var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
-        let raworders = await this.ccxtobj.fetchOpenOrders(symbol, since, limit);
+        await this.ccxtobj.fetch_markets(symbol)
+        let raworders = await this.ccxtobj.fetch_open_orders(symbol, since, limit);
         return this.parse_orders(raworders);
     }
 
     // Get all order history
 
     async all_orders(params) {
-        //console.log(await this.ccxtobj.fetchOrders('BTC/USDT'))
         var [symbol, since, limit] = this.mod.utils.extract_props(params, ['symbol', 'since', 'limit']);
-        let raworders = await this.ccxtobj.fetchOrders(symbol, since, limit);
+        await this.ccxtobj.fetch_markets(symbol)
+        let raworders = await this.ccxtobj.fetch_orders(symbol, since, limit);
         return this.parse_orders(raworders);
     }
 
@@ -206,22 +207,15 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
         if (id.toLowerCase() == 'all') {
             var orders = await this.open_orders({symbol: symbol});
-            let cancel = await this.execute('cancel_all_orders',[symbol]);
+            let cancel = await this.ccxtobj.cancel_all_orders(symbol);
             orders.forEach((order, idx) => {
                 order.status = 'cancelled';
                 orders[idx] = order;
             })   
         } else {
-            var id = order.id;
-            let order = await this.execute('cancel_order',[{market: symbol, id: id}]);
+            var id = params.id;
+            let order = await this.ccxtobj.cancel_order(id, symbol);
             return order;
-/*            orders = orders.filter(order => ['all',order.id].includes(id));
-            await orders.forEach(async (order) => {
-            });
-            orders.forEach((order, idx) => {
-                order.status = 'cancelled';
-                orders[idx] = order;
-            })   */
         }
         return orders;
     }

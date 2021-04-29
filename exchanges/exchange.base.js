@@ -8,7 +8,7 @@ module.exports = class frostybot_exchange_base {
 
     constructor(stub = undefined) {
         if (stub != undefined) this.stub = stub;
-        this.ccxtfield = 'symbol';       // Does CCXT use the ID or the Symbol field?
+        this.exchange_symbol = 'symbol';       // Does CCXT use the ID or the Symbol field?
         this.map_mod();
         this.ccxtload();
     }
@@ -29,7 +29,7 @@ module.exports = class frostybot_exchange_base {
         try {
             this.ccxtobj = new ccxtclass (params);
             this.ccxtobj.options.adjustForTimeDifference = true
-            this.ccxtobj.loadMarkets();
+            await this.ccxtobj.loadMarkets();
         } catch(error) {
             this.mod.output.exception(error);
         }  
@@ -145,7 +145,7 @@ module.exports = class frostybot_exchange_base {
         var side = params.side;
         var amount = parseFloat(params.amount);
         var price = params.price;
-        var order_params = params.order_params;
+        var order_params = params.params;
         //var [symbol, type, side, amount, price, order_params] = this.mod.utils.extract_props(params, ['symbol', 'type', 'side', 'amount', 'price', 'params']);
         var market = this.find_market(symbol);
         symbol = market.symbol;

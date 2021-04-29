@@ -944,7 +944,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         // Base order params object
         var order_params = {
             symbol  :   symbol.toUpperCase(),
-            type    :   this.param_map[(type == 'trailstop' ? 'trailstop' : (price == undefined ? type + '_market' : type + '_limit'))],
+            type    :   param_map[(type == 'trailstop' ? 'trailstop' : (price == undefined ? type + '_market' : type + '_limit'))],
             side    :   side.toLowerCase(),
             amount  :   amount,
             price   :   (price != undefined ? price : null),
@@ -970,7 +970,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
 
         // Trigger type for TP/SL
-        if (this.param_map.hasOwnProperty('trigger_type')) {
+        if (param_map.hasOwnProperty('trigger_type')) {
             order_params.params[param_map.trigger_type] = triggertype == undefined ? 'mark_price' : triggertype;
         }
 
@@ -985,7 +985,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         
         // Get normalizer custom params (if defined)
-        order_params = await this.exchange_execute(stub, 'custom_params',[type, order_params, custom_params])
+        order_params = await this.mod.exchange.execute(stub, 'custom_params', [type, order_params, custom_params])
 
         return this.mod.utils.remove_values(order_params, [null, undefined]);
 
@@ -1061,18 +1061,15 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         
         if (order_params !== false)
             this.mod.queue.add(stub, symbol, order_params);
-        
-        if (['long', 'buy'].includes(type))
-            await this.tpsl(params, 'sell', true);
-        if (['short', 'sell'].includes(type))
-            await this.tpsl(params, 'buy', true);
-        
+                
     }
     
     
     // Clear order queue, create orders, and process the queue (submit orders to the exchange)
 
     async create_and_submit_order(type, params) {
+
+        const uuid = context.get('uuid')
         const stub = params.stub
         const symbol = params.symbol
         
@@ -1080,16 +1077,68 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (String(params.reduce) == 'true') {
             var exch = await this.mod.accounts.get_shortname_from_stub(params.stub);
             if (exch.indexOf('ftx') != -1) { 
-                var market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol.toUpperCase());
+                var market = await this.get_market(stub, symbol);
                 if ((market.type == 'spot') && (params.hasOwnProperty('reduce'))) {
                     delete params.reduce;
                 }
             }
         }
+        
+        // Process normal orders before processing conditional orders
+        if (['buy','sell','long','short','close'].includes(type)) {
 
-        this.mod.queue.clear(stub, symbol)
-        await this.create_order(type, params);
-        return await this.mod.queue.process(stub, symbol);;
+            var start = (new Date()).getTime();
+            
+            // Clear queue
+            this.mod.queue.clear(stub, symbol)
+           
+            // Process limit and market orders
+            await this.create_order(type, params);
+            var result = await this.mod.queue.process(stub, symbol);
+            
+            // Order execution time
+            var stop = (new Date()).getTime();
+            var duration = (stop - start) / 1000;
+            this.mod.output.notice('order_completed', [duration]);
+
+            //Refresh position
+            await this.mod.datasources.refresh('exchange:positions', { user : uuid, stub : stub });
+            
+            // Then take care of other order types
+
+            var start = (new Date()).getTime();
+
+            if (['long', 'buy'].includes(type))
+                await this.tpsl(params, 'sell', true);
+            if (['short', 'sell'].includes(type))
+                await this.tpsl(params, 'buy', true);
+            await this.mod.queue.process(stub, symbol);
+
+            // Order execution time
+            var stop = (new Date()).getTime();
+            var duration = (stop - start) / 1000;
+            this.mod.output.notice('order_completed', [duration]);
+
+
+        } else {
+
+            var start = (new Date()).getTime();
+
+            // Clear queue
+            this.mod.queue.clear(stub, symbol)
+
+            // Other order types
+            var result = await this.create_order(type, params);
+            await this.mod.queue.process(stub, symbol);
+
+            // Order execution time
+            var stop = (new Date()).getTime();
+            var duration = (stop - start) / 1000;
+            this.mod.output.notice('order_completed', [duration]);
+
+        }
+
+        return result;
     }
 
 
@@ -1236,6 +1285,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             });
         }
         // Get pending limit orders and add to possible average position entry price
+        /*
         var orders = await this.mod.exchange.execute(stub, 'orders', {status: 'open', symbol: symbol, type: 'limit'});
         for (var i = 0; i < orders.length; i++) {
             var order = orders[i];
@@ -1249,6 +1299,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 type: 'orders'
             });
         };
+        */
         // Get pending orders in the order queue
         var queue = this.mod.queue.get(stub, symbol);
         for (var i = 0; i < queue.length; i++) {
@@ -1457,7 +1508,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (params.profittrigger != undefined) {
 
             // Check if currently in a position and if profittrigger is relative and make it relative to the position entry price
-            var market = await this.mod.exchange.execute(stub, 'market', {symbol: symbol});
+            var market = await this.get_market(stub, symbol);
             if (this.is_relative(params.profittrigger)) {
                 var operator = String(params.profittrigger).substr(0,1);
                 if (side == null) {

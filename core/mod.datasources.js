@@ -91,9 +91,9 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         var dsconfig = this.datasources[datasource];
         if (dsconfig != undefined) {
             var indexes = dsconfig.indexes;
-            if (search[indexes['idxkey1']] != undefined) query['idxkey1'] = search[indexes['idxkey1']].toLowerCase();
-            if (search[indexes['idxkey2']] != undefined) query['idxkey2'] = search[indexes['idxkey2']].toLowerCase();
-            if (search[indexes['idxkey3']] != undefined) query['idxkey3'] = search[indexes['idxkey3']].toLowerCase();
+            if (search[indexes['idxkey1']] != undefined) query['idxkey1'] = this.normalize_index(search[indexes['idxkey1']]);
+            if (search[indexes['idxkey2']] != undefined) query['idxkey2'] = this.normalize_index(search[indexes['idxkey2']]);
+            if (search[indexes['idxkey3']] != undefined) query['idxkey3'] = this.normalize_index(search[indexes['idxkey3']]);
             var result = await this.database.select('datasources', query);
             var data = []
             if (result.length > 0) {
@@ -109,6 +109,17 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         } else {
             return this.mod.output.error('datasource_notfound', [datasource]);
         }
+    }
+
+    // Normalize index
+
+    normalize_index(value) {
+        var remove = ['-','/','_',' ']
+        var value = String(value).toLowerCase();
+        remove.forEach(char => {
+            value = value.replace(char,'');
+        })
+        return value;
     }
 
     // Refresh datasource from the callback function
@@ -142,9 +153,9 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                             expiry: expiry,
                             ttl: ttl,
                             unqkey: unqkey,
-                            idxkey1: obj.hasOwnProperty(indexes.idxkey1) ? String(obj[indexes.idxkey1]).toLowerCase() : '<null>',
-                            idxkey2: obj.hasOwnProperty(indexes.idxkey2) ? String(obj[indexes.idxkey2]).toLowerCase() : '<null>',
-                            idxkey3: obj.hasOwnProperty(indexes.idxkey3) ? String(obj[indexes.idxkey3]).toLowerCase() : '<null>',
+                            idxkey1: obj.hasOwnProperty(indexes.idxkey1) ? this.normalize_index(obj[indexes.idxkey1]) : '<null>',
+                            idxkey2: obj.hasOwnProperty(indexes.idxkey2) ? this.normalize_index(obj[indexes.idxkey2]) : '<null>',
+                            idxkey3: obj.hasOwnProperty(indexes.idxkey3) ? this.normalize_index(obj[indexes.idxkey3]) : '<null>',
                             data: JSON.stringify(obj)
                         }    
                         //console.log(dbobj)

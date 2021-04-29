@@ -54,7 +54,11 @@ module.exports = class frostybot_database_mysql_module extends frostybot_databas
     // Execute a SQL statement
 
     async exec(sql, values = []) {
-        var result = await this.db.awaitQuery(sql, values);
+        try {
+            var result = await this.db.awaitQuery(sql, values);
+        } catch (e) {
+            return { changes: 0 };    
+        }
         var rows = result.hasOwnProperty('affectedRows') ? result.affectedRows : 0;
         return { changes: rows };
     }

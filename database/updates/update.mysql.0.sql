@@ -78,8 +78,8 @@ CREATE TABLE `orders` (
 
 CREATE TABLE `datasources` (
   `uid` BIGINT NOT NULL AUTO_INCREMENT,
-  `datasource` VARCHAR(20) NOT NULL,
-  `objectclass` VARCHAR(20) NOT NULL,
+  `datasource` VARCHAR(50) NOT NULL,
+  `objectclass` VARCHAR(50) NOT NULL,
   `timestamp` BIGINT NOT NULL,
   `expiry` BIGINT NULL,
   `ttl` INT NULL,
