@@ -86,28 +86,19 @@ module.exports = class frostybot_status_module extends frostybot_module {
     async clusterips() {
         var nodes = await this.nodes();
         var ip = [];
-        nodes.forEach(node => {
-            node.ip.forEach(addr => {
-                if (!ip.includes(addr)) {
-                    ip.push(addr);
-                }
-            })
-        })
+        for (var i = 0; i< nodes.length; i++) {
+            var ips = nodes[i].ips;
+            for (var j = 0; j < ips.length; j++) {
+                if (!ip.includes(ips[j])) ip.push[ips[j]];
+            }
+        }
         return ip;
     }
 
     // Get information about all the nodes participating in this instance
 
     async nodes() {
-        var me = await this.get_node_info();
-        var nodes = await this.mod.datasources.select('node:info', {});
-        var result = me;
-        nodes.forEach(node => {
-            if (node.hostname != me[0].hostname) {
-                result.push(nodes);
-            }
-        })
-        return result;
+        return await this.mod.datasources.select('node:info', {});
     }
 
     // Refresh node info datasource
