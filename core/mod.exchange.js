@@ -432,11 +432,12 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                     try {
                         var result = await mod.execute('positions', {}, true);
                     } catch(e) {
-                        this.mod.output.exception(e);
-                        return false;
+                        //this.mod.output.exception(e);
                     }
-                    for (var j = 0; j < result.length; j++) {
-                        positions.push(result[j]);                       
+                    if (Array.isArray(result) && (result.length > 0)) {
+                        for (var j = 0; j < result.length; j++) {
+                            positions.push(result[j]);                       
+                        }
                     }
                 }
             }
@@ -465,12 +466,12 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                     try {
                         var result = await mod.execute('balances', {}, true);
                     } catch(e) {
-                        this.mod.output.exception(e);
-                        return false;
+                        //this.mod.output.exception(e);
                     }
-                    for (var j = 0; j < result.length; j++) {
-                        balances.push(result[j]);
-                       
+                    if (Array.isArray(result) && (result.length > 0)) {
+                        for (var j = 0; j < result.length; j++) {
+                            balances.push(result[j]);                       
+                        }
                     }
                 }
             }
