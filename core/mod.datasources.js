@@ -67,7 +67,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
 
 
     findleastused(jobqty) {
-        var max = Math.max(Object.values(jobqty));
+        var max = Math.max(...Object.values(jobqty));
         var hosts = Object.keys(jobqty);
         var leasthost = null;
         for (var i = 0; i < hosts.length; i++) {
@@ -117,7 +117,10 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         if (distribution == false) distribution = {};
         if (distribution.hasOwnProperty(name)) {
             var thisnode = (await this.mod.status.get_node_info())[0].hostname;
-            if (thisnode == distribution[name].active) return true;
+            var activenode = distribution[name].active;
+            console.log('This node: ' + thisnode);
+            console.log('Active node: ' + activenode);
+            if (thisnode == activenode) return true;
         }
         return false;
     }
@@ -188,7 +191,6 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
 
     async refresh(params, callbackparams = {}) {
         var name = (params.name != undefined ? params.name : params);
-        if ((callbackparams == {}) && (!await this.isactive(name)) && this.distributable.includes(name)) return true;
         if ((this.datasources[name] != undefined)) {
             var cachetime = this.datasources[name].cachetime;
             try {
@@ -256,8 +258,10 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                 var valid = cron.validate(refreshtime);
                 if (valid) {
                     this.crontab[name] = cron.schedule(refreshtime, async () =>  {
-                        this.mod.output.debug('datasource_refreshing', [name])
-                        await this.refresh(name);
+                        if (await this.isactive(name)) {
+                            this.mod.output.debug('datasource_refreshing', [name])
+                            await this.refresh(name);
+                        }
                     });                   
                     this.crontab[name].start();
                     this.mod.output.notice('datasource_registered', [name]);
