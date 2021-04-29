@@ -10,6 +10,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         this.description = 'Datasource Controller'
         this.datasources = {};
         this.crontab = {};
+        this.distributable = []
     }
 
     // Register methods with the API (called by init_all() in core.loader.js)
@@ -40,7 +41,8 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     // Register a callback function as a datasource for the data hub, and optionally provide a 
     // crontab string for background refresh
 
-    async register(name, indexes = {}, callback, cachetime = 60) {
+    async register(name, indexes = {}, callback, cachetime = 60, distribute = true) {
+        if (distribute) this.distributable.push(name);
         if ((this.datasources[name] != undefined)) {
             if (this.crontab[name] != undefined) {
                 this.crontab[name].destroy();
@@ -56,8 +58,68 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             expiry:     null,
             indexes:    indexes
         }
+        await this.redistribute();
         await this.refresh(name);
         this.mod.output.notice('datasource_registered', name);
+    }
+
+    // Redistribute jobs amongst active nodes
+
+
+    findleastused(jobqty) {
+        var max = Math.max(Object.values(jobqty));
+        var hosts = Object.keys(jobqty);
+        var leasthost = null;
+        for (var i = 0; i < hosts.length; i++) {
+            var host = hosts[i];
+            if (jobqty[host] <= max) { leasthost = host; max = jobqty[host]; }
+        }
+        return leasthost;
+    }
+
+    async redistribute() {
+        var thisnode = (await this.mod.status.get_node_info())[0].hostname;
+        var distribution = await this.mod.settings.get('core','distributer',false);
+        var nodes = await this.mod.status.nodes();
+        var hosts = [];
+        var jobqty = {};
+        for (var i = 0; i < nodes.length; i++) {
+            jobqty[nodes[i].hostname] = 0;
+            hosts.push(nodes[i].hostname);
+        }
+        if (distribution == false) distribution = {};
+        var alljobs = Object.keys(distribution);
+        var jobs = this.distributable;
+        for (var i = 0; i < jobs.length; i++) 
+            if (!alljobs.includes(jobs[i])) 
+                alljobs.push(jobs[i]) 
+        for (var i = 0; i < alljobs.length; i++) {
+            var jobname = alljobs[i];
+            if (!distribution.hasOwnProperty(jobname)) distribution[jobname] = { available: [], active: []};
+            var available = distribution[jobname].available;
+            available = available.filter(host => hosts.includes(host));
+            if ((!available.includes(thisnode)) && (this.distributable.includes(jobname))) available.push(thisnode);
+            var leastused = this.findleastused(jobqty);
+            jobqty[leastused]++;
+            distribution[jobname] = {
+                available: available,
+                active: leastused
+            }
+        }
+        console.log(distribution)
+        await this.mod.settings.set('core', 'distributer', distribution);
+    }
+
+    // Check if this node is responsible for running a job
+
+    async isactive(name) {
+        var distribution = await this.mod.settings.get('core','distributer',false);
+        if (distribution == false) distribution = {};
+        if (distribution.hasOwnProperty(name)) {
+            var thisnode = (await this.mod.status.get_node_info())[0].hostname;
+            if (thisnode == distribution[name].active) return true;
+        }
+        return false;
     }
 
     // Get unique key for data object
@@ -126,6 +188,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
 
     async refresh(params, callbackparams = {}) {
         var name = (params.name != undefined ? params.name : params);
+        if ((callbackparams == {}) && (!await this.isactive(name)) && this.distributable.includes(name)) return true;
         if ((this.datasources[name] != undefined)) {
             var cachetime = this.datasources[name].cachetime;
             try {
