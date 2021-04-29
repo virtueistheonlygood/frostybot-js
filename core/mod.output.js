@@ -345,7 +345,11 @@ module.exports = class frostybot_output_module extends frostybot_module {
             }     
             for (var i = 0; i < objmsgs.length; i++) {
                 var objmsg = objmsgs[i];
-                this.add_message(type, " ".padStart(2, " ") + (i == (objmsgs.length - 1) ? "└─ " : "├─ ") + objmsg, { toLog: false, toResults: false, noTrim: true });
+                if (this.database.type == 'mysql') {
+                    this.add_message(type, " ".padStart(2, " ") + (i == (objmsgs.length - 1) ? ">> " : ">> ") + objmsg, { toLog: false, toResults: false, noTrim: true });
+                } else {
+                    this.add_message(type, " ".padStart(2, " ") + (i == (objmsgs.length - 1) ? "└─ " : "├─ ") + objmsg, { toLog: false, toResults: false, noTrim: true });
+                }                
             }
             //this.add_message(type, "}".padStart(3, " "), { toLog: false, toResults: false, noTrim: true });
             return true;
