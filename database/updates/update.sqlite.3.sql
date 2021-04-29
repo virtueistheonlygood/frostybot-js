@@ -97,10 +97,10 @@ CREATE TABLE datasources (
     timestamp   BIGINT       NOT NULL,
     expiry      BIGINT       NULL,
     ttl         INTEGER      NULL,
-    unqkey      VARCHAR (40) NOT NULL,
-    idxkey1     VARCHAR (20) NULL,
-    idxkey2     VARCHAR (20) NULL,
-    idxkey3     VARCHAR (20) NULL,
+    unqkey      VARCHAR (100) NOT NULL,
+    idxkey1     VARCHAR (100) NULL,
+    idxkey2     VARCHAR (100) NULL,
+    idxkey3     VARCHAR (100) NULL,
     data        TEXT         NOT NULL
 );
 

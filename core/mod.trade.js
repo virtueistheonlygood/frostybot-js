@@ -25,7 +25,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
         // Permissions are similar for most methods, so define them once and reuse
         var permissions = {
-            'standard': ['core,singleuser', 'multiuser,user', 'token'],
+            'standard': ['core,singleuser', 'multiuser,user', 'token', 'local'],
             'provider': ['local', 'token', 'loopback']
         }
 

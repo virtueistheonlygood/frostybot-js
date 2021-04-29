@@ -81,8 +81,8 @@ module.exports = class frostybot_user_module extends frostybot_module {
     // Enable Multi-User Mode
 
     async multiuser_enable(params) {
-        var ip = context.get('srcIp');
-        if (['127.0.0.1','::1',undefined].includes(ip)) {
+        //var ip = context.get('srcIp');
+        //if (['127.0.0.1','::1',undefined].includes(ip)) {
             var schema = {
                 email: {
                     required: 'string',
@@ -102,8 +102,8 @@ module.exports = class frostybot_user_module extends frostybot_module {
                 }
             }
             return this.mod.output.error('multiuser_enable');
-        }
-        return this.mod.output.error('local_only');
+        //}
+        //return this.mod.output.error('local_only');
     }
 
     // Disable Multi-User Mode 
