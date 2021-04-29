@@ -26,8 +26,9 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         // API method to endpoint mappings
         var api = {
             'datasources:refresh':  [],  // Refresh a datasource manually
-            'datasources:active':   [],  // Get datasource/node distribution
-            'datasources:data':     [],  // Get data from a datasource
+            'datasources:redistribute':   [],  // Redistribute datasources
+            'datasources:distribution':   [],  // Get datasource/node distribution
+            //'datasources:data':     [],  // Get data from a datasource
             'datasources:start':    [],  // Start datasource autofresh
             'datasources:stop':     [],  // Stop datasource autorefresh
         }
@@ -108,9 +109,20 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                 available: available,
                 active: leastused
             }
+            if (leastused == thisnode) {
+                await this.start(jobname)
+            } else {
+                await this.stop(jobname)
+            }
         }
-        console.log(distribution)
+        //console.log(distribution)
         await this.mod.settings.set('core', 'distributer', distribution);
+    }
+
+    // Get current distribution
+
+    async distribution() {
+        return await this.mod.settings.get('core','distributer',false);
     }
 
     // Check if this node is responsible for running a job
@@ -118,12 +130,9 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     async isactive(name) {
         var distribution = await this.mod.settings.get('core','distributer',false);
         if (distribution == false) distribution = {};
-        console.log(distribution)
         if (distribution.hasOwnProperty(name)) {
             var thisnode = (await this.mod.status.get_node_info())[0].hostname;
             var activenode = distribution[name].active;
-            console.log('This node: ' + thisnode);
-            console.log('Active node: ' + activenode);
             if (thisnode == activenode) return true;
         }
         return false;
