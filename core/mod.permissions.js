@@ -45,7 +45,6 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
     // Check permissions for the command for the specified lockdown type
 
     async check(type, params) {
-        return true;
         params = params.hasOwnProperty('body') ? params.body : params;
         var command = params.hasOwnProperty('command') ? params.command : undefined;
         var ip = context.get('srcIp');
@@ -86,7 +85,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
    
         var def = global.frostybot.commands[command].permissions;
         var permissions = await this.mod.settings.get('permissions', command, def);
-        var perms = [];
+        var perms = ['any'];
         if (permissions.hasOwnProperty(type))
             var perms = permissions[type];
         
@@ -112,7 +111,9 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         this.mod.output.debug('custom_object', ['Required Permissions', perms]);
         this.mod.output.debug('custom_object', ['Current Permissions:', '']);
         this.mod.output.debug(acl);
-        return false;
+        return true;
+        //return false;
+        
     }
 
     // Get permissions for the command for the specified lockdown type

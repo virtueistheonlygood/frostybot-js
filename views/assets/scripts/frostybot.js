@@ -620,6 +620,7 @@ $( document ).ready(function() {
             $("#inputprovider").jqxDropDownList({ dropDownHeight: 250, width: 150, height: 30});
         }
         $("#inputmaxposqty").jqxDropDownList({ dropDownHeight: 250, width: 150, height: 30});
+        $("#inputdcascale").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdefstoptrigger").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdefprofittrigger").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdefprofitsize").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
@@ -646,6 +647,14 @@ $( document ).ready(function() {
             var stub = $( "#inputproviderstub" ).val();
             var val = $( "#inputdefsize" ).val();
             update(stub + ':defsize', val);
+        });
+
+        // DCA Scale Size Update
+
+        $( "#inputdcascale").on('change', function() {
+            var stub = $( "#inputproviderstub" ).val();
+            var val = $( "#inputdcascale" ).val();
+            if (formLoaded) update(stub + ':dcascale', val);
         });
 
         // Default Stop Trigger Update

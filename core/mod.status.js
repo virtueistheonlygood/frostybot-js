@@ -29,6 +29,7 @@ module.exports = class frostybot_status_module extends frostybot_module {
                               ],
             'status:update':    'post|/status/update',                 // Trigger this node to update it's status information
             'status:nodes':     'get|/status/nodes',                   // Get information about all the nodes participating in this instance
+            'status:clusterips':'get|/status/clusterips',              // Get list of cluster IP addresses
         }
 
         // Register endpoints with the REST and Webhook APIs
@@ -36,6 +37,16 @@ module.exports = class frostybot_status_module extends frostybot_module {
             this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
         }
         
+    }
+
+    // Initialize module
+
+    async initialize() {
+
+        // Start node info datasource
+
+        await this.register_nodes_datasource();
+
     }
 
     // Return HTTP 200 if node status is up (used for load balancer monitoring)
@@ -70,11 +81,83 @@ module.exports = class frostybot_status_module extends frostybot_module {
         return true;
     }
 
+    // Get all IP addresses in the cluster
+
+    async clusterips() {
+        var nodes = await this.nodes();
+        var ip = [];
+        nodes.forEach(node => {
+            node.ip.forEach(addr => {
+                if (!ip.includes(addr)) {
+                    ip.push(addr);
+                }
+            })
+        })
+        return ip;
+    }
+
     // Get information about all the nodes participating in this instance
 
     async nodes() {
-        var nodes = await this.mod.settings.get('node');
-        return nodes;
+        var me = await this.get_node_info();
+        var nodes = await this.mod.datasources.select('node:info', {});
+        var result = me;
+        nodes.forEach(node => {
+            if (node.hostname != me[0].hostname) {
+                result.push(nodes);
+            }
+        })
+        return result;
+    }
+
+    // Refresh node info datasource
+
+    async get_node_info() {
+        const os = require('os');
+        const cpu = os.cpus()
+        var cpuinfo = {
+            qty: cpu.length,
+            model: cpu[0].model,
+            speed: cpu[0].speed
+        }
+        var info = {
+            hostname:   os.hostname().toLowerCase(),
+            os:         os.release(),
+            uptime:     os.uptime(),
+            cpu:        cpuinfo,
+            memory: {
+                total:  os.totalmem(),
+                free:   os.freemem(),
+            },     
+        }
+
+        const nets = os.networkInterfaces();
+        const ips = [];
+        for (const name of Object.keys(nets)) {
+            for (const net of nets[name]) {
+                // Skip over non-IPv4 and internal (i.e. 127.0.0.1) addresses
+                if (net.family === 'IPv4' && !net.internal) {
+                    ips.push(net.address);
+                }
+            }
+        }
+        info['ip'] = ips;
+        var obj = new this.classes.nodeinfo(info.hostname, info.os, info.uptime, info.cpu, info.memory, info.ip);
+        return [obj];
+    }
+
+    // Poll node for status information
+
+    async register_nodes_datasource() {
+        var crontime = '* * * * *';
+        var indexes = {
+            unqkey  : ['hostname'],
+            idxkey1 : 'hostname'
+        }
+        this.mod.datasources.register('node:info', indexes, async() => {
+            return await this.mod.status.get_node_info();
+        }, 60);
+        this.mod.datasources.start('node:info', crontime);
     }
 
 

@@ -41,6 +41,7 @@ if (typeof(form_config) != undefined) {
               var symbols = form_config.hasOwnProperty('symbols') ? form_config.symbols : {};
               var maxposqty = stubConfig(config, 'maxposqty');
               var defsize = stubConfig(config, 'defsize');
+              var dcascale = stubConfig(config, 'dcascale');
               var defstoptrigger = stubConfig(config, 'defstoptrigger');
               var defprofittrigger = stubConfig(config, 'defprofittrigger');
               var defprofitsize = stubConfig(config, 'defprofitsize');
@@ -105,14 +106,21 @@ if (typeof(form_config) != undefined) {
             </div>
 
             <div class="row mb-2 flex-nowrap">
-              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default Size</label>
+              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Initial Size</label>
               <div class="col">
                 <input type="text" class="form-control-sm frostybot-input frostybot-input-sm" id="inputdefsize" value="<%= defsize %>">
               </div>
             </div>
       
             <div class="row mb-2 flex-nowrap">
-              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Stoploss</label>
+              <label for="inputdcascale" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">DCA Scaling</label>
+              <div class="col">
+                <div  id="inputdcascale" style="width: 148px"></div>
+              </div>
+            </div>
+      
+            <div class="row mb-2 flex-nowrap">
+              <label for="inputdefstoptrigger" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Stoploss</label>
               <div class="col">
                 <div  id="inputdefstoptrigger" class=""></div>
                 <!--select  id="inputdefstoptrigger" class="">
@@ -129,7 +137,7 @@ if (typeof(form_config) != undefined) {
             </div>
       
             <div class="row mb-2 flex-nowrap">
-              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Take&nbsp;Profit</label>
+              <label for="inputdefprofittrigger" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Take&nbsp;Profit</label>
               <div class="col">
                 <div id="inputdefprofittrigger" class=""></div>
                 <!--select id="inputdefprofittrigger" class="">
@@ -146,7 +154,7 @@ if (typeof(form_config) != undefined) {
             </div>
       
             <div class="row mb-2 flex-nowrap">
-              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Take Profit Size</label>
+              <label for="inputdefprofitsize" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Take Profit Size</label>
               <div class="col">
                 <div id="inputdefprofitsize" class=""></div>
                 <!--select id="inputdefprofitsize" class="">
@@ -210,8 +218,14 @@ $(document).ready(function () {
   var gridbase64 = "<%= griddata %>";
   var griddata = JSON.parse(atob(gridbase64));
 
+  var dcascalevals = [{ value: '', label: '' }];
   var stoptriggervals = [{ value: '', label: '' }];
   var profittriggervals = [{ value: '', label: '' }];
+
+  for (var i=1; i<=3.1; i+=0.1) {
+    var v = Math.floor(i * 10) / 10
+    dcascalevals.push({ value: v, label: v + 'x' });
+  }
 
   for (var i=1; i<=20; i++)
     stoptriggervals.push({ value: i + '%', label: i + '%' });
@@ -221,6 +235,15 @@ $(document).ready(function () {
   }
 
   var profitsizevals = profittriggervals;
+
+  var dcascalesource = {
+    datatype: "array",
+    datafields: [
+        { name: 'label', type: 'string' },
+        { name: 'value', type: 'string' }
+    ],
+    localdata: dcascalevals
+  };
 
   var stoptriggersource = {
     datatype: "array",
@@ -249,10 +272,14 @@ $(document).ready(function () {
     localdata: profitsizevals
   };
 
+  var dcascaleadapter = new $.jqx.dataAdapter(dcascalesource, {autoBind: true});
   var stoptriggeradapter = new $.jqx.dataAdapter(stoptriggersource, {autoBind: true});
   var profittriggeradapter = new $.jqx.dataAdapter(profittriggersource, {autoBind: true});
   var profitsizeadapter = new $.jqx.dataAdapter(profitsizesource, {autoBind: true});
 
+  $('#inputdcascale').jqxComboBox({ source: dcascaleadapter, displayMember: 'label', valueMember: 'value'});
+  var dcascale = '<%= dcascale %>';
+  $('#inputdcascale').val(dcascale);
 
   $('#inputdefstoptrigger').jqxComboBox({ source: stoptriggeradapter, displayMember: 'label', valueMember: 'value' });
   var defstoptrigger = '<%= defstoptrigger %>';
@@ -272,16 +299,17 @@ $(document).ready(function () {
         { name: 'symbol', type: 'string', map: '0'},
         { name: 'ignored', type: 'bool', map: '1' },
         { name: 'defsize', type: 'string', map: '2' },
-        { name: 'defstoptrigger', type: 'string', map: '3' },
-        { name: 'defprofittrigger', type: 'string', map: '4' },
-        { name: 'defprofitsize', type: 'string', map: '5' }
+        { name: 'dcascale', type: 'string', map: '3' },
+        { name: 'defstoptrigger', type: 'string', map: '4' },
+        { name: 'defprofittrigger', type: 'string', map: '5' },
+        { name: 'defprofitsize', type: 'string', map: '6' }
     ],
     datatype: "array"
   };
   
   var gridadapter = new $.jqx.dataAdapter(gridsource);
 
-  var gridheight = $(window).height() - 300;
+  var gridheight = $(window).height() - 200;
   if (gridheight < 200) gridheight = 200;
        
   $("#configpairs").jqxGrid({
@@ -294,18 +322,22 @@ $(document).ready(function () {
     filterable: true,
     sortable: true,
     columns: [
-      { text: 'Symbol', datafield: 'symbol', filterable: true, editable: false },
-      { text: 'Ignored', datafield: 'ignored', width: 70, columntype: 'checkbox', cellsalign: 'center', align: 'center', filterable: false },
-      { text: 'Default Size', datafield: 'defsize', width: 100, cellsalign: 'center', align: 'center', filterable: false },
-      { text: 'Stoploss %', datafield: 'defstoptrigger', width: 100, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
+      { text: 'Symbol', datafield: 'symbol', width: 100, filterable: true, editable: false },
+      { text: 'Ignore', datafield: 'ignored', width: 60, columntype: 'checkbox', cellsalign: 'center', align: 'center', filterable: false },
+      { text: 'Initial', datafield: 'defsize', width: 90, cellsalign: 'center', align: 'center', filterable: false },
+      { text: 'DCA', datafield: 'dcascale', width: 90, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
+              createeditor: function (row, value, editor) {
+                editor.jqxComboBox({ source: dcascaleadapter, displayMember: 'label', valueMember: 'value' });
+              } },
+      { text: 'SL %', datafield: 'defstoptrigger', width: 80, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
               createeditor: function (row, value, editor) {
                 editor.jqxComboBox({ source: stoptriggeradapter, displayMember: 'label', valueMember: 'value' });
               } },
-      { text: 'Take Profit %', datafield: 'defprofittrigger', width: 100, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
+      { text: 'TP %', datafield: 'defprofittrigger', width: 80, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
               createeditor: function (row, value, editor) {
                 editor.jqxComboBox({ source: profittriggeradapter, displayMember: 'label', valueMember: 'value' });
               } },
-      { text: 'Profit Size', datafield: 'defprofitsize', width: 100, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
+      { text: 'TP Size', datafield: 'defprofitsize', width: 80, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
               createeditor: function (row, value, editor) {
                 editor.jqxComboBox({ source: profitsizeadapter, displayMember: 'label', valueMember: 'value' });
               }  }

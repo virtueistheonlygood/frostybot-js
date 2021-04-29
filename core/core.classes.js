@@ -44,6 +44,21 @@ class frostybot_command extends frostybot_base {
 
 }
 
+// Node status info
+
+class frostybot_nodeinfo extends frostybot_base {
+
+    constructor(hostname, os, uptime, cpu, memory, ip) {
+      super()
+      this.hostname = hostname
+      this.os = os
+      this.uptime = uptime
+      this.cpu = cpu
+      this.memory = memory
+      this.ip = ip 
+    }
+}
+
 // Account Balance Object
 
 class frostybot_balance extends frostybot_base {
@@ -624,6 +639,7 @@ class frostybot_websocket_order extends frostybot_base {
 
 module.exports = {
   command: frostybot_command,
+  nodeinfo: frostybot_nodeinfo,
   balance: frostybot_balance,
   position_futures: frostybot_position_futures,
   position_spot: frostybot_position_spot,

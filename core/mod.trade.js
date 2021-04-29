@@ -997,15 +997,36 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (params.symbol != undefined && params.stub != undefined && params.size == undefined && params.base == undefined && params.quote == undefined && params.usd == undefined && params.scale == undefined) {
             var stub = params.stub;
             var symbol = params.symbol;
+            var position = await this.position_size_usd(stub, symbol);
             var defsizestub = await this.mod.config.get(stub + ':defsize');
             var defsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defsize');
-            if (defsizesymbol !== false) {
-                this.mod.output.debug('order_size_default', [(stub + ':' + symbol + ':defsize').toLowerCase()]);
-                params.size = defsizesymbol;
-            } else {
-                if (defsizestub !== false) {
-                    this.mod.output.debug('order_size_default', [(stub + ':defsize').toLowerCase()]);
-                    params.size = defsizestub;
+            var dcascalestub = await this.mod.config.get(stub + ':dcascale');
+            var dcascalesymbol = await this.mod.config.get(stub + ':' + symbol + ':dcascale');    
+            console.log('defsizestub: ' + defsizestub)                
+            console.log('defsizesymbol: ' + defsizesymbol)                
+            console.log('dcascalestub: ' + dcascalestub)                
+            console.log('dcascalesymbol: ' + dcascalesymbol)                
+            console.log('Position: ' + position)
+            if ((position != false) && (dcascalestub !== false || dcascalesymbol !== false)) {
+                if (dcascalesymbol !== false) {
+                    this.mod.output.debug('order_dca_default', [(stub + ':' + symbol + ':dcascale').toLowerCase(), dcascalesymbol]);
+                    params.scale = parseFloat(String(dcascalesymbol).toLowerCase().replace('x',''));
+                } else {
+                    if (dcascalestub !== false) {
+                        this.mod.output.debug('order_dca_default', [(stub + ':dcascale').toLowerCase(), dcascalestub]);
+                        params.scale = parseFloat(String(dcascalestub).toLowerCase().replace('x',''));
+                    }
+                }
+            }
+            if (params.scale == undefined) {
+                if (defsizesymbol !== false) {
+                    this.mod.output.debug('order_size_default', [(stub + ':' + symbol + ':defsize').toLowerCase(), defsizesymbol]);
+                    params.size = defsizesymbol;
+                } else {
+                    if (defsizestub !== false) {
+                        this.mod.output.debug('order_size_default', [(stub + ':defsize').toLowerCase(), defsizestub]);
+                        params.size = defsizestub;
+                    }
                 }
             }
         } 
@@ -1471,24 +1492,6 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var stub = params.stub;
         var symbol = params.symbol;
 
-        // If profitsize not given, check if default exists and use that, else use 100%
-        if (params.profitsize == undefined) {
-            var defprofitsizestub = await this.mod.config.get(stub + ':defprofitsize');
-            var defprofitsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defprofitsize');
-            if (defprofitsizesymbol !== false) {
-                this.mod.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase() + '=' + defprofitsizesymbol]);
-                params.profitsize = defprofitsizesymbol;
-            } else {
-                if (defprofitsizestub !== false) {
-                    this.mod.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase() + '=' + defprofitsizestub]);
-                    params.profitsize = defprofitsizestub;
-                } else {
-                    this.mod.output.debug('order_tpsize_default', ['default=100%']);
-                    params.profitsize = '100%';
-                }
-            }
-        }
-
         // If profittrigger not given, check if default exists and use that
         if ((params.profittrigger == undefined)) {
             var operator = side == 'sell' ? '+' : '-';
@@ -1506,6 +1509,24 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
 
         if (params.profittrigger != undefined) {
+
+            // If profitsize not given, check if default exists and use that, else use 100%
+            if (params.profitsize == undefined) {
+                var defprofitsizestub = await this.mod.config.get(stub + ':defprofitsize');
+                var defprofitsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defprofitsize');
+                if (defprofitsizesymbol !== false) {
+                    this.mod.output.debug('order_tpsize_default', [(stub + ':' + symbol + ':defprofitsize').toLowerCase() + '=' + defprofitsizesymbol]);
+                    params.profitsize = defprofitsizesymbol;
+                } else {
+                    if (defprofitsizestub !== false) {
+                        this.mod.output.debug('order_tpsize_default', [(stub + ':defprofitsize').toLowerCase() + '=' + defprofitsizestub]);
+                        params.profitsize = defprofitsizestub;
+                    } else {
+                        this.mod.output.debug('order_tpsize_default', ['default=100%']);
+                        params.profitsize = '100%';
+                    }
+                }
+            }
 
             // Check if currently in a position and if profittrigger is relative and make it relative to the position entry price
             var market = await this.get_market(stub, symbol);

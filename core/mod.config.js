@@ -23,6 +23,7 @@ const config_keys = {
     'trade:require_maxsize': 'boolean',           // (Boolean) Whether or not to require the maxsize parameter when using relative pricing
     '{stub}:provider': 'string',                  // (UUID) Signal provider configured for stub
     '{stub}:defsize': 'string',                   // Default order size for orders on this stub
+    '{stub}:dcascale': 'string',                  // Default size factor for DCA orders
     '{stub}:defstoptrigger': 'string',            // Default trigger for stoploss on this stub
     '{stub}:defprofittrigger': 'string',          // Default trigger for take profit on this stub
     '{stub}:defprofitsize': 'string',             // Default take profit size on this stub
@@ -32,6 +33,7 @@ const config_keys = {
     '{stub}:retrywait': 'string',                 // Number of seconds to wait before retrying an order (default: 10)
     '{stub}:{symbol}:ignored': 'boolean',         // (Boolean) Market symbol is ignored
     '{stub}:{symbol}:defsize': 'string',          // Default order size for orders on this stub and symbol
+    '{stub}:{symbol}:dcascale': 'string',         // Default size factor for DCA orders on this stub and symbol
     '{stub}:{symbol}:defstoptrigger': 'string',   // Default trigger for stoploss on this stub and symbol
     '{stub}:{symbol}:defprofittrigger': 'string', // Default trigger for take profit on this stub and symbol
     '{stub}:{symbol}:defprofitsize': 'string',    // Default take profit size on this stub and symbol
