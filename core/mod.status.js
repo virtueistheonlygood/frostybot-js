@@ -140,15 +140,14 @@ module.exports = class frostybot_status_module extends frostybot_module {
     // Poll node for status information
 
     async register_nodes_datasource() {
-        var crontime = '* * * * *';
         var indexes = {
             unqkey  : ['hostname'],
             idxkey1 : 'hostname'
         }
         this.mod.datasources.register('node:info', indexes, async() => {
             return await this.mod.status.get_node_info();
-        }, 60, false);
-        this.mod.datasources.start('node:info', crontime);
+        }, 30, false);
+        this.mod.datasources.start('node:info', 15);
     }
 
 

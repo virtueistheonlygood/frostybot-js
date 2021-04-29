@@ -109,11 +109,11 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                 available: available,
                 active: leastused
             }
-            if (leastused == thisnode) {
-                await this.start(jobname)
-            } else {
-                await this.stop(jobname)
-            }
+            //if (leastused == thisnode) {
+            //    await this.start(jobname)
+            //} else {
+            //    await this.stop(jobname)
+            //}
         }
         //console.log(distribution)
         await this.mod.settings.set('core', 'distributer', distribution);
@@ -131,6 +131,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         var distribution = await this.mod.settings.get('core','distributer',false);
         if (distribution == false) distribution = {};
         if (distribution.hasOwnProperty(name)) {
+            console.log(distribution[name]);
             var thisnode = (await this.mod.status.get_node_info())[0].hostname;
             var activenode = distribution[name].active;
             if (thisnode == activenode) return true;
@@ -267,25 +268,19 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
 
     // Start datasource autorefresh
 
-    start(name, refreshtime) {
-        if ((name.name != undefined) && (refreshtime == undefined)) {
+    start(name, interval) {
+        if ((name.name != undefined) && (interval == undefined)) {
             name = name.name;
-            refreshtime = name.refreshtime;
+            interval = name.interval;
         }
-        if (refreshtime == undefined) refreshtime = '* * * * *';
+        if (interval == undefined) interval = 60;
         if ((this.datasources[name] != undefined)) {
-            if (this.mod.utils.is_numeric(refreshtime)) refreshtime = '*/' + String(refreshtime) + ' * * * *';
-            if (typeof(refreshtime) == 'string') {
-                var valid = cron.validate(refreshtime);
-                if (valid) {
-                    this.crontab[name] = cron.schedule(refreshtime, async () =>  {
-                        await this.refresh(name);
-                    });                   
-                    this.crontab[name].start();
-                    this.mod.output.notice('datasource_registered', [name]);
-                } else {
-                    this.mod.output.error('datasource_invalid', [name]);
-                }
+            if (this.mod.utils.is_numeric(interval)) {
+                var self = this;
+                this.crontab[name] = setInterval(async () =>  {
+                    await self.refresh(name);
+                }, interval * 1000);                   
+                this.mod.output.notice('datasource_registered', [name]);
             }
         }
     }
@@ -297,7 +292,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             name = name.name;
         }
         if ((this.crontab[name] != undefined)) {
-            this.crontab[name].stop();
+            clearInterval(this.crontab[name]);
         }        
     }
 

@@ -481,8 +481,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
     // Poll All Users and Cache Position Data
 
     async register_positions_datasource() {
-        var interval = (this.mod.config.get('core:refreshpositions', Number(1)) * 1);
-        var crontime = (interval == 1 ? '* * * * *' : (interval < 60 ? '*/' + String(interval) + ' * * * *' : 1))
+        var interval = interval;
         var indexes = {
             unqkey  : ['user', 'stub', 'symbol'],
             idxkey1 : 'user',
@@ -492,14 +491,13 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         this.mod.datasources.register('exchange:positions', indexes, async() => {
             return await this.mod.exchange.refresh_positions_datasource();
         }, 60);
-        this.mod.datasources.start('exchange:positions', crontime);
+        this.mod.datasources.start('exchange:positions', interval);
     }
 
     // Poll All Users and Cache Balance Data
 
     async register_balances_datasource() {
-        var interval = (this.mod.config.get('core:refreshbalances', Number(1)) * 1);
-        var crontime = (interval == 1 ? '* * * * *' : (interval < 60 ? '*/' + String(interval) + ' * * * *' : 1))
+        var interval = 60;
         var indexes = {
             unqkey  : ['user', 'stub', 'currency'],
             idxkey1 : 'user',
@@ -509,7 +507,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         this.mod.datasources.register('exchange:balances', indexes, async() => {
             return await this.mod.exchange.refresh_balances_datasource();
         }, 60);
-        this.mod.datasources.start('exchange:balances', crontime);
+        this.mod.datasources.start('exchange:balances', interval);
     }
 
 
