@@ -441,6 +441,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                 }
             }
         }
+        await this.mod.datasources.update_data('exchange:positions', positions);
         return positions;        
     }
 
@@ -475,6 +476,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                 }
             }
         }
+        await this.mod.datasources.update_data('exchange:balances', balances);
         return balances;        
     }
 

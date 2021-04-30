@@ -1123,7 +1123,8 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             this.mod.output.notice('order_completed', [duration]);
 
             //Refresh position
-            await this.mod.datasources.refresh('exchange:positions', { user : uuid, stub : stub });
+            await this.mod.exchange.refresh_positions_datasource({ user : uuid, stub : stub });
+            await this.mod.exchange.refresh_balances_datasource({ user : uuid, stub : stub });
             
             // Then take care of other order types
 

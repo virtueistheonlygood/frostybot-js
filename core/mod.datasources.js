@@ -201,54 +201,52 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         return value;
     }
 
+    // Data Update
+
+    async update_data(name, data) {
+        this.datasources[name].data = data;
+        var cachetime = this.datasources[name].cachetime;
+        var timestamp = (new Date).getTime();
+        var ttl = (cachetime * 1000)
+        var expiry = timestamp + ttl;
+        this.datasources[name].timestamp = timestamp
+        this.datasources[name].expiry = expiry
+        var objectclass = this.mod.utils.get_object_class(data[0]);
+        var indexes = this.datasources[name].indexes;
+        if (this.mod.utils.is_array(data) && data.length > 0)
+            data.forEach(obj => {
+                var unqkey = this.unqkey(indexes.unqkey, obj);
+                var dbobj = {
+                    datasource: name,
+                    objectclass: objectclass,
+                    timestamp: timestamp,
+                    expiry: expiry,
+                    ttl: ttl,
+                    unqkey: unqkey,
+                    idxkey1: obj.hasOwnProperty(indexes.idxkey1) ? this.normalize_index(obj[indexes.idxkey1]) : '<null>',
+                    idxkey2: obj.hasOwnProperty(indexes.idxkey2) ? this.normalize_index(obj[indexes.idxkey2]) : '<null>',
+                    idxkey3: obj.hasOwnProperty(indexes.idxkey3) ? this.normalize_index(obj[indexes.idxkey3]) : '<null>',
+                    data: JSON.stringify(obj)
+                }    
+                //console.log(dbobj)
+                this.database.insertOrReplace('datasources', dbobj);
+            }) 
+    }
+
     // Refresh datasource from the callback function
 
-    async refresh(params, callbackparams = {}) {
+    async refresh(params) {
         var name = (params.name != undefined ? params.name : params);
         if ((this.datasources[name] != undefined)) {
-            if (callbackparams == {}) {
-                var check = this.isactive();
-                console.log('Is Active? ' + check)
-                if (check == false) {
-                    return true;
-                }
-            }
             this.mod.output.debug('datasource_refreshing', [name])
-            var cachetime = this.datasources[name].cachetime;
             try {
                 var deleted = await this.database.exec('DELETE FROM datasources WHERE datasource=? AND expiry < ?', [ name, (new Date()).getTime()])
                 if (deleted > 0) {
                     this.mod.output.debug('datasource_expired', [name, deleted]);
                 }
                 var start = (new Date()).getTime();
-                var data = await this.datasources[name].callback(callbackparams = {});
-                this.datasources[name].data = data;
-                var timestamp = (new Date).getTime();
-                var ttl = (cachetime * 1000)
-                var expiry = timestamp + ttl;
-                this.datasources[name].timestamp = timestamp
-                this.datasources[name].expiry = expiry
-                var objectclass = this.mod.utils.get_object_class(data[0]);
-                var indexes = this.datasources[name].indexes;
-                if (this.mod.utils.is_array(data) && data.length > 0)
-                    data.forEach(obj => {
-                        var unqkey = this.unqkey(indexes.unqkey, obj);
-                        var dbobj = {
-                            datasource: name,
-                            objectclass: objectclass,
-                            timestamp: timestamp,
-                            expiry: expiry,
-                            ttl: ttl,
-                            unqkey: unqkey,
-                            idxkey1: obj.hasOwnProperty(indexes.idxkey1) ? this.normalize_index(obj[indexes.idxkey1]) : '<null>',
-                            idxkey2: obj.hasOwnProperty(indexes.idxkey2) ? this.normalize_index(obj[indexes.idxkey2]) : '<null>',
-                            idxkey3: obj.hasOwnProperty(indexes.idxkey3) ? this.normalize_index(obj[indexes.idxkey3]) : '<null>',
-                            data: JSON.stringify(obj)
-                        }    
-                        //console.log(dbobj)
-                        this.database.insertOrReplace('datasources', dbobj);
-                    }) 
-
+                var data = await this.datasources[name].callback();
+                //await this.update_data(name, data);
                 var end =  (new Date()).getTime();
                 var duration = (end - start) / 1000;
                 var results = {

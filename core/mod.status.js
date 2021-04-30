@@ -134,6 +134,7 @@ module.exports = class frostybot_status_module extends frostybot_module {
         }
         info['ip'] = ips;
         var obj = new this.classes.nodeinfo(info.hostname, info.os, info.uptime, info.cpu, info.memory, info.ip);
+        await this.mod.datasources.update_data('node:info', [obj])
         return [obj];
     }
 
