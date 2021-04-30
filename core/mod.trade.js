@@ -212,11 +212,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Available equity in USD
 
     async get_available_equity_usd(stub) {
-        var collateral_assets = await this.setting(stub, 'collateral_assets');
+        //var collateral_assets = await this.setting(stub, 'collateral_assets');
         var equity = 0;
         var balances = await this.get_balances(stub);
+            //.filter(balance => { collateral_assets.includes(balance.currency) })
         balances
-            .filter(balance => { collateral_assets.includes(balance.currency) })
             .forEach(balance => {
                 equity += balance.usd.free;
             })
