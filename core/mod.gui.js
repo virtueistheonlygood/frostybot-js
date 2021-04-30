@@ -419,7 +419,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Force Refresh of Balance Data
 
     async data_refresh_balances(params) {
-        await this.mod.datasources.refresh('exchange:balances', { user : params.token.uuid, stub : params.stub });
+//        await this.mod.datasources.refresh('exchange:balances', { user : params.token.uuid, stub : params.stub });
         return await this.data_griddata_balances(params);
     }
 
@@ -427,7 +427,6 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Balance Grid Data
 
     async data_griddata_balances(params) {
-        await this.mod.datasources.refresh('exchange:balances', { user : params.token.uuid, stub : params.stub });
         var stub = params.stub;
         var balances = await this.mod.exchange.balances(stub);
         var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
@@ -449,20 +448,13 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Force Refresh of Position Data
 
     async data_refresh_positions(params) {
-        await this.mod.datasources.refresh('exchange:positions', { user : params.token.uuid, stub : params.stub });
-        return await this.data_griddata_positions(params);
-    }
-
-    // Force Refresh of Position Data
-
-    async data_refresh_positions(params) {
+//        await this.mod.datasources.refresh('exchange:positions', { user : params.token.uuid, stub : params.stub });
         return await this.data_griddata_positions(params);
     }
 
     // Position Grid Data
 
     async data_griddata_positions(params) {
-        await this.mod.datasources.refresh('exchange:positions', { user : params.token.uuid, stub : params.stub });
         var stub = params.stub;
         var showspot = params.hasOwnProperty('showspot') ? params.showspot : 'false';
         this.mod.config.set({'gui:showspotpositions': showspot});
