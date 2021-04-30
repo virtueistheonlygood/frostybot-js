@@ -1158,6 +1158,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var duration = (stop - start) / 1000;
             this.mod.output.notice('order_completed', [duration]);
 
+            //Refresh position
+            await this.mod.exchange.refresh_positions_datasource({ user : uuid, stub : stub });
+            await this.mod.exchange.refresh_balances_datasource({ user : uuid, stub : stub });
+
         }
 
         return result;
