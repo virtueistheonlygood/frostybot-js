@@ -147,8 +147,8 @@ module.exports = class frostybot_status_module extends frostybot_module {
         }
         this.mod.datasources.register('node:info', indexes, async() => {
             return await this.mod.status.get_node_info();
-        }, 30, false);
-        this.mod.datasources.start('node:info', 15);
+        }, 60, false);
+        this.mod.datasources.start('node:info', 60);
     }
 
 
