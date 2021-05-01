@@ -458,7 +458,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         var balances = [];
         var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
         if (params == {}) {
-            var isactive = this.mod.datasources.isactive('exchange:balances')
+            var isactive = await this.mod.datasources.isactive('exchange:balances')
             this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
             if (!isactive) {
                 this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
