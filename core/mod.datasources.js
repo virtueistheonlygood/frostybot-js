@@ -150,8 +150,10 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     // Stop or start jobs based on distribution
 
     async stopstart() {
-        this.distributable.forEach(name => {
-            if (await this.isactive(name)) {
+        for (var i = 0; i < this.distributable; i++) {
+            var name = this.distributable[i]
+            var active = await this.isactive(name)
+            if (active == true) {
                 if (this.crontab[name] == undefined) {
                     this.mod.output.debug('custom_message', ['Starting job: ' + name])
                     await this.start(name, 120)
@@ -162,7 +164,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                     await this.stop(name)
                 }
             }
-        })
+        }        
     }
 
     // Get unique key for data object
