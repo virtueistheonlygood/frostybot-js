@@ -130,6 +130,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     // Check if this node is responsible for running a job
 
     async isactive(name) {
+        return true;
         var distribution = await this.mod.settings.get('core','distributer',false);
         if (distribution == false) distribution = {};
         if (distribution.hasOwnProperty(name)) {
