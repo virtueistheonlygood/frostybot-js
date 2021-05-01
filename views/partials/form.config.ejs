@@ -106,7 +106,7 @@ if (typeof(form_config) != undefined) {
             </div>
 
             <div class="row mb-2 flex-nowrap">
-              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Initial Size</label>
+              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default Size</label>
               <div class="col">
                 <input type="text" class="form-control-sm frostybot-input frostybot-input-sm" id="inputdefsize" value="<%= defsize %>">
               </div>
@@ -310,7 +310,7 @@ $(document).ready(function () {
   var gridadapter = new $.jqx.dataAdapter(gridsource);
 
   var gridheight = $(window).height() - 400;
-  if (gridheight < 200) gridheight = 200;
+  if (gridheight < 325) gridheight = 325;
        
   $("#configpairs").jqxGrid({
     width: '100%',
@@ -321,6 +321,8 @@ $(document).ready(function () {
     editable: true,
     filterable: true,
     sortable: true,
+    autosavestate: true,
+    autoloadstate: true,
     columns: [
       { text: 'Symbol', datafield: 'symbol', width: 100, filterable: true, editable: false },
       { text: 'Ignore', datafield: 'ignored', width: 60, columntype: 'checkbox', cellsalign: 'center', align: 'center', filterable: false },

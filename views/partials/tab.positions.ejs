@@ -20,6 +20,9 @@ if (typeof(tab_positions) !== 'undefined') {
     <div class="col text-right">
       <div class="float-right" id="positionsnavbar" style="width: 580px; vertical-align: middle; float: right; margin-right: 10px; display: none;">
         <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsclosealllink" style="margin-bottom: 20px; width: 100px; color: red"><span class="fa fa-close"></span> Close All</button>
+        </span>
+        <span style="display: inline-block; white-space: nowrap;">
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;">
           <span class="fa fa-columns" style="display: inline-block;"></span> Columns</button>
         </span>
@@ -39,7 +42,6 @@ if (typeof(tab_positions) !== 'undefined') {
         </span>
         <span style="display: inline-block; white-space: nowrap;">
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
-          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsclosealllink" style="margin-bottom: 20px; width: 100px; color: red"><span class="fa fa-close"></span> Close All</button>
         </span>
       </div>
     </div>
@@ -71,7 +73,17 @@ if (typeof(tab_positions) !== 'undefined') {
         
       var griddata = {};
       var showspot = '<%=showspot%>' == 'true' ? true : false;
-  
+
+      var positionsRefresh = setInterval(function() {
+        var currentPage = localStorage.getItem("currentPage")
+        var lastRefresh = localStorage.getItem("lastPositionsRefresh")
+        if ((currentPage == 'tab_positions') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9800))) {
+          localStorage.setItem('lastPositionsRefresh', (new Date().getTime()))
+          getGridData(false, true);
+        }
+      }, 10000)
+
+     
       function setGridData(data) {
         positionsSource.localdata = data;
         $("#positionsgrid").jqxGrid('updatebounddata');
@@ -106,7 +118,7 @@ if (typeof(tab_positions) !== 'undefined') {
         return true;
       }
 
-      function refreshCache(stub = null) {
+      function refreshCache(stub = null, quiet = false) {
         if (stub == null)
           stub = $("#positionsstub").val();
         var showspot = $("#positionsshowspot").jqxCheckBox('val');
@@ -119,10 +131,11 @@ if (typeof(tab_positions) !== 'undefined') {
               stub: stub,
               showspot: showspot,
             };
-            setGridData([]);
+            if (quiet != true) setGridData([]);
             jQuery.getJSON({
               url: "/ui/data/griddata_positions",
               data: params,
+              global: !quiet,
               success: function(result) {
                 setGridCache(stub, result);
                 setGridData(result);
@@ -132,7 +145,7 @@ if (typeof(tab_positions) !== 'undefined') {
         }
       }
 
-      function getGridData(cached = true) {
+      function getGridData(cached = true, quiet = false) {
         //$('#positionsgrid').jqxGrid('showloadelement');
         var stub = $("#positionsstub").val();
         if (cached == true) {
@@ -142,7 +155,7 @@ if (typeof(tab_positions) !== 'undefined') {
             return true;
           }
         }
-        refreshCache(stub);
+        refreshCache(stub, quiet);
         return true;
       }
       
@@ -188,6 +201,8 @@ if (typeof(tab_positions) !== 'undefined') {
         theme: 'dark',
         showemptyrow: false,
         columnsmenu: true,
+        autosavestate: true,
+        autoloadstate: true,
         columns: [
           { text: 'Symbol', datafield: 'symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
           { text: 'Type', datafield: 'type', hideable: true, filtertype: 'checkedlist', width: 75 },

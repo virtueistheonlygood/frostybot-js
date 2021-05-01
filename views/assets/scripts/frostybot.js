@@ -392,6 +392,7 @@ $( document ).ready(function() {
             
                 $(".frostybot-tab-main").each(function( index, element ) {
                     if ($(this).is( "#" + tab_id)) {
+                        localStorage.setItem("currentPage", tab_id);
                         $(this).show();
                     } else {
                         $(this).hide();

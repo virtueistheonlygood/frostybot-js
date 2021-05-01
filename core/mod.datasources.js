@@ -43,10 +43,10 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     // Initialize module
 
     async initialize() {
-        var self = this;
-        setInterval(async function() {
-            await self.stopstart()
-        }, 30000)
+        //var self = this;
+        //setInterval(async function() {
+        //    await self.stopstart()
+        //}, 30000)
     }
 
     // Register a callback function as a datasource for the data hub, and optionally provide a 
@@ -70,8 +70,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             indexes:    indexes
         }
         await this.redistribute();
-        var active = await this.isactive(name);
-        if (active) await this.refresh(name);
+        await this.refresh(name);
         this.mod.output.notice('datasource_registered', name);
     }
 

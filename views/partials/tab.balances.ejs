@@ -64,6 +64,15 @@ if (typeof(tab_balances) !== 'undefined') {
         
       var griddata = {};
 
+      var balancesRefresh = setInterval(function() {
+        var currentPage = localStorage.getItem("currentPage")
+        var lastRefresh = localStorage.getItem("lastBalancesRefresh")
+        if ((currentPage == 'tab_balances') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9800))) {
+          localStorage.setItem('lastBalancesRefresh', (new Date().getTime()))
+          getGridData(false, true);
+        }
+      }, 10000)
+
   
       function setGridData(data) {
         balancesSource.localdata = data;
@@ -86,7 +95,7 @@ if (typeof(tab_balances) !== 'undefined') {
         return true;
       }
 
-      function refreshCache(stub = null) {
+      function refreshCache(stub = null, quiet = false) {
         if (stub == null)
           stub = $("#balancestub").val();
         var token = null;
@@ -97,10 +106,11 @@ if (typeof(tab_balances) !== 'undefined') {
               token: JSON.parse(token),
               stub: stub
             };
-            setGridData([]);
+            if (quiet != true) setGridData([]);
             jQuery.getJSON({
               url: "/ui/data/griddata_balances",
               data: params,
+              global: !quiet,
               success: function(result) {
                 setGridCache(stub, result);
                 setGridData(result);
@@ -110,7 +120,7 @@ if (typeof(tab_balances) !== 'undefined') {
         }
       }
 
-      function getGridData(cached = true) {
+      function getGridData(cached = true, quiet = false) {
         //$('#balancesgrid').jqxGrid('showloadelement');
         var stub = $("#balancesstub").val();
         if (cached == true) {
@@ -120,7 +130,7 @@ if (typeof(tab_balances) !== 'undefined') {
             return true;
           }
         }
-        refreshCache(stub);
+        refreshCache(stub, quiet);
         return true;
       }
       
@@ -160,6 +170,8 @@ if (typeof(tab_balances) !== 'undefined') {
         theme: 'dark',
         showemptyrow: false,
         columnsmenu: true,
+        autosavestate: true,
+        autoloadstate: true,
         columns: [
           { text: 'Currency', datafield: 'currency', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Balances: </b><font>' + value +'</div>'; }); return renderstring; } },
           { text: 'Free', datafield: 'base_free', columngroup: 'base', hideable: true, width: 120, align: 'right', cellsalign: 'right', cellsformat: 'd4'},
