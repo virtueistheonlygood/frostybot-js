@@ -225,29 +225,6 @@ if (typeof(tab_positions) !== 'undefined') {
           $("#positionsstub").val(positionsstubselected);
         }
       }
-      
-      function fullRefresh() {
-        var stub = $("#positionsstub").val();
-        var token = null;
-        if (localStorage) {
-          var token = localStorage.getItem("token");
-          if (token != null) {
-            var params = {
-              token: JSON.parse(token),
-              stub: stub
-            };
-            setGridData([]);
-            jQuery.getJSON({
-              url: "/ui/data/refresh_positions",
-              data: params,
-              success: function(result) {
-                setGridCache(stub, result);
-                setGridData(result);
-              }
-            });
-          }
-        }
-      }
 
       $("#positionsshowspot").jqxCheckBox({ height: 30, width: 100, checked: showspot});
       $("#positionsshowspot").on('change', function() {
@@ -255,7 +232,7 @@ if (typeof(tab_positions) !== 'undefined') {
       });
   
       $("#positionsrefreshlink").on('click', function() {
-        fullRefresh();
+        getGridData(false);
       });
 
       $("#positionsclosealllink").on('click', function() {

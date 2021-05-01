@@ -75,6 +75,7 @@ module.exports = {
         datasource_refreshed: 'Data refreshed: {0}',
         datasource_results: 'Fetched {1} pre-cached records from datasource {0}',
         datasource_expired: 'Removed {1} expired entries from datasource: {0}',
+        datasource_deleted: 'Deleted {1} entries from datasource: {0}',
         websocket_message:  'Websocket: {0}: {1}',
     },
 

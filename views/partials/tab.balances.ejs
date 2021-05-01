@@ -110,29 +110,6 @@ if (typeof(tab_balances) !== 'undefined') {
         }
       }
 
-      function fullRefresh() {
-        var stub = $("#balancestub").val();
-        var token = null;
-        if (localStorage) {
-          var token = localStorage.getItem("token");
-          if (token != null) {
-            var params = {
-              token: JSON.parse(token),
-              stub: stub
-            };
-            setGridData([]);
-            jQuery.getJSON({
-              url: "/ui/data/refresh_balances",
-              data: params,
-              success: function(result) {
-                setGridCache(stub, result);
-                setGridData(result);
-              }
-            });
-          }
-        }
-      }
-
       function getGridData(cached = true) {
         //$('#balancesgrid').jqxGrid('showloadelement');
         var stub = $("#balancesstub").val();
@@ -209,7 +186,7 @@ if (typeof(tab_balances) !== 'undefined') {
 
   
       $("#balancesrefreshlink").on('click', function() {
-        fullRefresh();
+        getGridData(false);
       });
 
         

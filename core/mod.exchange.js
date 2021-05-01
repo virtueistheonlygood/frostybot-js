@@ -413,7 +413,6 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
     // Get position data for the exchange:positions datasource
 
     async refresh_positions_datasource(params = {}) {
-        var positions = [];
         var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
         if (params == {}) {
             var isactive = this.mod.datasources.isactive('exchange:positions')
@@ -422,8 +421,10 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                 return false;
             }
         }
+        var all = [];
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
+                var stub = stubs[i].stub;
                 var encrypted = stubs[i];
                 var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
                 decrypted.uuid = user;
@@ -438,24 +439,29 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                     try {
                         var result = await mod.execute('positions', {}, true);
                     } catch(e) {
+                        var result = false;
                         //this.mod.output.exception(e);
                     }
-                    if (Array.isArray(result) && (result.length > 0)) {
-                        for (var j = 0; j < result.length; j++) {
-                            positions.push(result[j]);                       
+                    if (result != false) {
+                        this.mod.datasources.delete('exchange:positions', {user: user, stub: stub})
+                        var positions = [];
+                        if (Array.isArray(result) && (result.length > 0)) {
+                            for (var j = 0; j < result.length; j++) {
+                                positions.push(result[j]);                       
+                            }
+                            await this.mod.datasources.update_data('exchange:positions', positions);
                         }
+                        all = all.concat(positions)
                     }
                 }
             }
         }
-        await this.mod.datasources.update_data('exchange:positions', positions);
-        return positions;        
+        return all;        
     }
 
     // Get position data for the exchange:positions datasource
 
     async refresh_balances_datasource(params = {}) {
-        var balances = [];
         var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
         if (params == {}) {
             var isactive = await this.mod.datasources.isactive('exchange:balances')
@@ -465,8 +471,10 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                 return false;
             }
         }
+        var all = []
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
+                var stub = stubs[i].stub;
                 var encrypted = stubs[i];
                 var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
                 decrypted.uuid = user;
@@ -481,18 +489,25 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                     try {
                         var result = await mod.execute('balances', {}, true);
                     } catch(e) {
+                        var result = false;
                         //this.mod.output.exception(e);
                     }
-                    if (Array.isArray(result) && (result.length > 0)) {
-                        for (var j = 0; j < result.length; j++) {
-                            balances.push(result[j]);                       
+                    if (result != false) {
+                        this.mod.datasources.delete('exchange:balances', {user: user, stub: stub})
+                        var balances = [];
+                        if (Array.isArray(result) && (result.length > 0)) {
+                            for (var j = 0; j < result.length; j++) {
+                                balances.push(result[j]);                       
+                            }
+                            await this.mod.datasources.update_data('exchange:balances', balances);
+                            
                         }
+                        all = all.concat(balances)
                     }
                 }
             }
         }
-        await this.mod.datasources.update_data('exchange:balances', balances);
-        return balances;        
+        return all;
     }
 
     // Poll All Users and Cache Position Data

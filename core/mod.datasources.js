@@ -117,13 +117,8 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                 available: available,
                 active: leastused
             }
-            //if (leastused == thisnode) {
-            //    await this.start(jobname)
-            //} else {
-            //    await this.stop(jobname)
-            //}
+
         }
-        //console.log(distribution)
         await this.mod.settings.set('core', 'distributer', distribution);
     }
 
@@ -139,7 +134,6 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         var distribution = await this.mod.settings.get('core','distributer',false);
         if (distribution == false) distribution = {};
         if (distribution.hasOwnProperty(name)) {
-            console.log(distribution[name]);
             var thisnode = (await this.mod.status.get_node_info())[0].hostname;
             var activenode = distribution[name].active;
             if (thisnode == activenode) return true;
@@ -218,6 +212,26 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         }
     }
 
+    // Delete data from datasource
+
+    async delete(datasource, search = {}) {
+        var query = {
+            datasource: datasource,
+        }
+        var dsconfig = this.datasources[datasource];
+        if (dsconfig != undefined) {
+            var indexes = dsconfig.indexes;
+            if (search[indexes['idxkey1']] != undefined) query['idxkey1'] = this.normalize_index(search[indexes['idxkey1']]);
+            if (search[indexes['idxkey2']] != undefined) query['idxkey2'] = this.normalize_index(search[indexes['idxkey2']]);
+            if (search[indexes['idxkey3']] != undefined) query['idxkey3'] = this.normalize_index(search[indexes['idxkey3']]);
+            var result = await this.database.delete('datasources', query);
+            //this.mod.output.debug('datasource_deleted', [datasource, result.changes])
+            return true;
+        } else {
+            return this.mod.output.error('datasource_notfound', [datasource]);
+        }
+    }    
+
     // Normalize index
 
     normalize_index(value) {
@@ -256,7 +270,6 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                     idxkey3: obj.hasOwnProperty(indexes.idxkey3) ? this.normalize_index(obj[indexes.idxkey3]) : '<null>',
                     data: JSON.stringify(obj)
                 }    
-                //console.log(dbobj)
                 this.database.insertOrReplace('datasources', dbobj);
             }) 
     }
