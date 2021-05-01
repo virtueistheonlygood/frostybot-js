@@ -40,6 +40,15 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         
     }
 
+    // Initialize module
+
+    async initialize() {
+        var self = this;
+        setInterval(async function() {
+            await self.stopstart()
+        }, 30000)
+    }
+
     // Register a callback function as a datasource for the data hub, and optionally provide a 
     // crontab string for background refresh
 
@@ -62,8 +71,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         }
         await this.redistribute();
         var active = await this.isactive(name);
-
-        await this.refresh(name);
+        if (active) await this.refresh(name);
         this.mod.output.notice('datasource_registered', name);
     }
 
@@ -137,6 +145,24 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             if (thisnode == activenode) return true;
         }
         return false;
+    }
+
+    // Stop or start jobs based on distribution
+
+    async stopstart() {
+        this.distributable.forEach(name => {
+            if (await this.isactive(name)) {
+                if (this.crontab[name] == undefined) {
+                    this.mod.output.debug('custom_message', ['Starting job: ' + name])
+                    await this.start(name, 120)
+                }
+            } else {
+                if (this.crontab[name] != undefined) {
+                    this.mod.output.debug('custom_message', ['Stopping job: ' + name])
+                    await this.stop(name)
+                }
+            }
+        })
     }
 
     // Get unique key for data object
@@ -271,7 +297,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             name = name.name;
             interval = name.interval;
         }
-        if (interval == undefined) interval = 60;
+        if (interval == undefined) interval = 120;
         if ((this.datasources[name] != undefined)) {
             if (this.mod.utils.is_numeric(interval)) {
                 var self = this;
