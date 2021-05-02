@@ -1005,11 +1005,6 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             var defsizesymbol = await this.mod.config.get(stub + ':' + symbol + ':defsize');
             var dcascalestub = await this.mod.config.get(stub + ':dcascale');
             var dcascalesymbol = await this.mod.config.get(stub + ':' + symbol + ':dcascale');    
-            console.log('defsizestub: ' + defsizestub)                
-            console.log('defsizesymbol: ' + defsizesymbol)                
-            console.log('dcascalestub: ' + dcascalestub)                
-            console.log('dcascalesymbol: ' + dcascalesymbol)                
-            console.log('Position: ' + position)
             if ((position != false) && (dcascalestub !== false || dcascalesymbol !== false)) {
                 if (dcascalesymbol !== false) {
                     this.mod.output.debug('order_dca_default', [(stub + ':' + symbol + ':dcascale').toLowerCase(), dcascalesymbol]);
@@ -1083,9 +1078,13 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                                  break;
         } 
         
-        if (order_params !== false)
-            this.mod.queue.add(stub, symbol, order_params);
-                
+        if (order_params !== false) {
+            this.mod.queue.add(stub, symbol, order_params);  
+            return true
+        }
+
+        return false
+
     }
     
     
@@ -1107,7 +1106,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 }
             }
         }
-        
+
         // Process normal orders before processing conditional orders
         if (['buy','sell','long','short','close'].includes(type)) {
 
@@ -1117,25 +1116,26 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             this.mod.queue.clear(stub, symbol)
            
             // Process limit and market orders
-            await this.create_order(type, params);
-            var result = await this.mod.queue.process(stub, symbol);
-            
+            var order_result = await this.create_order(type, params);
+            var queue_result = await this.mod.queue.process(stub, symbol);
+
             // Order execution time
             var stop = (new Date()).getTime();
             var duration = (stop - start) / 1000;
             this.mod.output.notice('order_completed', [duration]);
 
-            //Refresh position
-            await this.mod.exchange.refresh_positions_datasource({ user : uuid, stub : stub });
-            await this.mod.exchange.refresh_balances_datasource({ user : uuid, stub : stub });
-            
             // Then take care of other order types
+            if ((order_result != false) && (queue_result != false)) {
 
-            if (['long', 'buy'].includes(type))
-                await this.tpsl(params, 'sell', false);
-            if (['short', 'sell'].includes(type))
-                await this.tpsl(params, 'buy', false);
-
+                //Refresh position
+                await this.mod.exchange.refresh_positions_datasource({ user : uuid, stub : stub });
+                await this.mod.exchange.refresh_balances_datasource({ user : uuid, stub : stub });
+            
+                if (['long', 'buy'].includes(type))
+                    await this.tpsl(params, 'sell', false);
+                if (['short', 'sell'].includes(type))
+                    await this.tpsl(params, 'buy', false);
+            }
 
         } else {
 

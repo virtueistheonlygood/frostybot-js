@@ -77,7 +77,7 @@ if (typeof(tab_positions) !== 'undefined') {
       var positionsRefresh = setInterval(function() {
         var currentPage = localStorage.getItem("currentPage")
         var lastRefresh = localStorage.getItem("lastPositionsRefresh")
-        if ((currentPage == 'tab_positions') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9800))) {
+        if ((currentPage == 'tab_positions') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9500))) {
           localStorage.setItem('lastPositionsRefresh', (new Date().getTime()))
           getGridData(false, true);
         }
@@ -130,6 +130,7 @@ if (typeof(tab_positions) !== 'undefined') {
               token: JSON.parse(token),
               stub: stub,
               showspot: showspot,
+              ts: (new Date()).getTime()
             };
             if (quiet != true) setGridData([]);
             jQuery.getJSON({

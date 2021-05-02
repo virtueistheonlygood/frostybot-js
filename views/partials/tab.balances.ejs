@@ -67,7 +67,7 @@ if (typeof(tab_balances) !== 'undefined') {
       var balancesRefresh = setInterval(function() {
         var currentPage = localStorage.getItem("currentPage")
         var lastRefresh = localStorage.getItem("lastBalancesRefresh")
-        if ((currentPage == 'tab_balances') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9800))) {
+        if ((currentPage == 'tab_balances') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9500))) {
           localStorage.setItem('lastBalancesRefresh', (new Date().getTime()))
           getGridData(false, true);
         }
@@ -104,7 +104,8 @@ if (typeof(tab_balances) !== 'undefined') {
           if (token != null) {
             var params = {
               token: JSON.parse(token),
-              stub: stub
+              stub: stub,
+              ts: (new Date()).getTime()
             };
             if (quiet != true) setGridData([]);
             jQuery.getJSON({
