@@ -533,6 +533,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
                 var stub = stubs[i].stub;
+                
                 var encrypted = stubs[i];
                 var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
                 decrypted.uuid = user;
@@ -571,7 +572,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
     // Poll All Users and Cache Position Data
 
     async register_positions_datasource() {
-        var interval = 120;
+        var interval = 180;
         var indexes = {
             unqkey  : ['user', 'stub', 'symbol'],
             idxkey1 : 'user',
@@ -580,14 +581,14 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         }
         this.mod.datasources.register('exchange:positions', indexes, async() => {
             return await this.mod.exchange.refresh_positions_datasource();
-        }, 120);
+        }, 180);
         this.mod.datasources.start('exchange:positions', interval);
     }
 
     // Poll All Users and Cache Balance Data
 
     async register_balances_datasource() {
-        var interval = 120;
+        var interval = 180;
         var indexes = {
             unqkey  : ['user', 'stub', 'currency'],
             idxkey1 : 'user',
@@ -596,7 +597,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         }
         this.mod.datasources.register('exchange:balances', indexes, async() => {
             return await this.mod.exchange.refresh_balances_datasource();
-        }, 120);
+        }, 180);
         this.mod.datasources.start('exchange:balances', interval);
     }
 

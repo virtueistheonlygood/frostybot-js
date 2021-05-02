@@ -26,8 +26,8 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
         // API method to endpoint mappings
         var api = {
             'datasources:refresh':  [],  // Refresh a datasource manually
-            'datasources:redistribute':   [],  // Redistribute datasources
-            'datasources:distribution':   [],  // Get datasource/node distribution
+            //'datasources:redistribute':   [],  // Redistribute datasources
+            //'datasources:distribution':   [],  // Get datasource/node distribution
             //'datasources:data':     [],  // Get data from a datasource
             'datasources:start':    [],  // Start datasource autofresh
             'datasources:stop':     [],  // Stop datasource autorefresh
@@ -76,7 +76,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
 
     // Redistribute jobs amongst active nodes
 
-
+/*
     findleastused(jobqty) {
         var max = Math.max(...Object.values(jobqty));
         var hosts = Object.keys(jobqty);
@@ -160,7 +160,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             }
         }        
     }
-
+*/
     // Get unique key for data object
 
     unqkey(keyfields, obj) {
@@ -279,7 +279,9 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
     async refresh(params) {
         var name = (params.name != undefined ? params.name : params);
         if ((this.datasources[name] != undefined)) {
-            this.mod.output.debug('datasource_refreshing', [name])
+            if (name != 'node:info') {
+                this.mod.output.debug('datasource_refreshing', [name])
+            }
             try {
                 var deleted = await this.database.exec('DELETE FROM datasources WHERE datasource=? AND expiry < ?', [ name, (new Date()).getTime()])
                 if (deleted > 0) {
@@ -295,8 +297,10 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                     records:    Array.isArray(data) ? data.length : 0,
                     duration:   duration + ' seconds'
                 }
-                this.mod.output.debug('datasource_refreshed', [name, (new Date()).getTime()])
-                this.mod.output.debug(results);
+                if (name != 'node:info') {
+                    this.mod.output.debug('datasource_refreshed', [name, (new Date()).getTime()])
+                    this.mod.output.debug(results);
+                }
                 return true;
             } catch (e) {
                 this.mod.output.exception(e);
@@ -312,7 +316,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             name = name.name;
             interval = name.interval;
         }
-        if (interval == undefined) interval = 120;
+        if (interval == undefined) interval = 180;
         if ((this.datasources[name] != undefined)) {
             if (this.mod.utils.is_numeric(interval)) {
                 var self = this;
