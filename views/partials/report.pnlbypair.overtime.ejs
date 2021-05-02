@@ -1,0 +1,85 @@
+<div id="pnlchartcontainer" style="height: 600px;"></div>
+
+
+<script src="/scripts/notifications.js"></script>
+<script src="/scripts/api.js"></script>
+<!--script src="https://code.jquery.com/jquery-3.5.1.min.js"></script-->
+  
+<script type="text/javascript">
+  
+   $(document).ready(function () {
+        // prepare the data
+
+        var token = localStorage.getItem("token");
+        var uuid = token.uuid;
+        var stub = "<%= report_pnlbypair_overtime.stub %>";
+        var days = "<%= report_pnlbypair_overtime.days %>";
+
+
+
+        var params = {
+            token: JSON.parse(token),
+            stub: stub,
+            days: days
+        };
+
+        jQuery.getJSON({
+            url: "/ui/data/chartdata_pnlbypair_overtime",
+            data: params,
+            success: function(result) {
+
+                var data = result.data;
+                var symbols = result.symbols;
+
+                if (data.length > 0) {
+
+                    var series = [];
+                    symbols.forEach(symbol => {
+                        series.push({ emptyPointsDisplay: 'connect', dataField: symbol, displayText: symbol })
+                    })
+
+                    var settings = {
+                        title: "PNL by Pair",
+                        description: "(Over Time)",
+                        enableAnimations: true,
+                        //showLegend: true,
+                        padding: { left: 5, top: 5, right: 25, bottom: 5 },
+                        titlePadding: { left: 90, top: 0, right: 0, bottom: 10 },
+                        source: data,
+                        xAxis: {
+                            dataField: 'Date',
+                            type: 'date',
+                            baseUnit: 'day',
+                            //unitInterval: 1,
+                            tickMarks: {
+                                visible: true,
+                                interval: 1
+                            },
+                            gridLines: {
+                                visible: false,
+                                interval: 1
+                            }
+                        },
+                        colorScheme: 'scheme04',
+                        seriesGroups: [
+                            {
+                                type: 'spline',
+                                valueAxis: {
+                                    unitInterval: 1,
+                                    visible: true,
+                                    description: 'PNL ($)'
+                                },
+                                series: series
+                            }
+                        ]
+                    };
+                    
+                    $('#pnlchartcontainer').jqxChart(settings);
+
+                }
+
+            }
+        });
+
+    });
+</script>

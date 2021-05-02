@@ -162,3 +162,7 @@
     border: none;
 }
 
+.tradingview-widget-container {
+    height: 500px;
+    overflow-y: hidden!important;
+}

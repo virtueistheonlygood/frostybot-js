@@ -1,0 +1,115 @@
+<%
+
+if (typeof(tab_pnl) !== 'undefined') {
+  var accounts = tab_pnl.hasOwnProperty('accounts') ? tab_pnl.accounts : [];
+  var stubs = [];
+  Object.values(accounts).forEach(account => {
+    stubs.push(account.stub);
+  })
+} else {
+  var stubs = [];
+}
+
+%>
+
+<div class="frostybot-panel-header">
+  <div class="row">
+    <div class="col "><p class="m-0" id="pnltitle">Profit & Loss</p></div>
+    <div class="col text-right">
+      <div class="float-right" id="pnlnavbar" style="width: 580px; vertical-align: middle; float: right; margin-right: 10px;">
+        <span style="display: inline-block; white-space: nowrap;">
+          <select id="pnlreport" style="display: inline-block; font-weight: normal; border-radius: 5px;">
+              <optgroup label="PNL Per Day">
+                <option value="dailypnl">PNL Per Day</option>
+              </optgroup>
+              <optgroup label="PNL by Pair">
+                <option value="pnlbypair_total">PNL By Pair (Total)</option>
+                <option value="pnlbypair_overtime">PNL By Pair (Over Time)</option>
+              </optgroup>
+          </select>
+          <select id="pnldays" style="width: 100px; display: inline-block; font-weight: normal; border-radius: 5px;">
+            <option value="99999">All Time</option>
+            <option value="30">Last 30 Days</option>
+            <option value="7">Last 7 Days</option>
+          </select>
+          <select id="pnlstub" style="width: 200px; display: inline-block; font-weight: normal; border-radius: 5px;">
+              <%
+              stubs.forEach(stub => {
+            %>
+                <option value="<%= stub %>"><%= stub %></option>
+            <%
+              });
+            %>
+          </select>  
+        </span>
+        <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="pnlrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="frostybot-panel-content" >
+  <div id="report_pnl"></div>
+</div>
+
+</div>
+
+<style type="text/css">
+  .red {
+      color: #BB0000;
+  }
+  
+  .green {
+      color: #008800;
+  }
+  
+</style>
+<!--div id="positionsgrid" style="margin-bottom: 10px;"></div-->
+<script src="/scripts/notifications.js"></script>
+<script src="/scripts/api.js"></script>
+
+<script type="text/javascript">
+  
+    $(document).ready(function () {
+        
+      $("#pnlreport").jqxDropDownList({height: 30, width: 300});
+      $("#pnldays").jqxDropDownList({height: 30, width: 120});
+      $("#pnlstub").jqxDropDownList({height: 30, width: 150});
+  
+      $("#pnlreport").on('change', function() {
+        loadReport();
+      });
+
+      $("#pnldays").on('change', function() {
+        loadReport();
+      });
+
+      $("#pnlstub").on('change', function() {
+        loadReport();
+      });
+
+      $("#pnlrefreshlink").on('click', function() {
+        loadReport();
+      });
+
+      function loadReport() {
+        var params = {};
+        var token = getToken();
+        if (token != null) {
+          params['token'] = token;
+        }
+        var report = $("#pnlreport").val();
+        params['days'] = $("#pnldays").val();
+        params['stub'] = $("#pnlstub").val();
+        $.get( "/ui/content/report_" + report, params)
+          .done(function( html ) {
+            $('#report_pnl').html( html);
+          })
+      } 
+
+      loadReport();
+
+    });
+
+</script>

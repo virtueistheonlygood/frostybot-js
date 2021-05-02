@@ -1,0 +1,88 @@
+<div id="pnlchartcontainer" style="height: 600px;"></div>
+
+
+<script src="/scripts/notifications.js"></script>
+<script src="/scripts/api.js"></script>
+<!--script src="https://code.jquery.com/jquery-3.5.1.min.js"></script-->
+  
+<script type="text/javascript">
+  
+   $(document).ready(function () {
+        // prepare the data
+
+        var token = localStorage.getItem("token");
+        var uuid = token.uuid;
+        var stub = "<%= report_pnlbypair_total.stub %>";
+        var days = "<%= report_pnlbypair_total.days %>";
+
+
+
+        var params = {
+            token: JSON.parse(token),
+            stub: stub,
+            days: days
+        };
+
+        jQuery.getJSON({
+            url: "/ui/data/chartdata_pnlbypair_total",
+            data: params,
+            success: function(result) {
+
+                if (result.length > 0) {
+
+                    var settings = {
+                        title: "PNL by Pair",
+                        description: "(Total)",
+                        enableAnimations: true,
+                        showLegend: false,
+                        padding: { left: 5, top: 5, right: 25, bottom: 5 },
+                        titlePadding: { left: 90, top: 0, right: 0, bottom: 10 },
+                        source: result,
+                        xAxis: {
+                            dataField: 'Symbol',
+                            unitInterval: 1,
+                            /*
+                            tickMarks: {
+                                visible: true,
+                                interval: 1
+                            },
+                            */
+                            gridLines: {
+                                visible: false,
+                                interval: 1
+                            },
+                            labels: {
+                                angle: 90,
+                                horizontalAlignment: 'right',
+                                verticalAlignment: 'bottom',
+                                rotationPoint: 'right',
+                                offset: { x: 0, y: 0 }
+                            }
+                            
+                        },
+                        colorScheme: 'scheme05',
+                        seriesGroups: [
+                            {
+                                type: 'column',
+                                valueAxis: {
+                                    displayValueAxis: true,
+                                    axisSize: 'auto',
+                                    visible: true,
+                                    description: 'PNL ($)'
+                                },
+                                series: [
+                                    {dataField: 'Total', displayText: 'PNL'}
+                                ]
+                            }
+                        ]
+                    };
+                    
+                    $('#pnlchartcontainer').jqxChart(settings);
+
+                }
+
+            }
+        });
+
+    });
+</script>

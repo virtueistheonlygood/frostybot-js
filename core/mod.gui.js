@@ -147,7 +147,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         if (params.uuid != undefined) {
             is_provider_admin = this.mod.signals.is_provider_admin(uuid);
         }
-        return this.render_page(res, "pages/main", { pageTitle: 'Configuration', providerAdmin: is_provider_admin });
+        return this.render_page(res, "pages/main", { pageTitle: '', providerAdmin: is_provider_admin });
         //} else {
         //    return this.render_page(res, "pages/main", { pageTitle: 'Configuration', uuid: uuid });
         //} 
@@ -234,7 +234,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             if (params.hasOwnProperty('key')) {
                 var key = params.key;
                 var data = { uuid : uuid };
-                var contentfunc = 'content_' + key.toLowerCase()
+                var contentfunc = 'content_' + key.toLowerCase();
                 if (typeof( this[contentfunc] ) == 'function') {
                     data[key] = await this[contentfunc](params);
                 }
@@ -400,10 +400,21 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     async content_tab_positions(params) {
         var accounts = await this.mod.accounts.get();
         var showspot = await this.mod.config.get('gui:showspotpositions', false);
+        var showchart = await this.mod.config.get('gui:showchart', false);
         
         return {
             accounts: accounts,
-            showspot: showspot
+            showspot: showspot,
+            showchart: showchart
+        }
+    }
+
+    // PNL Tab
+
+    async content_tab_pnl(params) {
+        var accounts = await this.mod.accounts.get();
+        return {
+            accounts: accounts,
         }
     }
 
@@ -459,6 +470,10 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
         for (var i =0; i < positions.length; i++) {
             var position = positions[i];
+            var symbol = position.symbol;
+            var exchange = position.exchange; 
+            var market = await this.mod.exchange.market(exchange, symbol);
+            positions[i]['tvsymbol'] = (market !== false ? market.tvsymbol : null) 
             position.actions = '<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
         }
         return positions;
@@ -507,6 +522,61 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             order.actions = '';  //'<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
         }
         return orders;
+    }
+
+
+    // PNL Per Day Report
+
+    async content_report_dailypnl(params) {
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        return { stub: stub, days: days };
+    }
+
+    // PNL Per Day Chart Data
+
+    async data_chartdata_dailypnl(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        var pnl = await this.mod.pnl.pnl_per_day(uuid, stub, days)
+        return pnl;
+    }
+
+    // PNL By Pair (Total) Report
+
+    async content_report_pnlbypair_total(params) {
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        return { stub: stub, days: days };
+    }
+
+    // PNL By Pair (Total) Chart Data
+
+    async data_chartdata_pnlbypair_total(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        var pnl = await this.mod.pnl.pnl_by_pair_total(uuid, stub, days)
+        return pnl;
+    }
+
+    // PNL By Pair (Over Time) Report
+
+    async content_report_pnlbypair_overtime(params) {
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        return { stub: stub, days: days };
+    }
+
+    // PNL By Pair (Over Time) Chart Data
+
+    async data_chartdata_pnlbypair_overtime(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        var pnl = await this.mod.pnl.pnl_by_pair_overtime(uuid, stub, days)
+        return pnl;
     }
 
     // Signal Admin Tab

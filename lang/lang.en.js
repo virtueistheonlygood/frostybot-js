@@ -95,6 +95,7 @@ module.exports = {
         order_sizing_cur:   'Current position {0} size is: {1} {2}',
         order_sizing_tar:   'Target position {0} size is:  {1} {2}',
         order_sizing_ord:   'Order required to reach target: {0} => {1} {2}',
+        order_sizing_dca:   'DCA scaling position base size by {0}x: {1} => {2}',
         order_cancel:       'Successfully cancelled order {0}',
         orders_cancel:      '{0} Order(s) cancelled',
         order_queued:       'Order added to queue: {0}',

@@ -1016,8 +1016,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                         params.scale = parseFloat(String(dcascalestub).toLowerCase().replace('x',''));
                     }
                 }
+                if (params.scale != undefined) {
+                    var position = await this.get_position(stub, symbol);
+                    params.base = position.base_size * params.scale;
+                    this.mod.output.notice('order_sizing_dca',[params.scale, position.base_size, (position.base_size + params.base)]),
+                    params.scale = undefined;
+                }
             }
-            if (params.scale == undefined) {
+            if (params.scale == undefined && params.base == undefined) {
                 if (defsizesymbol !== false) {
                     this.mod.output.debug('order_size_default', [(stub + ':' + symbol + ':defsize').toLowerCase(), defsizesymbol]);
                     params.size = defsizesymbol;
@@ -1923,7 +1929,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
         const stub = params.stub
-        var result = await this.exchange_execute(stub, 'leverage',params);
+        var result = await this.mod.exchange.execute(stub, 'leverage', params);
         if ((result !== false) && (result.result !== 'error')) {
             this.mod.output.success('leverage_set', [params.symbol, params.leverage.toLowerCase().replace('x',''), params.type])
         } else {

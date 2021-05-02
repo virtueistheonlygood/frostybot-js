@@ -24,6 +24,10 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                 'standard': ['local', 'loopback' ],
                 'provider': ['local', 'loopback' ],
             },
+            'pnl:quick_import': {
+                'standard': ['local', 'loopback' ],
+                'provider': ['local', 'loopback' ],
+            },
             'pnl:get': {
                 'standard': [ 'core,singleuser', 'multiuser,user', 'local', 'token', 'loopback' ],
                 'provider': [ 'local', 'token', 'loopback' ],    
@@ -32,17 +36,20 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         // API method to endpoint mappings
         var api = {
-            'pnl:import':   [
-                                'post|/pnl/import',                      // Trigger PNL import for all users and all stubs
-                                'post|/pnl/import/:user',                // Trigger PNL import for specific user
-                                'post|/pnl/import/:user/:stub',          // Trigger PNL import for specific user and stub
-                                'post|/pnl/import/:user/:stub/:market',  // Trigger PNL import for specific user, stub and market
-                            ],
-            'pnl:get':      [
-                                'get|/pnl/:user',                        // Get PNL data for a specific user
-                                'get|/pnl/:user/:stub',                  // Get PNL data for a specific user and stub
-                                'get|/pnl/:user/:stub/:market',          // Get PNL data for a specific user, stub and market
-                            ],
+            'pnl:import': [
+                'post|/pnl/import',                      // Trigger PNL import for all users and all stubs
+                'post|/pnl/import/:user',                // Trigger PNL import for specific user
+                'post|/pnl/import/:user/:stub',          // Trigger PNL import for specific user and stub
+                'post|/pnl/import/:user/:stub/:market',  // Trigger PNL import for specific user, stub and market
+            ],
+            'pnl:quick_import': [
+                'post|/pnl/quick_import',                // Trigger Quick PNL import for specific user, stub and symbol
+            ],
+            'pnl:get': [
+                'get|/pnl/:user',                        // Get PNL data for a specific user
+                'get|/pnl/:user/:stub',                  // Get PNL data for a specific user and stub
+                'get|/pnl/:user/:stub/:market',          // Get PNL data for a specific user, stub and market
+            ],
         }
 
         // Register endpoints with the REST and Webhook APIs
@@ -103,8 +110,6 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 var stubs = await this.database.select('settings', {uuid: user, mainkey: 'accounts'});
 
-                console.log(stubs)
-
                 if (Array.isArray(stubs)) {
                     stubs.forEach(item => {
                         var stub = item.subkey;
@@ -133,10 +138,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 // Stub is defined
 
-                //this.mod.cache.flush(true);
-                
                 var exchange = await this.mod.exchange.get_exchange_from_stub([user,stub]);
-                //await this.mod.exchange.load_normalizers();
                 var symbol_required = await this.mod.exchange.setting(exchange, 'orders_symbol_required');
 
                 if (market == undefined) {
@@ -160,8 +162,8 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
                         total += qty;
 
                         if (Array.isArray(order_history)) {
-                            order_history.forEach(order => {
-                                this.update_order(user, stub, order);
+                            order_history.forEach(async (order) => {
+                                await this.update_order(user, stub, order);
                             });
                         }
 
@@ -204,6 +206,43 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         
     }
 
+
+    // Quick import import specific symbol for a user when a close command is executed
+
+    async quick_import(stub, symbol) {
+        if ((typeof(stub) != 'string') && (stub.hasOwnProperty('stub'))) {
+            symbol = stub.symbol
+            stub = stub.stub
+        }
+        var user = context.get('uuid');
+        //var order_history = await this.order_history(user, stub, symbol, 7);
+        var order_history =  await this.mod.exchange.orders(stub, symbol);
+        //console.log(order_history)
+        if (Array.isArray(order_history)) {
+            order_history.forEach(async(order) => {
+                await this.update_order(user, stub, order);
+            });
+            //console.log('Imported ' + order_history.length + ' orders');
+            var pnl = await this.get({user: user, stub: stub, symbol: symbol, days: 7})
+            if (pnl.hasOwnProperty(symbol)) {
+                var groups = pnl[symbol].groups;
+                if (Array.isArray(groups)) {
+                    var latest = groups.sort((a, b) => a.end > b.end ? -1 : 1)[0];
+                    if (latest.pnl != undefined) {
+                        var pnl = Math.round(latest.pnl * 100) / 100
+                        if (pnl >= 0) {
+                            this.mod.output.notice('order_close_profit',[symbol, pnl]);
+                        } else {
+                            this.mod.output.notice('order_close_loss',[symbol, pnl]);                            
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+
+
     // Get order history for a given user uuid, stub, symbol and days
 
 
@@ -216,12 +255,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             stub: stub,
             since: ts
         }
-
         if (!['<ALL>',undefined].includes(symbol)) order_params['symbol'] = symbol;
 
-        var key = [user, stub].join(':');
-        
-        var orders =  await this.mod.exchange.execute([user, stub], 'order_history', order_params);
+        var orders =  await this.mod.exchange.execute([user, stub], 'all_orders', order_params);
 
         while (orders.length > 0) {
 
@@ -256,8 +292,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var mints = Math.min(batch_ts.standard, batch_ts.conditional);
             if (mints == 0) break;
 
+            if (order_params.since == mints + 1) break;
             order_params.since = mints + 1;
-            orders = await this.mod.exchange.execute([user, stub], 'order_history', order_params);
+            orders = await this.mod.exchange.execute([user, stub], 'all_orders', order_params);
         }
 
         return Object.values(all_orders);
@@ -404,6 +441,139 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
     }
 
+    // PNL Per Day
+
+    async pnl_per_day(user, stub, days) {
+
+        var pnl = await this.get({user: user, stub: stub, days: days});
+        var totals = {};
+        var symbols = Object.keys(pnl);
+
+        for (var i = 0; i < symbols.length; i++) {
+
+            var symbol = symbols[i];
+
+            var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
+            for (var j = 0; j < groups.length; j++) {
+                var group = groups[j];
+                var date = Math.floor(group.end / 86400000) * 86400000;  // Round to date
+
+                if (totals[date] == undefined) totals[date] = 0
+                totals[date] += parseFloat(group.pnl);
+            }
+
+        }
+
+        var result = [];
+        
+        for (const [ts, total] of Object.entries(totals)) {
+            var row = {
+                Date: new Date(parseInt(ts)).toJSON(),
+                Daily: total,
+            };
+            result.push(row);
+        }
+        var sorted = result.filter(result =>  result.total != 0).sort((a, b) => a.Date < b.Date ? -1 : 1)
+        for (var i = 0; i < sorted.length; i++) {
+            var today = sorted[i].Daily != undefined ? sorted[i].Daily : 0;
+            var yesterday = i != 0 ? sorted[i-1].Total : 0;
+            sorted[i].Total = today + yesterday
+        }
+        /*
+        if (days > 90) days = 90
+        var ts = (Math.floor((new Date()).getTime() / 86400000) * 86400000) - (days * 86400000)
+        var testdata = [];
+        var total = 0;
+        for (i = 0; i < days; i++) {
+            var daily = (Math.random() * 20) - 5;
+            total += daily;
+            testdata.push({
+                Date: (new Date(ts + (i * 86400000))).toJSON(),
+                Daily: daily,
+                Total: total
+            })
+        }
+        console.log(testdata)
+        return testdata;
+        */
+        return sorted;
+    }
+
+    // PNL By Pair Total
+
+    async pnl_by_pair_total(user, stub, days) {
+
+        var pnl = await this.get({user: user, stub: stub, days: days});
+        var totals = {};
+        var symbols = Object.keys(pnl);
+
+        //console.log(symbols)
+
+        for (var i = 0; i < symbols.length; i++) {
+
+            var symbol = symbols[i];
+            var total = 0;
+
+            var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
+            for (var j = 0; j < groups.length; j++) {
+                var group = groups[j];
+                total += parseFloat(group.pnl);
+            }
+
+            totals[symbol] = total;
+
+        }
+
+        var result = [];
+
+        for (const [symbol, total] of Object.entries(totals)) {
+            var row = {
+                Symbol: symbol,
+                Total: total
+            };
+            result.push(row);
+        }
+
+        var sorted = result.filter(result =>  result.Total != 0).sort((a, b) => a.Total > b.Total ? -1 : 1)
+        return sorted;
+    }
+
+    // PNL By Pair Over Time
+
+    async pnl_by_pair_overtime(user, stub, days) {
+
+        var pnl = await this.get({user: user, stub: stub, days: days});
+        var totals = {};
+        var symbols = Object.keys(pnl);
+
+        for (var i = 0; i < symbols.length; i++) {
+
+            var symbol = symbols[i];
+            var total = 0;
+
+            var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
+            for (var j = 0; j < groups.length; j++) {
+                var group = groups[j];
+                var date = Math.floor(group.end / 86400000) * 86400000;  // Round to date
+                total += parseFloat(group.pnl);
+                if (totals[date] == undefined) totals[date] = {}
+                totals[date][symbol] = total;
+            }
+
+        }
+
+        var result = [];
+        
+        for (const [ts, pnl] of Object.entries(totals)) {
+            var row = {Date: new Date(parseInt(ts)).toJSON() };
+            row = {...row, ...pnl}
+
+            result.push(row);
+        }
+
+        var sorted = result.filter(result =>  result.total != 0).sort((a, b) => a.Date < b.Date ? -1 : 1)
+        return {symbols: symbols, data: sorted};
+    }
 
 
 
