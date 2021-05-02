@@ -1,4 +1,5 @@
 frostybot_exchange_base = require('./exchange.base');
+var context = require('express-http-context');
 
 module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
 
@@ -220,7 +221,8 @@ module.exports = class frostybot_exchange_ftx extends frostybot_exchange_base {
         }
         const status = order.status.replace('canceled', 'cancelled');   // Fix spelling error
         const raw = order.info;
-        return new this.classes.order(this.stub.uuid, this.stub.stub, 'ftx', symbol, id, timestamp, type, direction, price, trigger, size, filled, status, raw);
+        var uuid = this.stub.uuid == undefined ? context.get('uuid') : null
+        return new this.classes.order(uuid, this.stub.stub, 'ftx', symbol, id, timestamp, type, direction, price, trigger, size, filled, status, raw);
     }
 
 

@@ -830,7 +830,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             price   :   (price != undefined ? price : null),
             params  :   {}
         }
-        
+
         // Add additional parameters
         order_params.params[param_map.post]   = (String(post)   == "true" ? true : undefined);
         order_params.params[param_map.ioc]    = (String(ioc)    == "true" ? true : undefined);
@@ -844,6 +844,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             tag         :   tag
         }
 
+        console.log(order_params)
         // Get normalizer custom params (if defined)
         order_params = await this.mod.exchange.execute(stub, 'custom_params', [type, order_params, custom_params]);
 
@@ -953,7 +954,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             price   :   (price != undefined ? price : null),
             params  :   {}
         }
-     
+
         // Add additional parameters
         var reduce_only = (String(reduce) == "true" || reduce == true ? true : false);
         order_params.params[param_map.reduce] = reduce_only;
@@ -1077,7 +1078,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             case 'trailstop'   : order_params = await this.order_params_conditional('trailstop', params);
                                  break;
         } 
-        
+
         if (order_params !== false) {
             this.mod.queue.add(stub, symbol, order_params);  
             return true
@@ -1135,6 +1136,19 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                     await this.tpsl(params, 'sell', false);
                 if (['short', 'sell'].includes(type))
                     await this.tpsl(params, 'buy', false);
+            }
+
+            // If the order is a close order, calculate the PNL for the trade
+
+            if (type == 'close') {
+                var self = this
+                setTimeout(async function () {
+                    try {
+                        await self.mod.pnl.quick_import(stub, symbol);
+                    } catch (e) {
+                        self.mod.output.exception(e);
+                    }
+                }, 5000);
             }
 
         } else {

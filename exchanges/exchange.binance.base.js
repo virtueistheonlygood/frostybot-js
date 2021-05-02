@@ -4,8 +4,8 @@ module.exports = class frostybot_exchange_binance_base extends frostybot_exchang
 
     // Class constructor
 
-    constructor(user = undefined, stub = undefined) {
-        super(user, stub);        
+    constructor(stub = undefined) {
+        super(stub);        
         this.ccxtmodule = 'binance'                  // CCXT module to use
         this.stablecoins = ['USDT','BUSD'];          // Stablecoins supported on this exchange
         this.order_sizing = 'base';                  // Exchange requires base size for orders

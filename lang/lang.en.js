@@ -111,6 +111,8 @@ module.exports = {
         websocket_connected: 'Websocket Connected: {0}',
         websocket_message:  'Websocket: {0}: {1}',
         exchange_refresh_markets: 'Refreshed markets for exchange: {0} ({1} markets)',
+        order_close_loss:   'Order on {0} was closed with ${1} loss',
+        order_close_profit: 'Order on {0} was closed with ${1} profit',
 
     },
 
@@ -258,6 +260,7 @@ module.exports = {
         
         exchange_refresh_markets: 'Failed to refresh markets for exchange: {0}',
         position_ambigous:    'Ambigous position requested: {0}',
+
     },
 
     success: {
@@ -320,7 +323,7 @@ module.exports = {
         signal_queued:       'Signal Queued: Provider: {0}, User: {1}',
         add_signal_admin:    'Added user {1} as an admin for provider {0}',
         del_signal_admin:    'Removed user {1} as an admin for provider {0}',
-        websocket_message:  'Websocket: {0}: {1}',
+        websocket_message:   'Websocket: {0}: {1}',
 
     }
     

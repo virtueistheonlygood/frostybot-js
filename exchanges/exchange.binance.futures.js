@@ -1,4 +1,5 @@
 frostybot_exchange_binance_base = require('./exchange.binance.base');
+var context = require('express-http-context');
 
 module.exports = class frostybot_exchange_binance_futures extends frostybot_exchange_binance_base {
 
@@ -206,19 +207,22 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
 
     async cancel(params) {
         var [symbol, id] = this.mod.utils.extract_props(params, ['symbol', 'id']);
-        if (id.toLowerCase() == 'all') {
+        if (['all', undefined].includes(id)) {
             var orders = await this.open_orders({symbol: symbol});
             let cancel = await this.ccxtobj.cancel_all_orders(symbol);
             orders.forEach((order, idx) => {
                 order.status = 'cancelled';
                 orders[idx] = order;
             })   
+            return orders;
         } else {
-            var id = params.id;
-            let order = await this.ccxtobj.cancel_order(id, symbol);
-            return order;
+            if (orders.id !== undefined) {
+                var id = params.id;
+                let order = await this.ccxtobj.cancel_order(id, symbol);
+                return order;
+            }
         }
-        return orders;
+        return false
     }
 
 
@@ -247,7 +251,9 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         }
         const status = order.status.replace('CANCELED', 'cancelled');   // Fix spelling error
         const raw = order.info;
-        return new this.classes.order(this.stub.uuid, this.stub.stub, 'binance_futures', symbol, id, timestamp, type, direction, price, trigger, size, filled, status, raw);
+        var uuid = this.stub.uuid == undefined ? context.get('uuid') : null
+        var order = new this.classes.order( uuid, this.stub.stub, 'binance_futures', symbol, id, timestamp, type, direction, price, trigger, size, filled, status, raw);
+        return order;
     }
 
 

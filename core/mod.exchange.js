@@ -4,6 +4,7 @@ const frostybot_module = require('./mod.base');
 const fs = require('fs');
 var context = require('express-http-context');
 
+
 module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Constructor
@@ -188,6 +189,27 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         }
         if (currency != null) query['currency'] = currency
         return await this.mod.datasources.select('exchange:balances', query);
+    }
+
+    // Get orders
+
+    async orders(stub, symbol) {
+        var decrypted = await this.mod.accounts.getaccount(stub)
+        var file = await this.get_normalizer_module_by_stub(decrypted);
+        const fs = require('fs');
+        if (fs.existsSync(file)) {
+            var exclass = require(file);
+            var mod = new exclass(decrypted);
+            if (typeof(mod['initialize']) === 'function') { 
+                await mod.initialize();
+            }
+            try {
+                var result = await mod.order_history({symbol: symbol});
+            } catch(e) {
+                this.mod.output.exception(e);
+            }
+        }
+        return result;                
     }
 
     // Load normalizer modules

@@ -124,8 +124,9 @@ module.exports = class frostybot_exchange_base {
     parse_orders(raworders) {
         var orders = [];
         if (this.mod.utils.is_array(raworders)) {
-            raworders.forEach(raworder => {
-                orders.push(this.parse_order(raworder));
+            raworders.forEach(async (raworder) => {
+                var parsed = await this.parse_order(raworder);
+                orders.push(parsed);
             });
         }
         return orders;

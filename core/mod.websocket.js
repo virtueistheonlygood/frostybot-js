@@ -20,7 +20,7 @@ module.exports = class frostybot_websocket_module extends frostybot_module {
     async initialize() {
 
         var _this = this;
-        var exchanges = ['ftx', 'binance_futures'];
+        var exchanges = ['ftx', 'binance_spot', 'binance_futures'];
 
         for (var i = 0; i < exchanges.length; i++) {
             var exchange = exchanges[i];
