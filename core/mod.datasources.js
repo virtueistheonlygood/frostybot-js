@@ -205,7 +205,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
                     data.push(row);
                 }
             }
-            this.mod.output.debug('datasource_results', [datasource, data.length])
+            if (datasource != 'node:info') this.mod.output.debug('datasource_results', [datasource, data.length])
             return data;
         } else {
             return this.mod.output.error('datasource_notfound', [datasource]);

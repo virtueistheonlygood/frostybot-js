@@ -85,7 +85,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         }
         context.set('srcIp', ip);
         var reqId = context.get('reqId')
-        if (!proxies.includes(ip))
+        if (!proxydetected)
             this.mod.output.debug('source_ip', [ip, reqId]);
         return ip;
     }
