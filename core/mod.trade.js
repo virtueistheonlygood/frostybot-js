@@ -746,6 +746,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Check if the maximum amount of allowable positions is configured and if it has been met
 
     async check_ignored(stub, symbol) {
+        var exchange = await this.mod.exchange.get_exchange_from_stub(stub);
+        var market = await this.mod.exchange.findmarket(exchange, symbol)
+        if (market != false) symbol = market.symbol;
         var ignored = await this.mod.config.get([stub,symbol,'ignored'].join(':'), false);
         if (ignored) {
             this.mod.output.error('position_ignoresym', [symbol, stub]);
