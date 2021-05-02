@@ -105,7 +105,7 @@ class frostybot_balance extends frostybot_base {
             var mapsymbol = balances_market_map.replace('{currency}', this.currency).replace('{stablecoin}', stablecoin);
             var market = this.find(mapsymbol);
             if (market != false) {
-                global.frostybot.modules.output.debug('custom_object', ['Converting using symbol', mapsymbol]);
+                //global.frostybot.modules.output.debug('custom_object', ['Converting using symbol', mapsymbol]);
                 price = ((market.bid * 1) + (market.ask * 1)) / 2;
                 break;
             }
