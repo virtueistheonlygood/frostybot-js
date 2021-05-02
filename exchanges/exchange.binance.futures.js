@@ -16,6 +16,7 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
         this.collateral_assets = ['USDT','BUSD'];    // Assets that are used for collateral
         this.exchange_symbol = 'symbol';             // Does CCXT use the ID or the Symbol field?
         this.balances_market_map = '{currency}USDT'  // Which market to use to convert non-USD balances to USD
+        this.orders_symbol_required = true;          // This exchange requires a symbol when fetching orders
         this.param_map = {                           // Order parameter mappings
             limit              : 'LIMIT',
             market             : 'MARKET',

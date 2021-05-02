@@ -52,35 +52,11 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         
     }
 
-    // Load exchange for a given user uuid and stub
-
-    async load_exchange(user, stub) {
-        var accounts = await this.database.select('settings', {uuid: user, mainkey: 'accounts', subkey: stub});
-        var encaccount = Array.isArray(accounts) && accounts.length == 1 && accounts[0].hasOwnProperty('value') ? JSON.parse(accounts[0].value) : {};
-        var account = await this.mod.utils.decrypt_values( this.mod.utils.lower_props(encaccount), ['apikey', 'secret'])
-
-        if (account) {
-            if (account && account.hasOwnProperty (stub)) {
-                account = account[stub];
-            }
-            const exchange_id = (account.hasOwnProperty('exchange') ? account.exchange : undefined);
-            if (exchange_id == undefined) {
-                return false;
-            }
-            this.exchange_id = exchange_id;
-            var type = account.hasOwnProperty ('type') ? account.type : null;
-            var ex_type = exchange_id + (type != null ? '.' + type : '');
-            const exchange_class = require ('../exchanges/exchange.' + ex_type);
-            var key = [user, stub].join(':');
-            this.exchange[key] = new exchange_class (stub, user);
-            return true;
-        }
-        return false;
-    }
-
     // Import orders for every user, stub and symbol
 
     async import(params) {
+
+        var uuid = context.get('uuid');
 
         var schema = {
             user:        { optional: 'string', format: 'lowercase', },
@@ -102,13 +78,12 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
             if (Array.isArray(users)) {
                 users.forEach(item => {
-                    var uuid = context.get('uuid');
                     var user = item.uuid;
 
                     var payload = {
                         uuid        : uuid,
-                        command     : 'pnl:import_orders',
                         user        : user,
+                        command     : 'pnl:import',
                         days        : days
                     }
 
@@ -128,9 +103,10 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 var stubs = await this.database.select('settings', {uuid: user, mainkey: 'accounts'});
 
+                console.log(stubs)
+
                 if (Array.isArray(stubs)) {
                     stubs.forEach(item => {
-                        var uuid = context.get('uuid');
                         var stub = item.subkey;
     
                         var payload = {
@@ -159,67 +135,65 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
                 //this.mod.cache.flush(true);
                 
-                var key = [user, stub].join(':');
-                await this.load_exchange(user, stub);
-            
-                if (this.exchange[key] != false) {
+                var exchange = await this.mod.exchange.get_exchange_from_stub([user,stub]);
+                //await this.mod.exchange.load_normalizers();
+                var symbol_required = await this.mod.exchange.setting(exchange, 'orders_symbol_required');
 
-                    if (market == undefined) {
-                        var symbols = this.exchange[key].orders_symbol_required ? await this.exchange[key].execute('symbols') : ['<ALL>'];
-                    } else {
-                        var symbols = Array.isArray(market) ? market : [market];
-                    }
+                if (market == undefined) {
+                    var symbols = symbol_required ? await this.mod.exchange.symbols(exchange) : ['<ALL>'];
+                } else {
+                    var symbols = Array.isArray(market) ? market : [market];
+                }
+                
+
+                if (Array.isArray(symbols)) {
                     
+                    var total = 0;
 
-                    if (Array.isArray(symbols)) {
-                        
-                        var total = 0;
+                    for (var i = 0; i < symbols.length; i++) {
+                        var symbol = symbols[i];
 
-                        for (var i = 0; i < symbols.length; i++) {
-                            var symbol = symbols[i];
+                        params.market = symbol;
+                        var order_history = await this.order_history(user, stub, symbol, days);
+                        var qty = Array.isArray(order_history) ? order_history.length : 0;
+                        //console.log(stub +': ' + symbol + ': ' + qty)
+                        total += qty;
 
-                            params.market = symbol;
-                            var order_history = await this.order_history(user, stub, symbol, days);
-                            var qty = Array.isArray(order_history) ? order_history.length : 0;
-                            //console.log(stub +': ' + symbol + ': ' + qty)
-                            total += qty;
-
-                            if (Array.isArray(order_history)) {
-                                order_history.forEach(order => {
-                                    this.update_order(user, stub, order);
-                                });
-                            }
-
-                            /*
-                            var uuid = context.get('uuid');    
-                            var payload = {
-                                uuid        : uuid,
-                                command     : 'pnl:import_orders',
-                                user        : user,
-                                stub        : stub,
-                                market      : symbol,
-                                days        : days
-                            }
-
-                            axios.post(url + '/frostybot',  payload);
-                            await this.mod.utils.sleep(1);
-                            */
-
+                        if (Array.isArray(order_history)) {
+                            order_history.forEach(order => {
+                                this.update_order(user, stub, order);
+                            });
                         }
 
-                        var importstats = {
-                            user: user,
-                            stub: stub,
-                            total: total,
+                        /*
+                        var uuid = context.get('uuid');    
+                        var payload = {
+                            uuid        : uuid,
+                            command     : 'pnl:import_orders',
+                            user        : user,
+                            stub        : stub,
+                            market      : symbol,
+                            days        : days
                         }
 
-                        this.mod.output.debug('orders_imported', importstats);
-
-                        return true;
+                        axios.post(url + '/frostybot',  payload);
+                        await this.mod.utils.sleep(1);
+                        */
 
                     }
+
+                    var importstats = {
+                        user: user,
+                        stub: stub,
+                        total: total,
+                    }
+
+                    this.mod.output.debug('orders_imported', importstats);
+
+                    return true;
 
                 }
+
                 
             }
 
@@ -247,10 +221,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         var key = [user, stub].join(':');
         
-        if (this.exchange[key] == false)
-            return false;
-
-        var orders =  await this.exchange[key].execute('order_history', order_params, true);
+        var orders =  await this.mod.exchange.execute([user, stub], 'order_history', order_params);
 
         while (orders.length > 0) {
 
@@ -286,7 +257,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             if (mints == 0) break;
 
             order_params.since = mints + 1;
-            orders =  await this.exchange[key].execute('order_history', order_params, true);
+            orders = await this.mod.exchange.execute([user, stub], 'order_history', order_params);
         }
 
         return Object.values(all_orders);
@@ -302,10 +273,12 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         order.orderid = order.id
         order.order_price = order.price
         order.trigger_price = order.trigger
-    
+
         delete order.id
+        delete order.user
         delete order.price
         delete order.trigger
+        delete order.filled
         delete order.datetime
 
         var existing = await this.database.select('orders', {uuid: user, stub: stub, orderid: order.id});
@@ -430,6 +403,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         return pnl_by_symbol;
 
     }
+
+
+
 
 
 }

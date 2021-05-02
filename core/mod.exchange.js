@@ -89,8 +89,13 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Execute method on the exchange normalizer
 
-    async execute(stub, method, params) {
-        var uuid = context.get('uuid');
+    async execute(userstub, method, params) {
+        if (Array.isArray(userstub)) {
+            var [uuid, stub] = userstub;
+        } else {
+            var uuid = context.get('uuid')
+            var stub = userstub
+        }
         var params = await this.convert_symbol(stub, params);
         var stubs = await this.mod.accounts.stubs_by_uuid(uuid, stub);
         if (stubs.length == 1) {
@@ -141,8 +146,13 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Get exchange from stub
 
-    async get_exchange_from_stub(stub) {
-        var uuid = context.get('uuid')
+    async get_exchange_from_stub(params) {
+        if (Array.isArray(params)) {
+            var [uuid, stub] = params
+        } else {
+            var uuid = context.get('uuid')
+            var stub = params
+        }
         var stubs = await this.mod.accounts.stubs_by_uuid(uuid, stub)
         var filter = (this.mod.utils.is_array(stubs)) ? stubs.filter(item => item.stub == stub) : []
         var exchange = filter.length == 1 ? filter[0].exchange + (filter[0].type != undefined ? '_' + filter[0].type : '') : false;
@@ -193,7 +203,22 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             var exclass = require(file);
             this.normalizers[exchange] = new exclass();
             global.frostybot.exchanges[exchange] = {};
-            var settings = ['type', 'shortname', 'description', 'ccxtmodule', 'has_subaccounts', 'has_testnet', 'stablecoins', 'order_sizing', 'collateral_assets', 'balances_market_map', 'doublecheck', 'param_map', 'exchange_symbol'];
+            var settings = [
+                'type', 
+                'shortname', 
+                'description', 
+                'ccxtmodule', 
+                'has_subaccounts', 
+                'has_testnet', 
+                'stablecoins', 
+                'order_sizing', 
+                'collateral_assets', 
+                'balances_market_map', 
+                'doublecheck', 
+                'param_map', 
+                'exchange_symbol', 
+                'orders_symbol_required'
+            ];
             for (var k = 0; k < settings.length; k++) {
                 var setting = settings[k];
                 global.frostybot.exchanges[exchange][setting] = this.normalizers[exchange][setting];
@@ -268,6 +293,17 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             if (!(params = this.mod.utils.validator(params, schema))) return false; 
             return await this.markets(params);
         }
+    }
+
+    // Get list of market symbols for an exchange
+
+    async symbols(exchange) {
+        var markets = await this.markets(exchange)
+        var symbols = [];
+        Object.values(markets).forEach(market => {
+            symbols.push(market.symbol)
+        })
+        return symbols;
     }
 
     // Get market data

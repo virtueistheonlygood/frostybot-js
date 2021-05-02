@@ -1128,18 +1128,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             
             // Then take care of other order types
 
-            var start = (new Date()).getTime();
-
             if (['long', 'buy'].includes(type))
-                await this.tpsl(params, 'sell', true);
+                await this.tpsl(params, 'sell', false);
             if (['short', 'sell'].includes(type))
-                await this.tpsl(params, 'buy', true);
-            await this.mod.queue.process(stub, symbol);
-
-            // Order execution time
-            var stop = (new Date()).getTime();
-            var duration = (stop - start) / 1000;
-            this.mod.output.notice('order_completed', [duration]);
+                await this.tpsl(params, 'buy', false);
 
 
         } else {
@@ -1159,8 +1151,8 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             this.mod.output.notice('order_completed', [duration]);
 
             //Refresh position
-            await this.mod.exchange.refresh_positions_datasource({ user : uuid, stub : stub });
-            await this.mod.exchange.refresh_balances_datasource({ user : uuid, stub : stub });
+            //await this.mod.exchange.refresh_positions_datasource({ user : uuid, stub : stub });
+            //await this.mod.exchange.refresh_balances_datasource({ user : uuid, stub : stub });
 
         }
 
