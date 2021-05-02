@@ -472,13 +472,13 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     async refresh_positions_datasource(params = {}) {
         var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
-        if (params == {}) {
-            var isactive = this.mod.datasources.isactive('exchange:positions')
-            if (!isactive) {
-                this.mod.output.debug('custom_message',['This node is not active for exchange:positions'])
-                return false;
-            }
-        }
+        //if (params == {}) {
+        //    var isactive = this.mod.datasources.isactive('exchange:positions')
+        //    if (!isactive) {
+        //        this.mod.output.debug('custom_message',['This node is not active for exchange:positions'])
+        //        return false;
+        //    }
+        //}
         var all = [];
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
@@ -521,14 +521,14 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     async refresh_balances_datasource(params = {}) {
         var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
-        if (params == {}) {
-            var isactive = await this.mod.datasources.isactive('exchange:balances')
-            this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
-            if (!isactive) {
-                this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
-                return false;
-            }
-        }
+        //if (params == {}) {
+            //var isactive = await this.mod.datasources.isactive('exchange:balances')
+            //this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
+            //if (!isactive) {
+            //    this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
+            //    return false;
+            //}
+        //}
         var all = []
         for (const [user, stubs] of Object.entries(uuidstubs)) {
             for(var i = 0; i < stubs.length; i++) {
