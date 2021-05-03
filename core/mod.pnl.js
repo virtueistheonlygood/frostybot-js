@@ -358,7 +358,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         if (symbol != undefined) query['symbol'] = symbol;
         
         var ms = 1000 * 60 * 60 * 24 * days
-        var ts = Date.now() - ms;
+        var ts = Math.ceil((Date.now() - ms)  / 86400000) * 86400000 ;
 
         var vals = [
             user,
