@@ -203,8 +203,9 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             if (typeof(mod['initialize']) === 'function') { 
                 await mod.initialize();
             }
+            var params = await this.convert_symbol(stub, {symbol: symbol})
             try {
-                var result = await mod.order_history({symbol: symbol});
+                var result = await mod.order_history(params);
             } catch(e) {
                 this.mod.output.exception(e);
             }
