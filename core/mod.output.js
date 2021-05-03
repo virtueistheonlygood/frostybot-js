@@ -95,7 +95,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
         try {
             // Dont log GUI and PNL import commands to the database
             var command = context.get('command');
-            if ((command.toLowerCase().indexOf('gui:') == -1) && (command.toLowerCase().indexOf('pnl:import') == -1))
+            if ((command.toLowerCase().indexOf('gui:') == -1) && (command.toLowerCase().indexOf('pnl:quick_import') == -1))
                 return this.database.insert('logs', {uuid: uuid, type: type, message: message});
         } catch(error) {
             return false;
