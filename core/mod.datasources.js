@@ -69,7 +69,7 @@ module.exports = class frostybot_datasources_module extends frostybot_module {
             expiry:     null,
             indexes:    indexes
         }
-        await this.redistribute();
+        //await this.redistribute();
         await this.refresh(name);
         this.mod.output.notice('datasource_registered', name);
     }
