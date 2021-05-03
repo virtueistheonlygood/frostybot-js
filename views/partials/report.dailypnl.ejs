@@ -1,4 +1,7 @@
-<div id="pnlchartcontainer" style="height: 600px;"></div>
+<div class="row flex-nowrap" style="margin-left: 0px">
+    <div id="pnlperdaygridcontainer" style="height: 600px; width: 250px; margin: 0px; padding: 0px;"></div>
+    <div id="pnlchartcontainer" style="height: 600px; width: 698px; padding: 0px; margin: 0px"></div>
+</div>
 
 
 <script src="/scripts/notifications.js"></script>
@@ -27,6 +30,41 @@
             url: "/ui/data/chartdata_dailypnl",
             data: params,
             success: function(result) {
+
+                var gridSource = {
+                    localdata: result,
+                    datafields: [
+                        { name: 'Date', type: 'date', },
+                        { name: 'Daily', type: 'number' },
+                    ],
+                    datatype: "json"
+                };
+
+                var gridAdapter = new $.jqx.dataAdapter(gridSource);
+
+                $("#pnlperdaygridcontainer").jqxGrid({
+                    width: 250,
+                    height: 600,
+                    //autoheight: true,
+                    source: gridAdapter,
+                    columnsresize: true,
+                    filterable: false,
+                    sortable: true,
+                    showaggregates: true,
+                    showstatusbar: true,
+                    statusbarheight: 23,
+                    columnsheight: 20,
+                    rowsheight: 20,
+                    theme: 'dark',
+                    showemptyrow: false,
+                    columnsmenu: true,
+                    autosavestate: true,
+                    autoloadstate: true,
+                    columns: [
+                        { text: 'Date', datafield: 'Date', filtertype: 'checkedlist', width: 'auto', cellsformat: "yyyy\u0027-\u0027MM\u0027-\u0027dd", aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
+                        { text: 'Daily PNL', datafield: 'Daily', hideable: true, width: 125, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
+                    ],
+                });                
 
                 if (result.length > 0) {
                     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

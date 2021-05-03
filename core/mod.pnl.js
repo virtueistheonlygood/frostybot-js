@@ -499,6 +499,44 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         return sorted;
     }
 
+    // PNL Per Trade
+
+    async pnl_per_trade(user, stub, days) {
+
+        var pnl = await this.get({user: user, stub: stub, days: days});
+        var trades = [];
+        var symbols = Object.keys(pnl);
+
+        for (var i = 0; i < symbols.length; i++) {
+
+            var symbol = symbols[i];
+
+            var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
+            for (var j = 0; j < groups.length; j++) {
+                var group = groups[j];
+                var orders = group.orders;
+                var orders_sorted = orders.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+                if (orders.length > 1) {
+                    var trade = {
+                        symbol: symbol,
+                        direction: orders_sorted[0].direction == "buy" ? "long" : "short",
+                        entered: new Date(group.start).toJSON(),
+                        exited: new Date(group.end).toJSON(),
+                        dcas: group.orders.length - 1,
+                        initial_size: orders_sorted[0].size_base,
+                        exit_size: (orders.sort((a, b) => a.timestamp > b.timestamp ? -1 : 1))[0].size_base,
+                        pnl: group.pnl
+                    }
+                }
+                trades.push(trade)
+            }
+
+        }
+
+        var sorted = trades.sort((a, b) => a.entered > b.entered ? -1 : 1)
+        return sorted;
+    }
+
     // PNL By Pair Total
 
     async pnl_by_pair_total(user, stub, days) {

@@ -1,0 +1,102 @@
+<div id="tradepnlgridcontainer" style="height: 600px;"></div>
+
+
+<script src="/scripts/notifications.js"></script>
+<script src="/scripts/api.js"></script>
+<!--script src="https://code.jquery.com/jquery-3.5.1.min.js"></script-->
+
+<style type="text/css">
+    .red {
+        color: #BB0000;
+    }
+    
+    .green {
+        color: #008800;
+    }
+    
+</style>
+
+<script type="text/javascript">
+  
+   $(document).ready(function () {
+        // prepare the data
+
+        var token = localStorage.getItem("token");
+        var uuid = token.uuid;
+        var stub = "<%= report_tradepnl.stub %>";
+        var days = "<%= report_tradepnl.days %>";
+
+
+
+        var params = {
+            token: JSON.parse(token),
+            stub: stub,
+            days: days
+        };
+
+        jQuery.getJSON({
+            url: "/ui/data/griddata_tradepnl",
+            data: params,
+            success: function(result) {
+
+                if (result.length > 0) {
+
+                    var gridSource = {
+                        localdata: result,
+                        datafields: [
+                            { name: 'symbol', type: 'string', },
+                            { name: 'direction', type: 'string', },
+                            { name: 'entered', type: 'date', },
+                            { name: 'exited', type: 'date', },
+                            { name: 'dcas', type: 'number' },
+                            { name: 'initial_size', type: 'number' },
+                            { name: 'exit_size', type: 'number' },
+                            { name: 'pnl', type: 'number' },
+                        ],
+                        datatype: "json"
+                    };
+  
+                    var gridAdapter = new $.jqx.dataAdapter(gridSource);
+
+                    $("#tradepnlgridcontainer").jqxGrid({
+                        width: '100%',
+                        //autoheight: true,
+                        source: gridAdapter,
+                        columnsresize: true,
+                        filterable: true,
+                        sortable: true,
+                        showaggregates: true,
+                        showstatusbar: true,
+                        statusbarheight: 23,
+                        columnsheight: 20,
+                        rowsheight: 20,
+                        theme: 'dark',
+                        showemptyrow: false,
+                        columnsmenu: true,
+                        //autosavestate: true,
+                        //autoloadstate: true,
+                        columns: [
+                            { text: 'Symbol', datafield: 'symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
+                            { text: 'Direction', datafield: 'direction', align: 'center', cellsalign: 'center', hideable: true, width: 80, cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" }  },
+                            { text: 'Initial Entry', datafield: 'entered', columngroup: 'entryexit', hideable: true, filtertype: 'range', cellsformat: "yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027 \u0027HH\u0027:\u0027mm\u0027:\u0027ss", width: 165 },
+                            { text: 'Last Exit', datafield: 'exited', columngroup: 'entryexit', hideable: true, filtertype: 'range', cellsformat: "yyyy\u0027-\u0027MM\u0027-\u0027dd\u0027 \u0027HH\u0027:\u0027mm\u0027:\u0027ss", width: 165 },
+                            { text: 'DCAs', datafield: 'dcas', hideable: true, width: 65, align: 'center', cellsalign: 'center' },
+                            { text: 'Initial Entry', datafield: 'initial_size', columngroup: 'base', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
+                            { text: 'Size at Exit', datafield: 'exit_size', columngroup: 'base', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4'},
+                            { text: 'PNL', datafield: 'pnl', hideable: true, width: 100, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
+                        ],
+                        columngroups: [
+                            { text: 'Entry/Exit Dates', align: 'center', name: 'entryexit' },
+                            { text: 'Base Size', align: 'center', name: 'base' },
+                            { text: 'Value', align: 'center', name: 'value' },
+                        ],
+                    });
+  
+
+                }
+
+            }
+        });
+
+    });
+</script>

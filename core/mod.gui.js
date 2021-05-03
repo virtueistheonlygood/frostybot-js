@@ -543,6 +543,24 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return pnl;
     }
 
+    // PNL Per Trade Report
+
+    async content_report_tradepnl(params) {
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        return { stub: stub, days: days };
+    }
+
+    // PNL Per Day Chart Data
+
+    async data_griddata_tradepnl(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        var stub = params.hasOwnProperty('stub') ? params.stub : undefined;
+        var days = params.hasOwnProperty('days') ? params.days : undefined;
+        var pnl = await this.mod.pnl.pnl_per_trade(uuid, stub, days)
+        return pnl;
+    }
+
     // PNL By Pair (Total) Report
 
     async content_report_pnlbypair_total(params) {

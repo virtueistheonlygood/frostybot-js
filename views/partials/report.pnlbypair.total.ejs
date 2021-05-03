@@ -1,4 +1,7 @@
-<div id="pnlchartcontainer" style="height: 600px;"></div>
+<div class="row flex-nowrap" style="margin-left: 0px">
+    <div id="pnltradepairtotalgridcontainer" style="height: 600px; width: 250px; margin: 0px; padding: 0px;"></div>
+    <div id="pnlchartcontainer" style="height: 600px; width: 698px; padding: 0px; margin: 0px"></div>
+</div>
 
 
 <script src="/scripts/notifications.js"></script>
@@ -29,6 +32,41 @@
             success: function(result) {
 
                 if (result.length > 0) {
+
+                    var gridSource = {
+                        localdata: result,
+                        datafields: [
+                            { name: 'Symbol', type: 'string', },
+                            { name: 'Total', type: 'number' },
+                        ],
+                        datatype: "json"
+                    };
+  
+                    var gridAdapter = new $.jqx.dataAdapter(gridSource);
+
+                    $("#pnltradepairtotalgridcontainer").jqxGrid({
+                        width: 250,
+                        height: 600,
+                        //autoheight: true,
+                        source: gridAdapter,
+                        columnsresize: true,
+                        filterable: false,
+                        sortable: true,
+                        showaggregates: true,
+                        showstatusbar: true,
+                        statusbarheight: 23,
+                        columnsheight: 20,
+                        rowsheight: 20,
+                        theme: 'dark',
+                        showemptyrow: false,
+                        columnsmenu: true,
+                        autosavestate: true,
+                        autoloadstate: true,
+                        columns: [
+                            { text: 'Symbol', datafield: 'Symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
+                            { text: 'Total PNL', datafield: 'Total', hideable: true, width: 100, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
+                        ],
+                    });
 
                     var settings = {
                         title: "PNL by Pair",

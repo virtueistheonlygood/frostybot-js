@@ -19,13 +19,10 @@ if (typeof(tab_pnl) !== 'undefined') {
       <div class="float-right" id="pnlnavbar" style="width: 580px; vertical-align: middle; float: right; margin-right: 10px;">
         <span style="display: inline-block; white-space: nowrap;">
           <select id="pnlreport" style="display: inline-block; font-weight: normal; border-radius: 5px;">
-              <optgroup label="PNL Per Day">
-                <option value="dailypnl">PNL Per Day</option>
-              </optgroup>
-              <optgroup label="PNL by Pair">
-                <option value="pnlbypair_total">PNL By Pair (Total)</option>
-                <option value="pnlbypair_overtime">PNL By Pair (Over Time)</option>
-              </optgroup>
+            <option value="dailypnl">PNL Per Day</option>
+            <option value="tradepnl">PNL Per Trade</option>
+            <option value="pnlbypair_total">Total PNL By Pair</option>
+            <option value="pnlbypair_overtime">PNL By Pair Over Time</option>
           </select>
           <select id="pnldays" style="width: 100px; display: inline-block; font-weight: normal; border-radius: 5px;">
             <option value="99999">All Time</option>
