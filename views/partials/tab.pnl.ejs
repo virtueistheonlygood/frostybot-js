@@ -73,7 +73,16 @@ if (typeof(tab_pnl) !== 'undefined') {
       $("#pnlreport").jqxDropDownList({height: 30, width: 300});
       $("#pnldays").jqxDropDownList({height: 30, width: 120});
       $("#pnlstub").jqxDropDownList({height: 30, width: 150});
-  
+
+      if (localStorage) {
+        var pnlreportselected = localStorage.getItem("pnlreportselected");
+        if (pnlreportselected != null) $("#pnlreport").val(pnlreportselected);
+        var pnldaysselected = localStorage.getItem("pnldaysselected");
+        if (pnldaysselected != null) $("#pnldays").val(pnldaysselected);
+        var pnlstubselected = localStorage.getItem("pnlstubselected");
+        if (pnlstubselected != null) $("#pnlstub").val(pnlstubselected);
+      }
+          
       $("#pnlreport").on('change', function() {
         loadReport();
       });
@@ -97,8 +106,15 @@ if (typeof(tab_pnl) !== 'undefined') {
           params['token'] = token;
         }
         var report = $("#pnlreport").val();
-        params['days'] = $("#pnldays").val();
-        params['stub'] = $("#pnlstub").val();
+        var days = $("#pnldays").val();
+        var stub = $("#pnlstub").val();
+        if (localStorage) {
+          localStorage.setItem("pnlreportselected", report);
+          localStorage.setItem("pnldaysselected", days);
+          localStorage.setItem("pnlstubselected", stub);
+        }
+        params['days'] = days;
+        params['stub'] = stub;
         $.get( "/ui/content/report_" + report, params)
           .done(function( html ) {
             $('#report_pnl').html( html);
