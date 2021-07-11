@@ -60,7 +60,10 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
             acl['token'] = uuidparams.type == 'token' ? true : false;
         }
 
-        acl['local'] = ['127.0.0.1','::1','<cluster>'].includes(ip) ? true : false;
+        var clusterips = await this.mod.status.clusterips();
+        if (!Array.isArray(clusterips)) clusterips = [];
+        acl['local'] = (clusterips.concat(['127.0.0.1','::1','<cluster>'])).includes(ip) ? true : false;
+        acl['cluster'] = (clusterips.concat(['<cluster>'])).includes(ip) ? true : false;
         acl['remote'] = !acl.local;
         acl['multiuser'] = await this.mod.user.multiuser_isenabled();
         acl['singleuser'] = !acl.multiuser;
@@ -85,7 +88,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
    
         var def = global.frostybot.commands[command].permissions;
         var permissions = await this.mod.settings.get('permissions', command, def);
-        var perms = ['any'];
+        var perms = [];
         if (permissions.hasOwnProperty(type))
             var perms = permissions[type];
         
@@ -101,7 +104,10 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
                     }
                 }
                 if (result === true) {
-                    this.mod.output.debug('permission_granted', [type, command, check]);
+                    //this.mod.output.debug('permission_granted', [type, command, check]);
+                    //this.mod.output.debug('custom_object', ['Required Permissions', perms]);
+                    //var currentperms = Object.keys(acl).filter(key => acl[key] == true)
+                    //this.mod.output.debug('custom_object', ['Current Permissions', currentperms]);
                     return true;
                 }
             }
@@ -109,10 +115,11 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
 
         this.mod.output.debug('permission_denied', [type, command, perms]);
         this.mod.output.debug('custom_object', ['Required Permissions', perms]);
-        this.mod.output.debug('custom_object', ['Current Permissions:', '']);
-        this.mod.output.debug(acl);
-        return true;
-        //return false;
+        var currentperms = Object.keys(acl).filter(key => acl[key] == true)
+        this.mod.output.debug('custom_object', ['Current Permissions', currentperms]);
+        //this.mod.output.debug(acl);
+        //return true;
+        return false;
         
     }
 
@@ -121,7 +128,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
     async get(params) {
 
         var schema = {
-            type:  { optional: 'string', format: 'lowercase' },
+            type:  { optional: 'string', format: 'lowercase', oneof: ['standard','provider'] },
             cmd:   { optional: 'string', format: 'lowercase' },
         }
 
@@ -156,7 +163,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
     async add(params) {
 
         var schema = {
-            type:  { required: 'string', format: 'lowercase' },
+            type:  { required: 'string', format: 'lowercase', oneof: ['standard','provider'] },
             cmd:   { required: 'string', format: 'lowercase' },
             perms: { required: 'string', format: 'lowercase' }
         }
@@ -192,7 +199,7 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
     async delete(params) {
 
         var schema = {
-            type:  { required: 'string', format: 'lowercase' },
+            type:  { required: 'string', format: 'lowercase', oneof: ['standard','provider'] },
             cmd:   { required: 'string', format: 'lowercase' },
             perms: { required: 'string', format: 'lowercase' }
         }
@@ -221,22 +228,6 @@ module.exports = class frostybot_permissions_module extends frostybot_module {
         } else {
             return this.mod.output.success('permissions_delete', [type, command, perms]);
         }
-    }
-
-    // Set the permission set to use for this Frostybot instance
-
-    async set_type(params) {
-
-      var schema = {
-        type:  { required: 'string', format: 'lowercase' },
-      }
-
-      if (!(params = this.mod.utils.validator(params, schema))) return false; 
-
-      var type = params.type;
-
-      return await this.mod.settings.set('core', 'permissionset', type);
-
     }
 
     // Reset permissions

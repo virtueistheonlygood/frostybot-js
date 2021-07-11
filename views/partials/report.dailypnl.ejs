@@ -1,8 +1,9 @@
-<div class="row flex-nowrap" style="margin-left: 0px">
+<div class="row flex-nowrap showpnl" style="margin-left: 0px">
     <div id="pnlperdaygridcontainer" style="height: 600px; width: 250px; margin: 0px; padding: 0px;"></div>
     <div id="pnlchartcontainer" style="height: 600px; width: 698px; padding: 0px; margin: 0px"></div>
 </div>
 
+<div class="nopnl hidden"><%- include('../partials/report.nodata.ejs'); %></div>
 
 <script src="/scripts/notifications.js"></script>
 <script src="/scripts/api.js"></script>
@@ -17,8 +18,6 @@
         var uuid = token.uuid;
         var stub = "<%= report_dailypnl.stub %>";
         var days = "<%= report_dailypnl.days %>";
-
-
 
         var params = {
             token: JSON.parse(token),
@@ -60,13 +59,21 @@
                     columnsmenu: true,
                     autosavestate: true,
                     autoloadstate: true,
+                    enablehover: false,
+                    selectionmode: 'none',
                     columns: [
                         { text: 'Date', datafield: 'Date', filtertype: 'checkedlist', width: 'auto', cellsformat: "yyyy\u0027-\u0027MM\u0027-\u0027dd", aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Days: </b><font>' + value +'</div>'; }); return renderstring; } },
                         { text: 'Daily PNL', datafield: 'Daily', hideable: true, width: 125, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
                     ],
                 });                
 
-                if (result.length > 0) {
+                if (result.length >= 1) {
+
+                    var minchart = (result.reduce((prev, curr) =>  prev.Daily < curr.Daily ? prev : curr)).Daily;
+                    var maxdaily = (result.reduce((prev, curr) =>  prev.Daily > curr.Daily ? prev : curr)).Daily;
+                    var maxtotal = (result.reduce((prev, curr) =>  prev.Total > curr.Total ? prev : curr)).Total;
+                    var maxchart = Math.max(maxdaily, maxtotal);
+
                     var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
                     var settings = {
                         title: "PNL Per Day",
@@ -98,14 +105,15 @@
                             {
                                 type: 'column',
                                 valueAxis: {
-                                    maxValue: result[result.length - 1].Total / (2 * 3),
-                                    displayValueAxis: true,
-                                    visible: true,
-                                    //unitInterval: 1,
+                                    maxValue: maxchart,
+                                    minValue: minchart,
+                                    //displayValueAxis: true,
+                                    //visible: true,
+                                    //unitInterval: 5,
                                     description: 'Daily PNL ($)',
                                     gridLines: { 
                                         visible: false,
-                                    }
+                                    },
                                 },
                                 series: [
                                     {dataField: 'Daily', displayText: 'Daily PNL'}
@@ -114,6 +122,8 @@
                             {
                                 type: 'line',
                                 valueAxis: {
+                                    maxValue: maxchart,
+                                    minValue: minchart,
                                     displayValueAxis: true,
                                     visible: true,
                                     //unitInterval: 1,
@@ -121,7 +131,7 @@
                                     description: 'Cumulative PNL ($)',
                                     gridLines: { 
                                         visible: false,
-                                    }
+                                    },
                                 },
                                 series: [
                                     {dataField: 'Total', displayText: 'Cumulative PNL'}
@@ -130,7 +140,16 @@
                         ]
                     };
                     
+                    $('.showpnl').show();
+                    $('.nopnl').hide();
+
                     $('#pnlchartcontainer').jqxChart(settings);
+
+
+                } else {
+
+                    $('.showpnl').hide();
+                    $('.nopnl').show();
 
                 }
 

@@ -23,6 +23,12 @@ module.exports = {
 
     },
 
+    api: {
+
+        all: '{0}: {1}',
+
+    },
+
     debug: {
 
         custom_message:     '{0}',
@@ -95,7 +101,7 @@ module.exports = {
         order_sizing_cur:   'Current position {0} size is: {1} {2}',
         order_sizing_tar:   'Target position {0} size is:  {1} {2}',
         order_sizing_ord:   'Order required to reach target: {0} => {1} {2}',
-        order_sizing_dca:   'DCA scaling position base size by {0}x: {1} => {2}',
+        order_sizing_dca:   'DCA scaling initial base size by {0}x: {1} => {2}',
         order_cancel:       'Successfully cancelled order {0}',
         orders_cancel:      '{0} Order(s) cancelled',
         order_queued:       'Order added to queue: {0}',
@@ -108,7 +114,7 @@ module.exports = {
         database_type:      'Database Type:  {0}',
         database_name:      'Database Name:  {0}',
         position_nopotential:'No open positions or orders on {0}',
-        datasource_registered: 'Datasource registered and started: {0}',
+        datasource_registered: 'Datasource registered: {0}',
         websocket_connected: 'Websocket Connected: {0}',
         websocket_message:  'Websocket: {0}: {1}',
         exchange_refresh_markets: 'Refreshed markets for exchange: {0} ({1} markets)',
@@ -120,7 +126,7 @@ module.exports = {
     warning: {
 
         custom_message:     '{0}',
-        unhandled_exception: 'Unhandled Exception: {0}: {1}',
+        unhandled_exception: 'Exception: {0}: {1}',
         testnet_not_avail:  'The exchange {0} does not have a testnet, using mainnet instead.',
         order_over_maxsize: 'The order size of {0} would exceed maxsize. Adjusting order size to {1}.',
         order_rel_close:    'The relative decrease requested is greater than your current position, closing position.',
@@ -132,9 +138,14 @@ module.exports = {
         order_retry_num:    'Retrying order (Retry {0} of {1})...',
         order_submit:       'Order submission failed: {0}',
         datasource_invalid: 'Invalid interval/cron supplied for datasource: {0} (Background polling will not be performed)',
+        datasource_disabled:'Datasource is disabled, not starting: {0}',
         websocket_reconnecting: 'Websocket Reconnecting: {0}',
         websocket_message:  'Websocket: {0}: {1}',
-
+        websocket_disabled: 'Websocket feed disabled: {0}',
+        dca_fallback:       'Could not determine initial position size for DCA scaling. Will use default size for DCA order.',
+        redis_disabled:     'Redis not configured, using local cache',
+        signal_size:        'Signal provider has adjusted the order size in the signal: {0} {1} x {2}% => {0} {3}',
+        hedge_mode:         '{0}',
     },
 
     error: {
@@ -184,6 +195,8 @@ module.exports = {
         convert_size_usd:   'Size provided in USD, but cannot find a pair to use for conversion',
         order_submit:       'Order submission failed: {0}',
         order_size_nan:     'Could not determine order size: {0}',
+        order_size_min:     'Order size is smaller than the minimum allowed for this pair: {0}',
+        order_size_max:     'Order size is bigger than the maximum allowed for this pair: {0}',
         order_size_unknown: 'Could not determine the size of the order',
         order_side_unknown: 'Unable to determine side for order',
         order_too_small:    'Order size is smaller than the minimum size supported by the exchange',
@@ -204,6 +217,10 @@ module.exports = {
         position_none:      'You do not currently have a position on {0}',
         position_maxposqty: 'Maximum positions on {0} reached: {1} positions',
         position_ignoresym: 'Symbol {0} is on the ignore list for stub {1}',
+        position_lossclose: 'Position on {0} would close at a loss, close ignored. To override this, use the force=true parameter.',
+
+        symbol_blacklist:   'Ignoring signal because {0} is blacklisted for stub {1}',
+        symbol_whitelist:   'Ignoring signal because {0} is not whitelisted for stub {1}',
 
         balances_retrieve:   'There was an error retrieving balances',
 
@@ -212,6 +229,7 @@ module.exports = {
 
         leverage_set:        'Unable to set leverage for symbol {0}',
         leverage_unsupported:'Setting leverage on this exchange is not currently supported',
+        leverage_set_all:    'Unable to set leverage for all symbols, check log for details',
 
         multiuser_mysql_req: 'Multi-tenant mode requires MySQL/MariaDB database',
         multiuser_enable:    'Failed to enable multi-user support',
@@ -257,10 +275,15 @@ module.exports = {
         websocket_error:      'Websocket Disconnected: {0}: {1}',
         websocket_message:  'Websocket: {0}: {1}',
 
-        datasource_notfound:  'The requested datasource is not registered: {0}',
+        datasource_notfound:  'Datasource is not registered: {0}',
         
         exchange_refresh_markets: 'Failed to refresh markets for exchange: {0}',
         position_ambigous:    'Ambigous position requested: {0}',
+
+        redis_error:        'Redis Error: {0}',
+
+        hedge_mode_required:  'Cannot place order, account is in Single Mode but Hedge Mode is required',
+        single_mode_required: 'Cannot place order, account is in Hedge Mode but Single Mode is required',
 
     },
 
@@ -298,7 +321,8 @@ module.exports = {
         market_retrieve:    'Successfully retrieved market info for {0}',
         markets_retrieve:   '{0} Markets(s) retrieved',
 
-        leverage_set:        'Successfully set leverage for symbol {0} to {1}x ({2})',
+        leverage_set_all:   'Successfully set leverage for all symbols to {0}x ({1})',
+        leverage_set:       'Successfully set leverage for symbol {0} to {1}x ({2})',
 
         config_get:         'Successfully retrieved setting: {0}',
         config_set:         'Successfully configured setting: {0}: {1}',
@@ -325,6 +349,15 @@ module.exports = {
         add_signal_admin:    'Added user {1} as an admin for provider {0}',
         del_signal_admin:    'Removed user {1} as an admin for provider {0}',
         websocket_message:   'Websocket: {0}: {1}',
+        websocket_enabled:   'Websocket feed enabled: {0}',
+        websocket_disabled:  'Websocket feed disabled: {0}',
+        websocket_started:   'Websocket feed started: {0}',
+        websocket_stopped:   'Websocket feed stopped: {0}',
+
+        datasource_start:    'Datasource started: {0}',
+        datasource_stop:     'Datasource stopped: {0}',
+    
+        redis_ready:         'Redis cache initialized: {0}',
 
     }
     

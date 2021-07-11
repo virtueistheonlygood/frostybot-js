@@ -1,8 +1,9 @@
-<div class="row flex-nowrap" style="margin-left: 0px">
+<div class="row flex-nowrap showpnl" style="margin-left: 0px">
     <div id="pnltradepairtotalgridcontainer" style="height: 600px; width: 250px; margin: 0px; padding: 0px;"></div>
     <div id="pnlchartcontainer" style="height: 600px; width: 698px; padding: 0px; margin: 0px"></div>
 </div>
 
+<div class="nopnl hidden"><%- include('../partials/report.nodata.ejs'); %></div>
 
 <script src="/scripts/notifications.js"></script>
 <script src="/scripts/api.js"></script>
@@ -18,8 +19,6 @@
         var stub = "<%= report_pnlbypair_total.stub %>";
         var days = "<%= report_pnlbypair_total.days %>";
 
-
-
         var params = {
             token: JSON.parse(token),
             stub: stub,
@@ -31,7 +30,7 @@
             data: params,
             success: function(result) {
 
-                if (result.length > 0) {
+                if (result.length >= 3) {
 
                     var gridSource = {
                         localdata: result,
@@ -62,8 +61,10 @@
                         columnsmenu: true,
                         autosavestate: true,
                         autoloadstate: true,
+                        enablehover: false,
+                        selectionmode: 'none',
                         columns: [
-                            { text: 'Symbol', datafield: 'Symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
+                            { text: 'Symbol', datafield: 'Symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Pairs: </b><font>' + value +'</div>'; }); return renderstring; } },
                             { text: 'Total PNL', datafield: 'Total', hideable: true, width: 100, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
                         ],
                     });
@@ -116,7 +117,14 @@
                     };
                     
                     $('#pnlchartcontainer').jqxChart(settings);
+                    $('.showpnl').show();
+                    $('.nopnl').hide();
 
+
+                } else {
+
+                    $('.showpnl').hide();
+                    $('.nopnl').show();
                 }
 
             }

@@ -4,8 +4,8 @@
 <% } %>
 <div class="container">
   <div class="row justify-content-center">
-    <div class="frostybot-panel w-50">
-      <div class="w-100 frostybot-panel-header"><p class="m-0"><span class="fa fa-sign-in"></span> <b>Login</b></p></div>
+    <div class="frostybot-panel w-50 frostybot-shadow">
+      <div class="w-100 frostybot-panel-header"><p class="m-0"><span class="fa fa-lock"></span> Login</p></div>
       <div class="w-100 frostybot-panel-content">
         <div class="container">
           <form id="loginform" data-recaptchasite="<%= recaptchasite %>">
@@ -30,7 +30,7 @@
               </div>
             </div>
             <div class="mb-3 text-center">
-              <button type="submit" class="btn btn-success m-2 frostybot-button-sm"><span class="fa fa-sign-in"></span> Login</button><% if (showregister) { %><button type="button" id="registerbutton" class="btn btn-primary frostybot-button-sm"><span class="fa fa-user-plus"></span> Register</button><% } %>
+              <button type="submit" class="btn btn-success m-2 frostybot-button-sm"><span class="fa fa-key"></span> Login</button><% if (String(showregister) == 'true') { %><button type="button" id="registerbutton" class="btn btn-primary frostybot-button-sm"><span class="fa fa-user-plus"></span> Register</button><% } %>
             </div>
           </form>
           <script>

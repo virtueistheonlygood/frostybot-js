@@ -1,23 +1,52 @@
-<div id="mainmenu">
+<%
+
+    var signalAdmin = false;
+    var hasAccounts = false;
+    if (typeof(menu_main) !== 'undefined') {
+        signalAdmin = menu_main.hasOwnProperty('isSignalAdmin') ? menu_main.isSignalAdmin : false;
+        hasAccounts = menu_main.hasOwnProperty('hasConfiguredAccounts') ? menu_main.hasConfiguredAccounts : false;
+    }
+
+%>
+
+<div id="mainmenu" class="frostybot-shadow">
 </div>
 
 <script type="text/javascript">
-    //var signaladmin = <%= menu_main['isSignalAdmin'] %>;
+    var signaladmin = '<%=signalAdmin%>' == 'true' ? true : false;
+    var hasaccounts = '<%=hasAccounts%>' == 'true' ? true : false;
     var menu = [
          { id: 'tab_accounts',  name: 'Accounts',      enabled: true, visible: true },
-         { id: 'tab_balances',  name: 'Balances',      enabled: true, visible: true  },
-         { id: 'tab_positions', name: 'Positions',     enabled: true, visible: true  },
+         { id: 'tab_balances',  name: 'Balances',      enabled: true, visible: hasaccounts },
+         { id: 'tab_positions', name: 'Positions',     enabled: true, visible: hasaccounts  },
          //{ id: 'tab_orders',   name: 'Orders',        enabled: true, visible: true },
          //{ id: 'tab_provider', name: 'Signal Admin',  enabled: true, visible: signaladmin },
-         { id: 'tab_pnl',       name: 'Profit & Loss', enabled: true, visible: true },
+         { id: 'tab_pnl',       name: 'Profit & Loss', enabled: true, visible: hasaccounts },
          { id: 'tab_security',  name: 'Security',      enabled: true, visible: true },
          { id: 'tab_logs',      name: 'Logs',          enabled: true, visible: true },
-         { id: 'tab_logout',    name: 'Logout',        enabled: true, visible: true },
     ]; 
+
+    if (signaladmin) {
+        menu = menu.concat([
+        { type: 'separator' },
+        { id: 'tab_signaladmin', name: 'Signal Admin',  enabled: true, visible: signaladmin },
+        //{ id: 'tab_signaladmin', name: 'All Positions',  enabled: true, visible: signaladmin },
+
+        ]);
+    }
+
+    menu = menu.concat([
+        { type: 'separator' },
+        { id: 'tab_logout', name: 'Logout', enabled: true, visible: true },
+    ]);
 
     var content = '<ul>';
     menu.forEach(item => {
-        if (item.visible) content += '<li data-content="' + item.id + '"><a href="#">' + item.name + '</a></li>';
+        if (item.type == 'separator') {
+            content += '<li type="separator"></li>';
+        } else {
+            if (item.visible) content += '<li data-content="' + item.id + '"><a href="#">' + item.name + '</a></li>';
+        }
     });
     content += '</ul>';
     $("#mainmenu").html(content);

@@ -3,7 +3,8 @@
 const fs = require('fs');
 var context = require('express-http-context');
 var cidrcheck = require("ip-range-check");
-const axios = require('axios')
+const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
 
 // Methods exported to the API
 
@@ -77,16 +78,16 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var proxy = await this.get_proxies();
         var proxies = proxy.split(',')
         var remoteAddress = req.socket.remoteAddress.replace('::ffff:','').replace('::1, ','');
-        //var proxydetected = (Array.isArray(proxies) && proxies.includes(remoteAddress)) ? true : false;
-        var proxydetected = cidrcheck(remoteAddress, proxies);
-        var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
-        if (await this.is_cluster_local_ip(ip)) {
+        if (await this.is_cluster_local_ip(remoteAddress)) {
             var ip = '<cluster>';
+        } else {
+            var proxydetected = cidrcheck(remoteAddress, proxies);
+            var ip = ((proxydetected ? req.headers['x-forwarded-for'] : false) || req.socket.remoteAddress).replace('::ffff:','').replace('::1, ','');
+            context.set('srcIp', ip);
+            var reqId = context.get('reqId')
+            //if (!proxydetected)  
         }
-        context.set('srcIp', ip);
-        var reqId = context.get('reqId')
-        if (!proxydetected)
-            this.mod.output.debug('source_ip', [ip, reqId]);
+        this.mod.output.debug('source_ip', [ip, reqId]);
         return ip;
     }
 
@@ -106,6 +107,7 @@ module.exports = class frostybot_core_module extends frostybot_module {
         var uuid = null;
 
         var all_ip_allowed = [
+            'gui:auth',
             'gui:main',
             'gui:login',
             'gui:logo',
@@ -117,8 +119,6 @@ module.exports = class frostybot_core_module extends frostybot_module {
             'user:login',
             'signals:send',
         ]
-
-        //console.log({isgui: isgui, isapi : isapi, localhost: localhost, param_uuid: param_uuid, multiuser: multiuser, token_uuid: token_uuid, verified: verified})
 
         if (!localhost && isapi && multiuser && param_uuid == null && !all_ip_allowed.includes(command)) {
             await this.mod.output.error('required_param', ['uuid']);
@@ -321,7 +321,22 @@ module.exports = class frostybot_core_module extends frostybot_module {
             //this.mod.output.notice('command_params', [{ ...{ command: module + ":" + method}, ...(this.mod.utils.remove_props(params,['_raw_'])) }]);
             var cmdparams = { ...{ command: module + ":" + method}, ...params };
             if (cmdparams.hasOwnProperty('_loopbacktoken_')) delete cmdparams['_loopbacktoken_']
-            this.mod.output.notice('command_params', [cmdparams]);
+            var outparams = cmdparams;
+            if (outparams.hasOwnProperty('uuid')) delete outparams['uuid']
+
+            // Check if command source is a signal and start tracking the output
+
+            if (params.source != undefined && params.source.type == 'signal') {
+                try {
+                    this.mod.signals.output.checkexists(params.source.tracker, params.uuid, params.stub);
+                } catch (e) {
+                    this.mod.output.exception(e);
+                }
+                context.set('tracker', params.source.tracker)
+            }
+            
+            this.mod.output.notice('command_params', [outparams]);
+
             if (this.load_module(module)) {
                 //this.mod.output.debug('loaded_module', module)    
                 var method = this.mod.utils.is_array(method.split(':')) ? method.split(':')[0] : method;
@@ -332,12 +347,16 @@ module.exports = class frostybot_core_module extends frostybot_module {
                 if (this.method_exists(module, method)) {
 
                     // Check permissions to execute 
-                    var permissionset = await this.mod.settings.get('core', 'permissionset', 'standard');
-                    if (!['standard','provider'].includes(permissionset))
-                        permissionset = 'standard';
-                    var checkpermissions = await this.mod.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
-                    if (!checkpermissions)
-                        return await this.mod.output.parse(this.mod.output.error('permissions_denied', [permissionset, module + ":" + method]));
+                    var permissionset = await this.mod.config.get('core:permissionset', 'disabled');
+                    if (!['disabled','standard','provider'].includes(permissionset))
+                        permissionset = 'disabled';
+                    if (['standard','provider'].includes(permissionset)) {
+                        var checkpermissions = await this.mod.permissions.check(permissionset, { ...{ command: module + ":" + method}, ...params })
+                        if (!checkpermissions) {
+                            this.mod.signals.output.error('Permission denied')
+                            return await this.mod.output.parse(this.mod.output.error('permissions_denied', [permissionset, module + ":" + method]));
+                        }
+                    }
 
                     // Start execution
                     var start = (new Date).getTime();
@@ -403,8 +422,8 @@ module.exports = class frostybot_core_module extends frostybot_module {
                             }
                         }
                     }
+                    */
 
-                                */
                     if (params.hasOwnProperty('uuid')) delete params.uuid;
                     if (raw !== null) 
                         params['_raw_'] = raw;
@@ -416,10 +435,17 @@ module.exports = class frostybot_core_module extends frostybot_module {
                         result = false;
                     }
                     var end = (new Date).getTime();
-                    var duration = (end - start) / 1000;            
-                    this.mod.output.notice('command_completed', duration);
-                    return await this.mod.output.parse(result);
-
+                    var duration = (end - start) / 1000;          
+                    
+                    if (params.source != undefined && params.source.type == 'signal') {
+                        // If command was a signal send data back for tracking
+                        this.mod.signals.output.stats('command_duration', duration)
+                        return await this.mod.output.signal(this.mod.signals.output.finish());
+                    } else {
+                        // If command was a normal command, parse it normally
+                        this.mod.output.notice('command_completed', duration);
+                        return await this.mod.output.parse(result);    
+                    }
                 } else {
                     return await this.mod.output.parse(this.mod.output.error('unknown_method', method));  
                 }

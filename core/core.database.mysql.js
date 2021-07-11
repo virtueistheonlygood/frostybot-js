@@ -71,6 +71,7 @@ module.exports = class frostybot_database_mysql_module extends frostybot_databas
         var valList = [];
         var actList = [];
         var vals = [];
+        data = this.mod.utils.remove_values(data, [null, undefined]);
         //var updList = [];
         for (var key in data) {
             colList.push(key);

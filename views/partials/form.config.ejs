@@ -3,15 +3,34 @@
 if (typeof(form_config) != undefined) {
 
   var stub = form_config.stub;
+  var exchange = form_config.exchange;
+
+  var exchange_name = '';
+  var hedgemode_enabled = false;
+  var hedgemode_canchange = false;
+  switch (exchange) {
+    case 'binance_spot'     : exchange_name = 'Binance Spot'; break;
+    case 'binance_coinm'    : exchange_name = 'Binance Coin-M'; break;
+    case 'binance_futures'  : exchange_name = 'Binance Futures'; 
+                              var hedgemode_enabled = form_config.hedgemode.enabled;
+                              var hedgemode_canchange = form_config.hedgemode.canchange;
+                              break;
+    case 'binance_margin'   : exchange_name = 'Binance Margin'; break;
+    case 'binanceus'        : exchange_name = 'Binance US'; break;
+    case 'ftx'              : exchange_name = 'FTX'; break;
+    case 'ftxus'            : exchange_name = 'FTX US'; break;
+    case 'bitmex'           : exchange_name = 'Bitmex'; break;
+    case 'deribit'          : exchange_name = 'Deribit'; break;
+  }
 
 %>
 <form id="configform" class="row">
   <div class="row flex-nowrap">
 
-    <div class="col" style="margin-left: 10px">     <!--  LEFT COLUMN -->
+    <div id="leftcol" class="col" style="margin-left: 10px">     <!--  LEFT COLUMN -->
 
       <div class="row flex-nowrap">
-        <div class="col" style="border: solid 1px #AAAAAA; border-radius: 5px; padding-top: 10px; padding-bottom: 10px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px">
+        <div class="col frostybot-panel-area" style="padding-top: 10px; padding-bottom: 10px; margin-top: 10px; margin-left: 10px; margin-bottom: 10px">
 
           <div class="row mb-2 flex-nowrap">
             <div class="col">
@@ -23,6 +42,13 @@ if (typeof(form_config) != undefined) {
             <label for="inputstub" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Stub</label>
             <div class="col">
               <input type="text" class="form-control-sm frostybot-input frostybot-input-sm" disabled id="inputproviderstub" value="<%= stub %>">
+            </div>
+          </div>
+
+          <div class="row mb-2 flex-nowrap">
+            <label for="inputstub" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Exchange</label>
+            <div class="col">
+              <input type="text" class="form-control-sm frostybot-input frostybot-input-sm" disabled id="inputproviderexchange" value="<%= exchange_name %>">
             </div>
           </div>
 
@@ -45,6 +71,8 @@ if (typeof(form_config) != undefined) {
               var defstoptrigger = stubConfig(config, 'defstoptrigger');
               var defprofittrigger = stubConfig(config, 'defprofittrigger');
               var defprofitsize = stubConfig(config, 'defprofitsize');
+              var disablelossclose = stubConfig(config, 'disablelossclose');
+              var pairmode = stubConfig(config, 'pairmode');
               var griddata = form_config.hasOwnProperty('griddata') ? form_config.griddata : [];
 
               if (providers.length > 0) {
@@ -74,30 +102,12 @@ if (typeof(form_config) != undefined) {
               }
           %>
     
-          <div class="row mb-2 flex-nowrap">
-            <label for="inputmaxposqty" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Max Positions</label>
-            <div class="col">
-              <select id="inputmaxposqty" style="background-color: #FFFFFF;">
-                <option value="">Unlimited</option>
-                <%
-                  for(var i=1; i <= 20; i++) {
-                %>
-                    <option value="<%= i %>" <%= ( maxposqty==i ? 'selected' : '')%>><%= i %></option>
-                <%
-                  }
-                %>
-
-              </select>
-            </div>
-          </div>
-
-
           </div>
         </div>
 
 
         <div class="row flex-nowrap">
-          <div class="col" style="border: solid 1px #AAAAAA; border-radius: 5px; padding-top: 10px; padding-bottom: 10px; margin-left: 10px; margin-bottom: 10px">
+          <div class="col frostybot-panel-area" style="padding-top: 10px; padding-bottom: 10px; margin-left: 10px; margin-bottom: 10px">
 
             <div class="row mb-2 flex-nowrap">
               <div class="col">
@@ -105,8 +115,42 @@ if (typeof(form_config) != undefined) {
               </div>
             </div>
 
+            <%
+                if (exchange == 'binance_futures') {
+            %>
             <div class="row mb-2 flex-nowrap">
-              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default Size</label>
+              <label for="inputhedgemode" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Hedge Mode</label>
+              <div class="col flex-nowrap">
+                <div id="hedgemode"></div>
+              </div>
+              <div class="col flex-nowrap">
+                <span id="hedgemodeinfo" style="display: none;" class="fa fa-info frostybot-info" data-toggle="tooltip" title="You cannot change the hedge mode while you are in a position"></span>
+              </div>
+            </div>
+  
+            <%
+                }
+            %>
+
+            <div class="row mb-2 flex-nowrap">
+              <label for="inputmaxposqty" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Max Positions</label>
+              <div class="col">
+                <select id="inputmaxposqty" style="background-color: #FFFFFF;">
+                  <option value="">Unlimited</option>
+                  <%
+                    for(var i=1; i <= 20; i++) {
+                  %>
+                      <option value="<%= i %>" <%= ( maxposqty==i ? 'selected' : '')%>><%= i %></option>
+                  <%
+                    }
+                  %>
+  
+                </select>
+              </div>
+            </div>
+  
+            <div class="row mb-2 flex-nowrap">
+              <label for="inputsubaccount" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Max Initial Size</label>
               <div class="col">
                 <input type="text" class="form-control-sm frostybot-input frostybot-input-sm" id="inputdefsize" value="<%= defsize %>">
               </div>
@@ -123,16 +167,6 @@ if (typeof(form_config) != undefined) {
               <label for="inputdefstoptrigger" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Stoploss</label>
               <div class="col">
                 <div  id="inputdefstoptrigger" class=""></div>
-                <!--select  id="inputdefstoptrigger" class="">
-                  <option value=""></option>
-                  <%
-                    for (var i=1; i<=20; i++) {
-                  %>
-                  <option value="<%= i %>%" <%= ( defstoptrigger==(i+'%') ? 'selected' : '')%>><%= i %>%</option>
-                  <%
-                    }
-                  %>
-                </select-->
               </div>
             </div>
       
@@ -140,16 +174,6 @@ if (typeof(form_config) != undefined) {
               <label for="inputdefprofittrigger" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Default&nbsp;Take&nbsp;Profit</label>
               <div class="col">
                 <div id="inputdefprofittrigger" class=""></div>
-                <!--select id="inputdefprofittrigger" class="">
-                  <option value=""></option>
-                  <%
-                    for (var i=5; i<=100; i+=5) {
-                  %>
-                  <option value="<%= i %>%" <%= ( defprofittrigger==(i+'%') ? 'selected' : '')%>><%= i %>%</option>
-                  <%
-                    }
-                  %>
-                </select-->
               </div>
             </div>
       
@@ -157,34 +181,90 @@ if (typeof(form_config) != undefined) {
               <label for="inputdefprofitsize" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Take Profit Size</label>
               <div class="col">
                 <div id="inputdefprofitsize" class=""></div>
-                <!--select id="inputdefprofitsize" class="">
-                  <option value=""></option>
-                  <%
-                    for (var i=5; i<=100; i+=5) {
-                  %>
-                  <option value="<%= i %>%" <%= ( defprofitsize==(i+'%') ? 'selected' : '')%>><%= i %>%</option>
-                  <%
-                    }
-                  %>
-                </select-->
               </div>
             </div>
+
+            <div class="row mb-2 flex-nowrap">
+              <label for="inputhedgemode" class="col-sm-2 col-form-label-sm frostybot-form-label-lg">Disable&nbsp;Loss&nbsp;Close</label>
+              <div class="col flex-nowrap">
+                <div id="lossclose"></div>
+              </div>
+              <div class="col flex-nowrap">
+                <span id="losscloseinfo" class="fa fa-info frostybot-info" data-toggle="tooltip" title="Enabling this option will cause Frostybot to ignore any 'close' signals that would result in a loss.
+In such cases, it is entirely up to you to manage the positon going forward until you manually close it."></span>
+              </div>
+            </div>
+
+            <!--div class="row mb-2 flex-nowrap">
+              <div id="inputdisablelossclose" style="margin-left: 40px; float: left;">Never Close at a Loss</div>
+            </div-->
   
           </div>
         </div>
+      
+        <%
+          if (exchange == 'binance_futures') {
+        %>
 
+        <div class="row flex-nowrap">
+          <div class="col frostybot-panel-area" style="padding-top: 10px; padding-bottom: 10px; margin-left: 10px; margin-bottom: 10px">
+
+            <div class="row mb-2 flex-nowrap">
+              <div class="col">
+                <label class="col-form-label-md frostybot-form-label-lq"><b>Global Leverage</b></label>
+              </div>
+            </div>
+
+            <div class="row mb-2 flex-nowrap">
+              <div class="col flex-nowrap">
+                <div style='margin-top: 10px;' id='inputlevtypeisolated'>Isolated</div>
+              </div>
+              <div class="col flex-nowrap">
+                <div style='margin-top: 10px;' id='inputlevtypecross'>Cross</div>
+              </div>
+              <div class="col flex-nowrap">
+                <div style='margin-top: 10px;' id='inputlevsize'></div>
+              </div>
+            </div>
+            <div class="row mb-2 flex-nowrap">
+              <div class="col flex-nowrap" style="text-align: center">
+                <button type="button" disabled class="btn btn-danger frostybot-button-lg" id="setleverage"><span class="fa fa-check"></span> Set Leverage</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <%
+            }
+        %>
 
     </div>
     <div class="col-8" style="margin-left: 5px; margin-right: 0px; margin-top: 10px; ">     <!--  RIGHT COLUMN -->
 
 
       <div class="row flex-nowrap">
-        <div class="col" style="border: solid 1px #AAAAAA; border-radius: 5px; padding-top: 10px; padding-bottom: 10px; margin-left: 5px; margin-bottom: 10px">
+        <div class="col frostybot-panel-area" style="padding-top: 10px; padding-bottom: 10px; margin-left: 5px; margin-bottom: 10px">
 
-          <div class="row mb-2 flex-nowrap">
-            <div class="col">
+          <div class="row mb-2 flex-nowrap" style="margin-bottom: 5px">
+            <div class="col-7 nowrap">
               <label class="col-form-label-md frostybot-form-label-lq"><b>Pair-Level Settings</b></label>
             </div>
+            <div class="col-6">
+              <div class="row">
+                <div class="col-2 text-right">
+                  <label class="frostybot-form-label"><b>Mode</b></label> 
+                </div>
+                <div class="col">
+                  <div id="pairmode"></div>
+                </div>
+                <div class="col text-left">
+                  <span id="pairmodeinfo" class="fa fa-info frostybot-info" data-toggle="tooltip" data-html="true" title="Whitelist: Only the selected pairs will be traded.
+Blacklist: All pairs except the selected list will be traded."></span>
+                </div>    
+              </div>
+            </div>
+
           </div>
 
           <div class="row mb-2 flex-nowrap">
@@ -210,10 +290,69 @@ if (typeof(form_config) != undefined) {
 <%
 }
 %>
-
+<script src="/scripts/api.js"></script>
+<script src="/scripts/notifications.js"></script>
 <script type="text/javascript">
 
 $(document).ready(function () {
+
+  var stub = "<%= stub %>";
+  var exchange = "<%= exchange %>";
+
+  if (exchange == 'binance_futures') {
+   
+    var hedgemode_enabled = '<%= hedgemode_enabled %>' == 'true' ? true : false;
+    var hedgemode_canchange = '<%= hedgemode_canchange %>' == 'true' ? true : false;
+
+    $('#hedgemode').jqxSwitchButton({ height: 25, width: 81, checked: hedgemode_enabled, disabled: !hedgemode_canchange});
+    if (!hedgemode_canchange) $('#hedgemodeinfo').show();
+   
+    $('#hedgemode').on('change', function (event) {
+      var doaction = $( "#hedgemode").jqxSwitchButton('checked') == true ? 'disable' : 'enable';
+      api('accounts:'+doaction+'_hedge_mode', {stub: stub }, function(json) {
+        if (json.result == 'success' && json.data == true) {
+          showSuccess('Successfully '+doaction+'d Hedge Mode')
+        } else {
+          showError(json.message)
+        }
+      })
+    });
+
+    /*
+    $('#hedgemode').on('unchecked', function (event) {
+      api('accounts:disable_hedge_mode', {stub: stub }, function(json) {
+        if (json.result == 'success' && json.data == true) {
+          showSuccess('Successfully disabled Hedge Mode')
+        } else {
+          if (json.message != undefined) { showError(json.message) };
+        }
+      })
+    });
+    */
+   
+    //getHedgeMode();
+
+    var levsizevals = [{ value: '', label: '' }];
+    for (var i=1; i<=30; i++)
+      levsizevals.push({ value: i, label: i + 'x' });
+  
+
+    var levsizesource = {
+      datatype: "array",
+      datafields: [
+          { name: 'label', type: 'string' },
+          { name: 'value', type: 'string' }
+      ],
+      localdata: levsizevals
+    };
+
+    var levsizeadapter = new $.jqx.dataAdapter(levsizesource, {autoBind: true});
+    $('#inputlevtypecross').jqxRadioButton({ width: 70, height: 25});
+    $('#inputlevtypeisolated').jqxRadioButton({ width: 80, height: 25});
+    $('#inputlevsize').jqxComboBox({ source: levsizeadapter, displayMember: 'label', valueMember: 'value', width: 70 });
+  
+
+  }
 
   var gridbase64 = "<%= griddata %>";
   var griddata = JSON.parse(atob(gridbase64));
@@ -221,7 +360,7 @@ $(document).ready(function () {
   var dcascalevals = [{ value: '', label: '' }];
   var stoptriggervals = [{ value: '', label: '' }];
   var profittriggervals = [{ value: '', label: '' }];
-
+  
   for (var i=1; i<=3.1; i+=0.1) {
     var v = Math.floor(i * 10) / 10
     dcascalevals.push({ value: v, label: v + 'x' });
@@ -293,11 +432,21 @@ $(document).ready(function () {
   var defprofitsize = '<%= defprofitsize %>';
   $('#inputdefprofitsize').val(defprofitsize);
 
+  var disablelossclose = '<%= disablelossclose %>' == 'true' ? true : false;
+  //$('#inputdisablelossclose').jqxCheckBox({ width: 180, height: 25, checked: disablelossclose});
+  //$('#lossclose').jqxSwitchButton({ height: 25, width: 145, checked: !disablelossclose, onLabel: 'Allowed', offLabel: 'Not Allowed', thumbSize: '20%'});
+  $('#lossclose').jqxSwitchButton({ height: 25, width: 81, checked: disablelossclose });
+
+  // Pair Whitelist / Blacklist Mode
+  var pairmodechecked = '<%= pairmode %>' == "whitelist" ? true : false;
+  $('#pairmode').jqxSwitchButton({ height: 25, width: 120, checked: pairmodechecked, onLabel: 'Whitelist', offLabel: 'Blacklist', thumbSize: '20%'});
+  
+  // Grid data source      
   var gridsource = {
     localdata: griddata,
     datafields: [
         { name: 'symbol', type: 'string', map: '0'},
-        { name: 'ignored', type: 'bool', map: '1' },
+        { name: 'listed', type: 'bool', map: '1' },
         { name: 'defsize', type: 'string', map: '2' },
         { name: 'dcascale', type: 'string', map: '3' },
         { name: 'defstoptrigger', type: 'string', map: '4' },
@@ -309,8 +458,9 @@ $(document).ready(function () {
   
   var gridadapter = new $.jqx.dataAdapter(gridsource);
 
-  var gridheight = $(window).height() - 400;
-  if (gridheight < 325) gridheight = 325;
+  //var gridheight = $(window).height() - 400;
+  //if (gridheight < 325) gridheight = 325;
+  var gridheight = $('#leftcol').height() - 84;
        
   $("#configpairs").jqxGrid({
     width: '100%',
@@ -321,13 +471,16 @@ $(document).ready(function () {
     editable: true,
     filterable: true,
     sortable: true,
-    autosavestate: true,
-    autoloadstate: true,
+    //autosavestate: true,
+    //autoloadstate: true,
+    //ready: function() {
+    //  updateListedHeader()
+    //},
     columns: [
       { text: 'Symbol', datafield: 'symbol', width: 100, filterable: true, editable: false },
-      { text: 'Ignore', datafield: 'ignored', width: 60, columntype: 'checkbox', cellsalign: 'center', align: 'center', filterable: false },
-      { text: 'Initial', datafield: 'defsize', width: 90, cellsalign: 'center', align: 'center', filterable: false },
-      { text: 'DCA', datafield: 'dcascale', width: 90, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
+      { text: pairmodechecked ? 'Whitelist' : 'Blacklist', datafield: 'listed', width: 80, columntype: 'checkbox', cellsalign: 'center', align: 'center', filterable: false },
+      { text: 'Initial', datafield: 'defsize', width: 80, cellsalign: 'center', align: 'center', filterable: false },
+      { text: 'DCA', datafield: 'dcascale', width: 80, columntype: 'combobox', cellsalign: 'center', align: 'center', filterable: false, 
               createeditor: function (row, value, editor) {
                 editor.jqxComboBox({ source: dcascaleadapter, displayMember: 'label', valueMember: 'value' });
               } },
@@ -352,6 +505,19 @@ $(document).ready(function () {
     var displayValue = $("#configpairs").jqxGrid('getcellvalue', event.args.rowindex, column.displayfield);
   });
 
+  // Update Listed Column Header
+  function updateListedHeader() {
+    var stub = $( "#inputproviderstub" ).val();
+    var mode = $( "#pairmode").jqxSwitchButton('checked') == true ? 'blacklist' : 'whitelist';
+    $("#configpairs").jqxGrid('setcolumnproperty', 'listed', 'text', mode == 'blacklist' ? 'Blacklist' : 'Whitelist');
+  }
+
+  // Switch Blacklist/Whitelist Mode
+  $( "#pairmode").on("change", function(event) {
+    updateListedHeader()
+    //alert(mode);
+    //if (formLoaded) update(stub + ':disablelossclose', checked);
+  });
 
 
 });

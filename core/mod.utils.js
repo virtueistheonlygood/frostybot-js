@@ -3,6 +3,7 @@
 const frostybot_module = require('./mod.base')
 const axios = require('axios')
 var context = require('express-http-context');
+const { settings } = require('cluster');
 
 module.exports = class frostybot_utils_module extends frostybot_module {
 
@@ -22,6 +23,12 @@ module.exports = class frostybot_utils_module extends frostybot_module {
             return false;
         }
         return true;
+    }
+
+    // Check if param is JSON and if not return a given JSON string
+    
+    if_not_json(param, json) {
+        return this.is_json(param) ? param : json;
     }
 
     // Check if value is a string
@@ -193,8 +200,19 @@ module.exports = class frostybot_utils_module extends frostybot_module {
         return this.walk_values(obj, filter, function(val) {
             return typeof(val) === "string" ? val.replace(/^\s+|\s+$/g, '') : val;
         }); 
-    }    
+    }   
+    
+    // Convert Date object to MySQL datetime string
 
+    twoDigits(d) {
+        if(0 <= d && d < 10) return "0" + d.toString();
+        if(-10 < d && d < 0) return "-0" + (-1*d).toString();
+        return d.toString();
+    }
+    
+    to_mysqldatetime(dt) {
+        return dt.getUTCFullYear() + "-" + this.twoDigits(1 + dt.getUTCMonth()) + "-" + this.twoDigits(dt.getUTCDate()) + " " + this.twoDigits(dt.getUTCHours()) + ":" + this.twoDigits(dt.getUTCMinutes()) + ":" + this.twoDigits(dt.getUTCSeconds());
+    }
 
     // Walk over object and remove properties with the names provided in the props array element
 
@@ -258,6 +276,20 @@ module.exports = class frostybot_utils_module extends frostybot_module {
                     obj[key] = callfunc(val); 
         }
         return obj;
+    }
+
+    // Flatten a deep object into a single level
+
+    flatten_obj(obj, parent, res = {}) {
+        for(let key in obj){
+            let propName = parent ? parent + '_' + key : key;
+            if(typeof obj[key] == 'object'){
+                this.flatten_obj(obj[key], propName, res);
+            } else {
+                res[propName] = obj[key];
+            }
+        }
+        return res;
     }
 
     // Asyncronously Walk over object properties recursively and execute a callback function for each of the given properties (if supplied), or all of the properties is no filter is supplied
@@ -352,7 +384,18 @@ module.exports = class frostybot_utils_module extends frostybot_module {
             })
         }
         return results;
-    }    
+    }  
+    
+    // Add a property in an array of objects
+
+    sum_prop(arr, prop) {
+        var total = 0;
+        for (var i = 0; i < arr.length; i++) {
+            total += arr[i][prop];
+        }
+        return total;
+
+    }
 
 
     // Extract given object properties into an array
@@ -430,11 +473,11 @@ module.exports = class frostybot_utils_module extends frostybot_module {
     // Serialize a value for output to the log
 
     serialize(val) {
-        if (this.is_bool(val)) return Boolean(val);
         if (typeof(val) === 'string' && ['true', 'false'].includes(val.toLowerCase())) return Boolean(val);
         if (typeof(val) === 'string') return val;
         if (this.is_numeric(val)) return String(val);
         if (this.is_numeric(val)) return String(val);
+        if (this.is_bool(val)) return Boolean(val);
         if (this.is_object(val)) return this.serialize_object(val);
         if (this.is_array(val)) return this.serialize_array(val);
         return false;
@@ -529,9 +572,18 @@ module.exports = class frostybot_utils_module extends frostybot_module {
             var required = settings.hasOwnProperty('required') ? true : false;
             var expected_type = settings[(required ? 'required' : 'optional')];
             var oneof = settings.hasOwnProperty('oneof') ? settings['oneof'] : null;
+            var defval = settings.hasOwnProperty('default') ? settings['default'] : undefined;
             var requiredifnotpresent = settings.hasOwnProperty('requiredifnotpresent') ? settings['requiredifnotpresent'] : null;
             var format = settings.hasOwnProperty('format') ? settings['format'].toLowerCase() : null;
             var present = params.hasOwnProperty(prop) ? true : false;
+
+            // Set default value if specified and no value present
+
+            if (!params.hasOwnProperty(prop) && defval != undefined) {
+                params[prop] = defval;
+                present = true;
+            }
+            
 
             // Check that one of the specified required params is present
 

@@ -1,6 +1,7 @@
 <%
 
 if (typeof(tab_pnl) !== 'undefined') {
+  var nopnl = tab_pnl.hasOwnProperty('nopnl') ? tab_pnl.nopnl : false;
   var accounts = tab_pnl.hasOwnProperty('accounts') ? tab_pnl.accounts : [];
   var stubs = [];
   Object.values(accounts).forEach(account => {
@@ -16,13 +17,13 @@ if (typeof(tab_pnl) !== 'undefined') {
   <div class="row">
     <div class="col "><p class="m-0" id="pnltitle">Profit & Loss</p></div>
     <div class="col text-right">
-      <div class="float-right" id="pnlnavbar" style="width: 580px; vertical-align: middle; float: right; margin-right: 10px;">
+      <div class="float-right" id="pnlnavbar" style="width: 670px; vertical-align: middle; float: right; margin-right: 10px;">
         <span style="display: inline-block; white-space: nowrap;">
           <select id="pnlreport" style="display: inline-block; font-weight: normal; border-radius: 5px;">
             <option value="dailypnl">PNL Per Day</option>
             <option value="tradepnl">PNL Per Trade</option>
             <option value="pnlbypair_total">Total PNL By Pair</option>
-            <option value="pnlbypair_overtime">PNL By Pair Over Time</option>
+            <!--option value="pnlbypair_overtime">PNL By Pair Over Time</option-->
           </select>
           <select id="pnldays" style="width: 100px; display: inline-block; font-weight: normal; border-radius: 5px;">
             <option value="99999">All Time</option>
@@ -37,13 +38,17 @@ if (typeof(tab_pnl) !== 'undefined') {
             <%
               });
             %>
-          </select>  
+          </select>
+          <span style="display: inline-block; white-space: nowrap;">
+            <button type="button" class="btn btn-default frostybot-navbutton jqx-fill-state-normal jqx-button" href="#" id="pnlimportlink" style="margin-bottom: 20px; width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Force import of orders for the past 7 days from the exchange for this stub"><span class="fas fa-cloud-download-alt"></span></button>
+          </span>    
         </span>
       </div>
     </div>
   </div>
 </div>
 <div class="frostybot-panel-content" >
+  </div>
   <div id="report_pnl"></div>
 </div>
 
@@ -60,23 +65,23 @@ if (typeof(tab_pnl) !== 'undefined') {
   
 </style>
 <!--div id="positionsgrid" style="margin-bottom: 10px;"></div-->
-<script src="/scripts/notifications.js"></script>
 <script src="/scripts/api.js"></script>
+<script src="/scripts/notifications.js"></script>
 
 <script type="text/javascript">
   
     $(document).ready(function () {
         
-      $("#pnlreport").jqxDropDownList({height: 30, width: 300});
-      $("#pnldays").jqxDropDownList({height: 30, width: 120});
-      $("#pnlstub").jqxDropDownList({height: 30, width: 150});
+      $("#pnlreport").jqxDropDownList({height: 30, width: 300, autoDropDownHeight: true});
+      $("#pnldays").jqxDropDownList({height: 30, width: 120, autoDropDownHeight: true});
+      $("#pnlstub").jqxDropDownList({height: 30, width: 200, autoDropDownHeight: true});
 
       if (localStorage) {
         var pnlreportselected = localStorage.getItem("pnlreportselected");
         if (pnlreportselected != null) $("#pnlreport").val(pnlreportselected);
         var pnldaysselected = localStorage.getItem("pnldaysselected");
         if (pnldaysselected != null) $("#pnldays").val(pnldaysselected);
-        var pnlstubselected = localStorage.getItem("pnlstubselected");
+        var pnlstubselected = localStorage.getItem("stubselected");
         if (pnlstubselected != null) $("#pnlstub").val(pnlstubselected);
       }
           
@@ -92,8 +97,20 @@ if (typeof(tab_pnl) !== 'undefined') {
         loadReport();
       });
 
-      $("#pnlrefreshlink").on('click', function() {
-        loadReport();
+      $("#pnlimportlink").on('click', function() {
+        var stub = $("#pnlstub").val();
+        showNotice('PNL import started for ' + stub)
+        api('pnl:quick_import', {
+            stub: stub,
+            days: 7
+          }, function(json) {
+          if (json.result == 'success') {
+            showSuccess(json.message)
+            loadReport();
+          } else {
+            showError(json.message)
+          }
+        })
       });
 
       function loadReport() {
@@ -108,7 +125,7 @@ if (typeof(tab_pnl) !== 'undefined') {
         if (localStorage) {
           localStorage.setItem("pnlreportselected", report);
           localStorage.setItem("pnldaysselected", days);
-          localStorage.setItem("pnlstubselected", stub);
+          localStorage.setItem("stubselected", stub);
         }
         params['days'] = days;
         params['stub'] = stub;

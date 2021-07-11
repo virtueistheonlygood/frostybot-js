@@ -1,8 +1,10 @@
 // PNL calculation module
 
 const frostybot_module = require('./mod.base')
+const frostybot_pnl = require('../classes/classes.pnl')
 var context = require('express-http-context')
 const axios = require('axios')
+const { utils } = require('mocha')
 
 module.exports = class frostybot_pnl_module extends frostybot_module {
 
@@ -20,7 +22,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         // Permissions for each command
         var permissions = {
-            'pnl:import': {
+            'pnl:cron': {
                 'standard': ['local', 'loopback' ],
                 'provider': ['local', 'loopback' ],
             },
@@ -36,12 +38,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         // API method to endpoint mappings
         var api = {
-            'pnl:import': [
-                'post|/pnl/import',                      // Trigger PNL import for all users and all stubs
-                'post|/pnl/import/:user',                // Trigger PNL import for specific user
-                'post|/pnl/import/:user/:stub',          // Trigger PNL import for specific user and stub
-                'post|/pnl/import/:user/:stub/:market',  // Trigger PNL import for specific user, stub and market
-            ],
+            'pnl:cron': [],
             'pnl:quick_import': [
                 'post|/pnl/quick_import',                // Trigger Quick PNL import for specific user, stub and symbol
             ],
@@ -59,209 +56,140 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         
     }
 
-    // Import orders for every user, stub and symbol
+    // PNL Cron
 
-    async import(params) {
+    async cron() {
 
-        var uuid = context.get('uuid');
-
-        var schema = {
-            user:        { optional: 'string', format: 'lowercase', },
-            stub:        { optional: 'string' },
-            market:      { optional: 'string', format: 'uppercase' },
-            days:        { optional: 'number' },
-        }        
-
-        if (!(params = this.mod.utils.validator(params, schema))) return false; 
-
-        var [user, stub, market, days] = this.mod.utils.extract_props(params, ['user', 'stub', 'market', 'days']);
+        var results = await this.database.select("pnl_cron");
         var url = await global.frostybot.modules['core'].url();
-
-        if (user == undefined) {
-
-            // User is undefined
-
-            var users = await this.database.select('users');
-
-            if (Array.isArray(users)) {
-                users.forEach(item => {
-                    var user = item.uuid;
-
-                    var payload = {
-                        uuid        : uuid,
-                        user        : user,
-                        command     : 'pnl:import',
-                        days        : days
-                    }
-
-                    axios.post(url + '/frostybot',  payload);
-                });
-            }
-
-            return true;
+        this.mod.output.debug('loopback_url', [url]);
+        var j = 0;
+        for (var i = 0; i < results.length; i++) {
+            var row = results[i];
+            var user = row.user;
+            var stub = row.stub;
+            var symbol = String(row.symbol).toUpperCase();
+            if (stub != '') {
+                j++
+                var cmd = {
+                    command     : 'pnl:quick_import',
+                    user        : user,
+                    stub        : stub,
+                    symbol      : symbol
+                }
+                
+                // Create new request for the PNL Import
+                
+                axios.post(url + '/frostybot',  cmd);
             
-        } else {
-
-            // User is defined
-
-            if (stub == undefined) {
-
-                // Stub is not defined
-
-                var stubs = await this.database.select('settings', {uuid: user, mainkey: 'accounts'});
-
-                if (Array.isArray(stubs)) {
-                    stubs.forEach(item => {
-                        var stub = item.subkey;
-    
-                        var payload = {
-                            uuid        : uuid,
-                            command     : 'pnl:import',
-                            user        : user,
-                            stub        : stub,
-                            days        : days
-                        }
-    
-                        try {
-                            axios.post(url + '/frostybot',  payload);
-                        } catch(e) {
-                            this.mod.output.exception(e);
-                        }
-
-                    })
-                }
-
-                return true;
-    
-            } else {
-
-
-                // Stub is defined
-
-                var exchange = await this.mod.exchange.get_exchange_from_stub([user,stub]);
-                var symbol_required = await this.mod.exchange.setting(exchange, 'orders_symbol_required');
-
-                if (market == undefined) {
-                    var symbols = symbol_required ? await this.mod.exchange.symbols(exchange) : ['<ALL>'];
+                if (j == 5) {
+                    await this.mod.utils.sleep(5);
+                    j = 0;
                 } else {
-                    var symbols = Array.isArray(market) ? market : [market];
+                    await this.mod.utils.sleep(1);
                 }
-                
-
-                if (Array.isArray(symbols)) {
-                    
-                    var total = 0;
-
-                    for (var i = 0; i < symbols.length; i++) {
-                        var symbol = symbols[i];
-
-                        params.market = symbol;
-                        var order_history = await this.order_history(user, stub, symbol, days);
-                        var qty = Array.isArray(order_history) ? order_history.length : 0;
-                        //console.log(stub +': ' + symbol + ': ' + qty)
-                        total += qty;
-
-                        if (Array.isArray(order_history)) {
-                            order_history.forEach(async (order) => {
-                                await this.update_order(user, stub, order);
-                            });
-                        }
-
-                        /*
-                        var uuid = context.get('uuid');    
-                        var payload = {
-                            uuid        : uuid,
-                            command     : 'pnl:import_orders',
-                            user        : user,
-                            stub        : stub,
-                            market      : symbol,
-                            days        : days
-                        }
-
-                        axios.post(url + '/frostybot',  payload);
-                        await this.mod.utils.sleep(1);
-                        */
-
-                    }
-
-                    var importstats = {
-                        user: user,
-                        stub: stub,
-                        total: total,
-                    }
-
-                    this.mod.output.debug('orders_imported', importstats);
-
-                    return true;
-
-                }
-
                 
             }
-
         }
-
-
-
-        
     }
-
 
     // Quick import import specific symbol for a user when a close command is executed
 
-    async quick_import(stub, symbol) {
-        if ((typeof(stub) != 'string') && (stub.hasOwnProperty('stub'))) {
-            symbol = stub.symbol
-            stub = stub.stub
+    async quick_import(params) {
+        if (params.user == undefined) params['user'] = params['uuid'] != undefined ? params.uuid : context.get('uuid');
+        var schema = {
+            user:        { required: 'string', format: 'lowercase', },
+            stub:        { required: 'string', format: 'lowercase', },
+            symbol:      { optional: 'string', format: 'uppercase', },
+            days:        { optional: 'number' },
         }
-        var user = context.get('uuid');
-        //var order_history = await this.order_history(user, stub, symbol, 7);
-        var order_history =  await this.mod.exchange.orders(stub, symbol);
-        //console.log(order_history)
+
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
+
+        var [user, stub, symbol, days] = this.mod.utils.extract_props(params, ['user', 'stub', 'symbol', 'days']);
+
+        if (days == undefined) days = 7
+
+        var exchange = await this.mod.exchange.get_exchange_from_stub([user, stub])
+        
+        if (symbol != undefined) {
+            var market = await this.mod.exchange.findmarket(exchange, symbol);
+            if (market != false) symbol = market.id;
+        }
+
+        var order_history = await this.order_history(user, stub, symbol, days);
         if (Array.isArray(order_history)) {
             order_history.forEach(async(order) => {
                 await this.update_order(user, stub, order);
             });
-            //console.log('Imported ' + order_history.length + ' orders');
-            var pnl = await this.get({user: user, stub: stub, symbol: symbol, days: 7})
-            if (pnl.hasOwnProperty(symbol)) {
-                var groups = pnl[symbol].groups;
-                if (Array.isArray(groups)) {
-                    var latest = groups.sort((a, b) => a.end > b.end ? -1 : 1)[0];
-                    if (latest.pnl != undefined) {
-                        var pnl = Math.round(latest.pnl * 100) / 100
-                        if (pnl >= 0) {
-                            this.mod.output.notice('order_close_profit',[symbol, pnl]);
-                        } else {
-                            this.mod.output.notice('order_close_loss',[symbol, pnl]);                            
-                        }
-                    }
-                }
-            }
+            return this.mod.output.success('custom_message', ['PNL imported successfully (' + order_history.length + ' orders)'])
         }
+        return this.mod.output.error('custom_message', ['PNL import failed'])
     }
 
 
+    // Round a timestmap to the start of the day
+
+    startofday(ts) {
+        
+        var mspd = 1000 * 60 * 60 * 24   // Milliseconds per day
+        return Math.floor(ts / mspd) * mspd
+        
+    }
 
     // Get order history for a given user uuid, stub, symbol and days
 
 
-    async order_history(user, stub, symbol, days = 7) {
+    async order_history(user, stub, symbol = undefined, days = 7) {
 
-        var ms = 1000 * 60 * 60 * 24 * days
-        var ts = Date.now() - ms;
-        var all_orders = {};
+        var batchdays =  7              // Days per batch
+        var mspd = 1000 * 60 * 60 * 24  // Milliseconds per day
+        var mspb = batchdays * mspd     // Milliseconds per batch
+        var batches = Math.ceil(days / batchdays)
+        var ms = mspd * days
+        var startts = this.startofday(Date.now() - ms)
+        var all_orders = {}
         var order_params = { 
             stub: stub,
-            since: ts
+            since: startts
         }
-        if (!['<ALL>',undefined].includes(symbol)) order_params['symbol'] = symbol;
+        if (!['<ALL>',undefined,false,''].includes(symbol)) order_params['symbol'] = symbol;
 
-        var orders =  await this.mod.exchange.execute([user, stub], 'all_orders', order_params);
+//        var orders =  await this.mod.exchange.execute([user, stub], 'all_orders', order_params);
 
-        while (orders.length > 0) {
+        for (var batch = 0; batch < batches; batch++) {
 
-            orders = orders.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+            var start = new Date(this.startofday(startts + (batch * mspb) + mspd));
+            var end = new Date(this.startofday(startts + (batch * mspb) + mspb));
+            var today = new Date(this.startofday(Date.now() + mspd));
+
+            if (start >= today) break
+            order_params.since = start.getTime();            
+            var orders =  await this.mod.exchange.all_orders([user, stub], symbol, order_params.since);
+            if (!Array.isArray(orders)) orders = [];
+            var outobj = {
+                symbol: symbol,
+                start: (start.toJSON()).split('T')[0],
+                end: (end.toJSON()).split('T')[0],
+                orders: String(orders.length)
+            }
+            this.mod.output.debug('custom_object', ['PNL Import Batch', outobj])
+            //var orders = await this.mod.exchange.execute([user, stub], 'order_history', {symbol: symbol, since: order_params.since})
+            if (Array.isArray(orders) && orders.length > 0) {
+                orders = orders.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+                for (var i = 0; i < orders.length; i++) {
+                    var order = orders[i];
+                    if (!all_orders.hasOwnProperty(order.id)) {
+                        all_orders[order.id] = order;
+                    }
+                }
+            }
+            await this.mod.utils.sleep(1)
+
+
+            //while (orders.length > 0) {
+            
+            /*
             var batch_ts = {
                 standard: 0,
                 conditional: 0
@@ -294,7 +222,8 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
             if (order_params.since == mints + 1) break;
             order_params.since = mints + 1;
-            orders = await this.mod.exchange.execute([user, stub], 'all_orders', order_params);
+            orders =  await this.mod.exchange.orders([user, stub], symbol, order_params.since);
+            */
         }
 
         return Object.values(all_orders);
@@ -308,8 +237,8 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         order.uuid = user
         order.stub = stub
         order.orderid = order.id
-        order.order_price = order.price
-        order.trigger_price = order.trigger
+        order.order_price = order.price == null ? 0 : order.price;
+        order.trigger_price = order.trigger;
 
         delete order.id
         delete order.user
@@ -317,6 +246,13 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         delete order.trigger
         delete order.filled
         delete order.datetime
+        if (order.direction != null) {
+            order.metadata = {
+                direction: order.direction
+            }
+        }
+        order.direction = order.side
+        delete order.side
 
         var existing = await this.database.select('orders', {uuid: user, stub: stub, orderid: order.id});
         if (Array.isArray(existing && existing.length == 1)) {                                
@@ -328,6 +264,82 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         if (!order.hasOwnProperty('filled_usd')) order['filled_usd'] = 0
 
         await this.database.insertOrReplace('orders', order);
+    }
+
+    // Round a number to a given precision
+
+    round_num(num, precision) {
+        return (Math.round(num / precision) * precision).toFixed(this.mod.utils.num_decimals(precision));
+    }
+
+    // Round an order amount to the supported market precision
+
+    round_amount(market, amount) {
+        return parseFloat(this.round_num(amount, market.precision.amount));
+    }    
+
+    // Find trade cycles in a batch of orders
+
+    async findgroups(orders, bal_base, bal_quote) {
+        // Cycle backwards through orders and reconstruct balance and group orders for the same position together
+        var groups = [];
+        var current = [];
+        var ungrouped = [];
+
+        if (orders.length > 0) {
+            var market = await this.mod.exchange.findmarket(orders[0].exchange, orders[0].symbol)
+        }
+
+        for(var n = 0; n < orders.length; n++) {
+            var order = orders[n];
+            order.datetime = (new Date(order.timestamp)).toJSON()
+            var entry = order;
+            delete entry.trigger;
+            delete entry.status;
+            entry.balance_base = bal_base;
+            entry.balance_quote = bal_base * order.order_price;
+            current.push(entry);
+            var filled = this.round_amount(market, order.filled_base);
+            bal_base = this.round_amount(market, (order.side == 'sell' ? bal_base + filled : bal_base - filled));
+            bal_quote = (order.side == 'sell' ? bal_quote + order.filled_quote : bal_quote - order.filled_quote);
+
+            if (bal_base == 0) {
+                var asc   = [...current].sort((a, b) => a.timestamp < b.timestamp ? -1 : 1);
+                var desc  = [...current].sort((a, b) => a.timestamp > b.timestamp ? -1 : 1);
+                var buys  = current.filter((ord) => ord.side == "buy")
+                var sells = current.filter((ord) => ord.side == "sell")
+                var entry_base = this.round_amount(market, this.mod.utils.sum_prop(direction == "long" ? buys : sells, "filled_base"))
+                var exit_base = this.round_amount(market, this.mod.utils.sum_prop(direction == "long" ? sells : buys, "filled_base"))
+                if (entry_base == exit_base) {
+                    var first = asc[0]
+                    var last = desc[0]
+                    var direction = first.side == "buy" ? "long" : "short"
+                    var start = first.timestamp
+                    var end = last.timestamp
+                    var entry_value = this.mod.utils.sum_prop(direction == "long" ? buys : sells, "filled_quote")
+                    var exit_value = this.mod.utils.sum_prop(direction == "long" ? sells : buys, "filled_quote")
+                    var pnl = exit_value - entry_value
+                    var group = {
+                        start: start,
+                        end: end,
+                        pnl: pnl,
+                        direction: direction,
+                        dcas: (direction == "long" ? buys : sells).length - 1,
+                        entry_base: entry_base,
+                        exit_base: exit_base,
+                        entry_value: entry_value,
+                        exit_value: exit_value,
+                        orders: asc
+                    }                
+                    groups.push(group);
+                } else {
+                    ungrouped = [...ungrouped, ...current];
+                }
+                current = [];
+                bal_quote = 0
+            }
+        }
+        return groups;
     }
 
 
@@ -348,14 +360,15 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         var [user, stub, symbol, days] = this.mod.utils.extract_props(params, ['user', 'stub', 'symbol', 'days']);
         
         if (user == undefined) { user = context.get('uuid') }
-    
-//        var position = await this.exchange_execute(stub, 'position',params);
-        
-        //var orders =  await this.exchange_execute(stub, 'orders',params);
-        
+           
         var query =  {uuid: user, stub: stub};
 
-        if (symbol != undefined) query['symbol'] = symbol;
+        if (symbol != undefined) {
+            var exchange = await this.mod.exchange.get_exchange_from_stub([user, stub])
+            var market = await this.mod.exchange.findmarket(exchange, symbol);
+            if (market != false) symbol = market.id;
+            query['symbol'] = symbol;
+        }
         
         var ms = 1000 * 60 * 60 * 24 * days
         var ts = Math.ceil((Date.now() - ms)  / 86400000) * 86400000 ;
@@ -370,6 +383,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             sql += " AND `symbol`=?";
             vals.push(symbol)
         }
+        sql += " ORDER BY timestamp DESC;"
 
         var orders = await this.database.query(sql, vals);
 
@@ -378,9 +392,22 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
         if (Array.isArray(orders) && orders.length > 0) {
             for (var i = 0; i < orders.length; i++) {
                 var order = orders[i];
+                var dir = 'both';
+                if (!['', null].includes(order.metadata)) {
+                    var metadata = JSON.parse(order.metadata);
+                    if (metadata != undefined) {
+                        dir = metadata.direction != undefined ? metadata.direction : 'both'
+                        order.side = order.direction;
+                        order.direction = dir;
+                    }
+                } else {
+                    order.side = order.direction
+                    order.direction = 'both'
+                }
                 delete order.metadata;
-                if (!orders_by_symbol.hasOwnProperty(order.symbol)) orders_by_symbol[order.symbol] = [];
-                orders_by_symbol[order.symbol].push(order);
+                if (!orders_by_symbol.hasOwnProperty(order.symbol)) orders_by_symbol[order.symbol] = {};
+                if (!orders_by_symbol[order.symbol].hasOwnProperty(dir)) orders_by_symbol[order.symbol][dir] = [];
+                orders_by_symbol[order.symbol][dir].push(order);
             }    
         } else {
             return {};
@@ -388,66 +415,71 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
         var symbols = Object.keys(orders_by_symbol);
         var pnl_by_symbol = {}
+        var directions = ['long', 'short', 'both'];
 
-        symbols.forEach(symbol => {
+        for (var s = 0; s < symbols.length; s++) {
 
-            var orders = orders_by_symbol[symbol].sort((a, b) => a.timestamp > b.timestamp ? -1 : 1).filter(order => order.filled_base > 0)
+            var symbol = symbols[s];
+            var symbol_groups = [];
 
-            // Check if currently in a position, if so use the position balance for unrealized PNL calc
-            //var bal_base = this.mod.utils.is_object(position) && position.hasOwnProperty('base_size') ? position.base_size : 0;
-            //var bal_quote = this.mod.utils.is_object(position) && position.hasOwnProperty('quote_size') ? position.quote_size : 0;
-        
-            var bal_base = 0;
-            var bal_quote = 0;
+            for (var d = 0; d < directions.length; d++) {
 
-            // Cycle backwards through orders and reconstruct balance and group orders for the same position together
-            var groups = [];
-            var current = [];
-     
-            for(var n = 0; n < orders.length; n++) {
-                var order = orders[n];
-                var entry = order;
-                delete entry.trigger;
-                delete entry.status;
-                entry.balance_base = bal_base;
-                entry.balance_quote = bal_base * order.order_price,
-                current.push(entry);
-                bal_base = (order.direction == 'sell' ? bal_base + order.filled_base : bal_base - order.filled_base);
-                bal_quote = (order.direction == 'sell' ? bal_quote + order.filled_quote : bal_quote - order.filled_quote);
-                if (bal_base == 0) {
-                    var start = order.timestamp;
-                    var end = [undefined, start].includes(current[0]) || current.length < 2 ? null : current[0].timestamp;
-                    var group = {
-                        start: start,
-                        end: end,
-                        pnl: bal_quote,
-                        orders: current.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
+                var dir = directions[d];
+                var qty = this.mod.utils.is_array(orders_by_symbol[symbol][dir]) ? orders_by_symbol[symbol][dir].length : 0;
+
+                if (qty >= 2) {
+
+                    var orders = orders_by_symbol[symbol][dir].sort((a, b) => a.timestamp > b.timestamp ? -1 : 1).filter(order => order.filled_base > 0)
+
+                    // Check if currently in a position, if so use the position balance for unrealized PNL calc
+                    var position = await this.mod.exchange.positions([user,stub], symbol, (dir == 'both' ? undefined : dir));
+
+                    var bal_base = position.length == 1 ? position[0].base_size : 0;
+                    var bal_quote = position.length == 1 ? position[0].quote_size : 0;
+
+                    // Find trade cycles
+                    var groups = await this.findgroups(orders, bal_base, bal_quote);
+                    
+                    if (orders.length >= 3) {
+                        var groups2 = await this.findgroups(orders.slice(1), 0, 0);
+                        var groups3 = await this.findgroups(orders.slice(2), 0, 0);
+                        var groups4 = await this.findgroups(orders.slice(3), 0, 0);
+                        if (groups2.length > groups.length) {
+                            var groups = groups2
+                        }
+                        if (groups3.length > groups.length) {
+                            var groups = groups3
+                        }
+                        if (groups4.length > groups.length) {
+                            var groups = groups4
+                        }
                     }
-                    groups.push(group);
-                    current = [];
-                    bal_quote = 0
+    
+                    for (var g = 0; g < groups.length; g++) {
+                        symbol_groups.push(groups[g]);
+                    }
                 }
+
             }
-    
-            // Sort order groups cronologically
-            groups.sort((a, b) => a.start < b.start ? -1 : 1)
-    
-            pnl_by_symbol[symbol] = new this.classes.pnl(stub, symbol, groups); 
 
+            symbol_groups = symbol_groups.sort((a, b) => a.end < b.end ? -1 : 1)
+            pnl_by_symbol[symbol] = new frostybot_pnl(stub, symbol, symbol_groups);
 
-        });
-
+        }
         return pnl_by_symbol;
 
     }
+
 
     // PNL Per Day
 
     async pnl_per_day(user, stub, days) {
 
-        var pnl = await this.get({user: user, stub: stub, days: days});
+        var pnl = await this.get({user: user, stub: stub, days: (days + 30)});
         var totals = {};
         var symbols = Object.keys(pnl);
+        var mspd = 1000 * 60 * 60 * 24
+        var start = this.startofday(Date.now() - (mspd * days)) + mspd
 
         for (var i = 0; i < symbols.length; i++) {
 
@@ -456,10 +488,9 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
             for (var j = 0; j < groups.length; j++) {
                 var group = groups[j];
-                var date = Math.floor(group.end / 86400000) * 86400000;  // Round to date
-
+                var date = this.startofday(group.end); 
                 if (totals[date] == undefined) totals[date] = 0
-                totals[date] += parseFloat(group.pnl);
+                if (date >= start) totals[date] += parseFloat(group.pnl);
             }
 
         }
@@ -479,33 +510,19 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var yesterday = i != 0 ? sorted[i-1].Total : 0;
             sorted[i].Total = today + yesterday
         }
-        /*
-        if (days > 90) days = 90
-        var ts = (Math.floor((new Date()).getTime() / 86400000) * 86400000) - (days * 86400000)
-        var testdata = [];
-        var total = 0;
-        for (i = 0; i < days; i++) {
-            var daily = (Math.random() * 20) - 5;
-            total += daily;
-            testdata.push({
-                Date: (new Date(ts + (i * 86400000))).toJSON(),
-                Daily: daily,
-                Total: total
-            })
-        }
-        console.log(testdata)
-        return testdata;
-        */
-        return sorted;
+
+        return sorted.sort((a,b) => a.Date > b.Date ? -1 : 1).slice(0,days);
     }
 
     // PNL Per Trade
 
     async pnl_per_trade(user, stub, days) {
 
-        var pnl = await this.get({user: user, stub: stub, days: days});
+        var pnl = await this.get({user: user, stub: stub, days: days + 30});
         var trades = [];
         var symbols = Object.keys(pnl);
+        var mspd = 1000 * 60 * 60 * 24
+        var start = this.startofday(Date.now() - (mspd * days)) + mspd
 
         for (var i = 0; i < symbols.length; i++) {
 
@@ -515,25 +532,24 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             for (var j = 0; j < groups.length; j++) {
                 var group = groups[j];
                 var orders = group.orders;
-                var orders_sorted = orders.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1)
                 if (orders.length > 1) {
                     var trade = {
                         symbol: symbol,
-                        direction: orders_sorted[0].direction == "buy" ? "long" : "short",
+                        direction: group.direction,
                         entered: new Date(group.start).toJSON(),
                         exited: new Date(group.end).toJSON(),
-                        dcas: group.orders.length - 1,
-                        initial_size: orders_sorted[0].size_base,
-                        exit_size: (orders.sort((a, b) => a.timestamp > b.timestamp ? -1 : 1))[0].size_base,
+                        dcas: group.dcas,
+                        entry_value: group.entry_value,
+                        exit_value: group.exit_value,
                         pnl: group.pnl
                     }
+                    if (group.end >= start) trades.push(trade)
                 }
-                trades.push(trade)
             }
 
         }
 
-        var sorted = trades.sort((a, b) => a.entered > b.entered ? -1 : 1)
+        var sorted = trades.sort((a, b) => a.exited > b.exited ? -1 : 1)
         return sorted;
     }
 
@@ -541,11 +557,11 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
     async pnl_by_pair_total(user, stub, days) {
 
-        var pnl = await this.get({user: user, stub: stub, days: days});
+        var pnl = await this.get({user: user, stub: stub, days: (days + 30) });
         var totals = {};
         var symbols = Object.keys(pnl);
-
-        //console.log(symbols)
+        var mspd = 1000 * 60 * 60 * 24
+        var start = this.startofday(Date.now() - (mspd * days)) + mspd
 
         for (var i = 0; i < symbols.length; i++) {
 
@@ -555,7 +571,7 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
             for (var j = 0; j < groups.length; j++) {
                 var group = groups[j];
-                total += parseFloat(group.pnl);
+                if (group.end >= start) total += parseFloat(group.pnl);
             }
 
             totals[symbol] = total;
@@ -580,9 +596,11 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
 
     async pnl_by_pair_overtime(user, stub, days) {
 
-        var pnl = await this.get({user: user, stub: stub, days: days});
+        var pnl = await this.get({user: user, stub: stub, days: (days + 30)});
         var totals = {};
         var symbols = Object.keys(pnl);
+        var mspd = 1000 * 60 * 60 * 24
+        var start = this.startofday(Date.now() - (mspd * days)) + mspd
 
         for (var i = 0; i < symbols.length; i++) {
 
@@ -592,10 +610,12 @@ module.exports = class frostybot_pnl_module extends frostybot_module {
             var groups = pnl[symbol].hasOwnProperty('groups') ? pnl[symbol].groups.sort((a, b) => a.end < b.end ? -1 : 1) : []
             for (var j = 0; j < groups.length; j++) {
                 var group = groups[j];
-                var date = Math.floor(group.end / 86400000) * 86400000;  // Round to date
+                var date = this.startofday(group.end);  // Round to date
                 total += parseFloat(group.pnl);
-                if (totals[date] == undefined) totals[date] = {}
-                totals[date][symbol] = total;
+                if (date >= start) {
+                    if (totals[date] == undefined) totals[date] = {}
+                    totals[date][symbol] = total;
+                }
             }
 
         }

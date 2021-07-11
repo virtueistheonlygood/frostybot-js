@@ -4,11 +4,11 @@ const clc = require('cli-color');   // Make CLI colors fancy
 const md5 = require('md5');         // Used to ensure that the same message is not displayed multiple times
 const fs  = require('fs');          // Filesystem 
 const eol = require('os').EOL;      // Operating system end of line character(s)
-const ccxt = require('ccxt');       // CCXT Error Messages
 const context = require('express-http-context'); // HTTP Context
 const path = require('path')        // Path Module
 
 const frostybot_module = require('./mod.base');
+const frostybot_output = require('../classes/classes.output')
 const { indexOf } = require('cli-color/beep');
 
 module.exports = class frostybot_output_module extends frostybot_module {
@@ -18,7 +18,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
     constructor() {
         super();
         this.description = 'Output Handler'
-        /*this.output_obj = {
+        this.output_obj = {
             result: 'success',
             message: null,
             type: null,
@@ -26,7 +26,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
             stats: [],
             cache: null,
             messages: []
-        }*/
+        }
     }
 
 
@@ -95,18 +95,35 @@ module.exports = class frostybot_output_module extends frostybot_module {
         try {
             // Dont log GUI and PNL import commands to the database
             var command = context.get('command');
-            if ((command.toLowerCase().indexOf('gui:') == -1) && (command.toLowerCase().indexOf('pnl:quick_import') == -1))
+            if ((command.toLowerCase().indexOf('gui:') == -1) && (command.toLowerCase().indexOf('pnl:quick_import') == -1) && (message.toLowerCase().indexOf('permission') == -1) && (message.toLowerCase().indexOf('connection from ip') == -1)) {
                 return this.database.insert('logs', {uuid: uuid, type: type, message: message});
+            }
         } catch(error) {
             return false;
         }
     }
 
-    // Outpuyt log message tp websocket
-    outws(uuid, type, message) {
-        if (global.hasOwnProperty('frostybot'))
-            if (global.frostybot.hasOwnProperty('wss'))
-                    global.frostybot.wss.emit('proxy', logentry)
+    // Output log message to websocket
+    outws(uuid, timestamp, type, message) {
+        try {
+            // Dont log GUI and PNL import commands to the database
+            //var command = context.get('command');
+            //if ((command.toLowerCase().indexOf('gui:') == -1) && (command.toLowerCase().indexOf('pnl:quick_import') == -1) && (message.toLowerCase().indexOf('permission') == -1) && (message.toLowerCase().indexOf('connection from ip') == -1))
+                return this.mod.websocket.gui(uuid, 'log', {
+                    timestamp: timestamp,
+                    type: type,
+                    message: message
+                })
+        } catch(error) {
+            return false;
+        }
+    }
+
+    // Output log message to signal tracker
+    outsignal(timestamp, type, message) {
+        try {
+            this.mod.signals.output.log(timestamp, type, message);
+        } catch (e) {}
     }
 
     // Expand object in console output
@@ -114,7 +131,7 @@ module.exports = class frostybot_output_module extends frostybot_module {
     outobj(type, str, idx, obj) {
         var data = this.mod.utils.is_array(obj) || this.mod.utils.is_object(obj) ? this.mod.utils.serialize(obj) : obj;
         var datalen = this.mod.utils.is_string(data) ? data.length : 0;
-        if (datalen > 40) {
+        if (datalen > 80) {
             var resmessage = str.replace(idx, data).trim();
             var objmessage = str.replace(idx, "").trim();
             this.add_message(type, resmessage, {toLog: true, toResults: true, toConsole: false})
@@ -186,6 +203,10 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     // Some helper functions
 
+    api(api, text) {
+        return this.translate('api', 'all', [api, text])
+    }
+
     debug(id, params = []) {
         return this.translate('debug', id, params)
     }
@@ -206,6 +227,10 @@ module.exports = class frostybot_output_module extends frostybot_module {
         return this.translate('success', id, params)
     }
 
+    raw(msg) {
+        console.log(msg);
+    }
+
     exception(e) {
         var type = e.constructor.name;
         var stack = e.stack.split('\n')[1].trim(' ');
@@ -214,13 +239,6 @@ module.exports = class frostybot_output_module extends frostybot_module {
         var [filename, line, col] = fileinfo.split(':');
         var basename = path.basename(filename);
         var message = [e.message, funcname, '('+[basename, line, col].join(':')+')'].join(' ');
-        //console.log(stack)
-        /*if (e instanceof ccxt.ExchangeError) {
-            var testmessage = JSON.parse(e.message.error.message);
-            console.log(testmessage);
-        }
-        console.log(message);
-        */
         this.add_data(false);
         this.warning('unhandled_exception', [type, message]);
     }
@@ -418,9 +436,14 @@ module.exports = class frostybot_output_module extends frostybot_module {
                 type: type,
                 message: message
             }
+            this.outws(uuid, ts, type, message);
+            this.outsignal(ts, type, message);
+
+            /*
             if (global.hasOwnProperty('frostybot'))
                 if (global.frostybot.hasOwnProperty('wss'))
                     global.frostybot.wss.emit('log', logentry)
+            */
         }
 
         switch(type) {
@@ -448,17 +471,19 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     brief_messages(messages = []) {
         var results = [];
-        messages.forEach(message => {
-            var dateobj = new Date(message.timestamp);
-            let day = ("0" + dateobj.getDate()).slice(-2);
-            let month = ("0" + (dateobj.getMonth() + 1)).slice(-2);
-            let year = dateobj.getFullYear();
-            let hour = ("0" + dateobj.getHours()).slice(-2);
-            let minute = ("0" + dateobj.getMinutes()).slice(-2);
-            let second = ("0" + dateobj.getSeconds()).slice(-2);
-            var datestr = year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second;
-            results.push(datestr + ' | ' + message.type.padEnd(7) + ' | ' + message.message);
-        });
+        if (this.mod.utils.is_array(messages)) {
+            messages.forEach(message => {
+                var dateobj = new Date(message.timestamp);
+                let day = ("0" + dateobj.getDate()).slice(-2);
+                let month = ("0" + (dateobj.getMonth() + 1)).slice(-2);
+                let year = dateobj.getFullYear();
+                let hour = ("0" + dateobj.getHours()).slice(-2);
+                let minute = ("0" + dateobj.getMinutes()).slice(-2);
+                let second = ("0" + dateobj.getSeconds()).slice(-2);
+                var datestr = year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second;
+                results.push(datestr + ' | ' + message.type.padEnd(7) + ' | ' + message.message);
+            });
+        }
         return results;
     }
 
@@ -483,9 +508,18 @@ module.exports = class frostybot_output_module extends frostybot_module {
 
     async parse(result) {
         this.add_data(result);
-        var output = new this.classes.output(...this.mod.utils.extract_props(this.output_obj, ['command', 'params', 'result', 'message', 'type', 'data', 'stats', 'messages']));
+        var output = new frostybot_output(...this.mod.utils.extract_props(this.output_obj, ['result', 'message', 'type', 'data', 'stats', 'messages']))
         this.reset();
         return await this.format_output(output);
+    }
+
+
+    // Parse signal output into a frostybot_output object
+
+    async signal(result) {
+        var output = new frostybot_output(...this.mod.utils.extract_props(result, ['result', 'message', 'type', 'data', 'stats', 'messages']))
+        this.reset();
+        return await output;
     }
 
 

@@ -1,8 +1,112 @@
 // Signal provider management
 
 const frostybot_module = require('./mod.base')
-var context = require('express-http-context');
+var context = require('express-http-context')
 const axios = require('axios')
+const { v4: uuidv4 } = require('uuid')
+
+class frostybot_signal_outputs {
+
+    constructor() {
+        this.outputs = {};
+    }
+
+    create(user, stub) {
+        var start = new Date().getTime()
+        var uuid = uuidv4()
+        this.outputs[uuid] = {
+            tracker : uuid,
+            user    : user,
+            stub    : stub,
+            start   : start,
+            finish  : null,
+            result  : false,
+            type    : 'signal',
+            message : '',
+            stats   : {},
+            data    : {},
+            messages: []
+        }
+        return uuid;
+    }
+
+    finish() {
+        var start = this.outputs[this.tracker()].start
+        var finish = new Date().getTime()
+        this.outputs[this.tracker()].finish = finish
+        var duration = (finish - start) / 1000
+        this.stats('signal_duration', duration)
+        var output = this.get();
+        this.clear();
+        return output;
+    }
+
+    get() {
+        return this.outputs[this.tracker()]
+    }
+
+    clear() {
+        delete this.outputs[this.tracker()]
+    }
+
+    tracker() {
+        var tracker = context.get('tracker');
+        if (tracker == undefined) {
+            tracker = this.create(context.get('uuid'), context.get('stub'))
+            context.set('tracker', tracker)
+        }
+        return tracker;
+    }
+
+    checkexists(uuid, user, stub) {
+        if (!this.outputs.hasOwnProperty(uuid)) {
+            var start = new Date().getTime()
+            this.outputs[uuid] = {
+                tracker : uuid,
+                user    : user,
+                stub    : stub,
+                start   : start,
+                finish  : null,
+                result  : false,
+                type    : 'signal',
+                message : '',
+                stats   : {},
+                data    : {},
+                messages: []
+            }
+        }
+    }
+
+    result(result, message) {
+        this.outputs[this.tracker()].result = result;
+        this.outputs[this.tracker()].message = message;
+    }
+
+    success(message) {
+        this.result(true, message)
+    }
+
+    error(message) {
+        this.result(false, message)
+    }
+
+    stats(stat, value) {
+        this.outputs[this.tracker()].stats[stat] = value
+    }
+
+    data(key, value) {
+        this.outputs[this.tracker()].data[key] = value
+    }
+
+    log(timestamp, type, message) {
+        this.outputs[this.tracker()].messages.push({
+            timestamp: timestamp,
+            type: type,
+            message: message
+        })
+    }
+
+}
 
 module.exports = class frostybot_signals_module extends frostybot_module {
 
@@ -11,6 +115,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
     constructor() {
         super()
         this.description = 'Signal Processor'
+        this.output = new frostybot_signal_outputs();
     }
     
     // Register methods with the API (called by init_all() in core.loader.js)
@@ -19,8 +124,9 @@ module.exports = class frostybot_signals_module extends frostybot_module {
 
         // Permission templates for reuse
         var templates = {
-            'localonly':         { 'standard': ['local' ], 'provider': ['local' ]  },
-            'providerwhitelist': {'standard': ['providerwhitelist'],'provider': ['providerwhitelist']},
+            'any':               { 'standard': ['any'],   'provider': ['any']    },
+            'localonly':         { 'standard': ['local'], 'provider': ['local']  },
+            'providerwhitelist': { 'standard': ['providerwhitelist','local'],'provider': ['providerwhitelist','local']},
         }
 
         // Method permissions 
@@ -471,21 +577,116 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         return false;
     }
 
+    // Get Signal History
+
+    async history() {
+        var result = await this.database.query("SELECT a.`uid` AS `signaluid`,a.`timestamp`,a.`user`,b.`email`,a.`stub`,a.`exchange`,a.`symbol`,a.`signal`,IF(a.`result`=0,'Error','Success') AS result,IF(a.`result`=0,a.`message`,'') AS message FROM signals a, users b WHERE a.`user` = b.`uuid` ORDER BY a.`timestamp` DESC LIMIT 1000;");
+        return result;
+    }
+
+    // Get Logs for a Signal
+
+    async logs(uid) {
+        var result = await this.database.select('signals', {uid : uid})
+        if (result.length == 1) {
+            var rawmetadata = result[0]['metadata'];
+            if (rawmetadata != '') {
+                try { 
+                    var metadata = JSON.parse(rawmetadata);
+                    if (metadata.logs != undefined) {
+                        if (Array.isArray(metadata.logs) && metadata.logs.length > 0) {
+                            return metadata.logs;
+                        }
+                    }
+                } catch (e) {}
+            }
+        }
+        return false;
+    }
+
+    // Get Customer Exposure Data
+
+    async exposure() {
+        var result = await this.mod.datasource.select('exchange:positions');
+        var bypair = {}
+        if (result.length > 0) {
+            for (var i = 0; i < result.length; i++) {
+                var row = result[i];
+                var exchange = row.market['exchange'];
+                var symbol = row['symbol'];
+                var key = exchange + ':' + symbol;
+                if (bypair.hasOwnProperty(key)) {
+                    var data = bypair[key];
+                } else {
+                    var data = {
+                        exchange: exchange,
+                        symbol: symbol,
+                        qty: 0,
+                        total: 0,
+                        pnl: 0,
+                        actions: '<p style="text-align: center"><a class="closeglobalpositionlink" href="#" data-exchange="' + exchange + '" data-symbol="' + symbol + '"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a></p>'
+                    }
+                }
+                data.qty++;
+                data.total += row.usd_size;
+                data.pnl += row.pnl;
+                bypair[key] = data;
+            };
+        }
+        var exposure = Object.values(bypair).sort((a, b) => a.exchange < b.exchange ? -1 : a.total > b.total ? -1 : 1);
+        return exposure
+    }
+
+    // Daily Volume
+
+    async volume(params) {
+        var sma = params.sma != undefined ? params.sma : 7;
+        var days = params.days != undefined ? params.days : 365;
+
+        /*
+
+            SELECT `date`,`volume`,
+                (	
+                    SELECT ROUND(SUM(`volume`) / COUNT(`volume`),2)
+                    FROM 
+                        (
+                            SELECT DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') as 'date', ROUND(SUM(size_usd),2) as 'volume' 
+                            FROM orders 
+                            GROUP BY DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') 
+                        ) AS b 
+                    WHERE DATEDIFF(a.`date`, b.`date`) BETWEEN 0 AND 4
+                ) 'avg'
+            FROM 
+                (
+                    SELECT DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') as 'date', ROUND(SUM(size_usd),2) as 'volume' 
+                    FROM orders 
+                    GROUP BY DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') 
+                ) AS a
+            ORDER BY `date` ASC;
+
+        */
+
+        var result = await this.database.query("SELECT `date`,`volume`,(SELECT ROUND(SUM(`volume`) / COUNT(`volume`),2) FROM (SELECT DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') as 'date', ROUND(SUM(size_usd),2) as 'volume' FROM orders GROUP BY DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d')) AS b  WHERE DATEDIFF(a.`date`, b.`date`) BETWEEN 0 AND " + (sma - 1) + ") 'avg' FROM (SELECT DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') as 'date', ROUND(SUM(size_usd),2) as 'volume' FROM orders  GROUP BY DATE_FORMAT(FROM_UNIXTIME(FLOOR(`timestamp` / 1000)), '%Y-%m-%d') ) AS a ORDER BY `date` ASC LIMIT " + sma + ", " + days + ";");
+        return result;
+    }
+
     // Send provider signal
 
     async send(params) {
 
         var schema = {
-            provider: { required: 'string', format: 'lowercase' },
-            user: { required: 'string', format: 'lowercase' },
-            exchange: { required: 'string', format: 'lowercase', oneof: ['ftx', 'deribit', 'binance_futures', 'binance_spot', 'binanceus', 'bitmex'] },
-            signal: { required: 'string', format: 'lowercase', oneof: ['long', 'short', 'buy', 'sell', 'close'] },
-            symbol: { required: 'string', format: 'lowercase' },
+            provider:   { required: 'string', format: 'lowercase' },
+            user:       { required: 'string', format: 'lowercase' },
+            exchange:   { required: 'string', format: 'lowercase', oneof: ['ftx', 'deribit', 'binance_futures', 'binance_spot', 'binanceus', 'bitmex'] },
+            signal:     { required: 'string', format: 'lowercase', oneof: ['long', 'short', 'buy', 'sell', 'close', 'test'] },
+            symbol:     { required: 'string', format: 'lowercase' },
+            size:       { optional: 'number', default: 100 },
+            direction:  { optional: 'string', format: 'lowercase' },
         }
 
         if (!(params = this.mod.utils.validator(params, schema))) return false; 
 
-        var [provider_uuid, user, exchange, signal, symbol] = this.mod.utils.extract_props(params, ['provider', 'user', 'exchange', 'signal', 'symbol']);
+        var [provider_uuid, user, exchange, signal, symbol, size, direction] = this.mod.utils.extract_props(params, ['provider', 'user', 'exchange', 'signal', 'symbol', 'size', 'direction']);
 
         var signalmap = {
             'long'  : 'buy',
@@ -504,10 +705,6 @@ module.exports = class frostybot_signals_module extends frostybot_module {
         }
 
         var user = user.filter(onlyUnique);
-
-        // Flish the cache before we start
-
-        this.mod.cache.flush(true);
 
         // Cycle through users and send order requests
 
@@ -537,7 +734,7 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                     symbol: symbol,
                     signal: signal,
                     result: 0,
-                    message: 'No accounts configured for ' + exchange
+                    message: 'No signal provider configured for ' + exchange
                 }
                 this.database.insert('signals',data);
                 this.mod.output.debug('signal_exec_result', [data]);
@@ -548,39 +745,52 @@ module.exports = class frostybot_signals_module extends frostybot_module {
                 accounts.forEach(async account => {
 
                     var stub = account.stub;
-
+                    var tracker = this.output.create(user_uuid, stub);
+                    
                     var cmd = {
-                        uuid        : user_uuid,
-                        command     : 'trade:' + stub + ':' + signal,
-                        cancelall   : 'true',
-                        reduce      : 'true',
-                        symbol      : symbol,
-                        source      : { 
-                                        type: 'signal',
-                                        provider: provider_uuid,
-                                        signal: signal
-                                    }
+                        uuid        :   user_uuid,
+                        command     :   'trade:' + stub + ':' + signal,
+                        cancelall   :   'true',
+                        reduce      :   'true',
+                        symbol      :   symbol,
+                        signalsize  :   size,
+                        direction   :   direction,  
+                        source      :   { 
+                                            type: 'signal',
+                                            tracker: tracker,
+                                            provider: provider_uuid,
+                                            signal: signal,
+                                            signalsize: size,
+                                        }
                     }
 
                     var url = await global.frostybot.modules['core'].url();
-                    this.mod.output.debug('loopback_url', [url]);
+                    //var url = 'http://127.0.0.1:8900'
+                    //this.mod.output.debug('loopback_url', [url]);
 
                     // Create new request for the signal processing
+                    var _this = this;
+
                     axios.post(url + '/frostybot',  cmd).then(function (response) {
                         var result = response.data;
                         var data = {
-                            provider: provider_uuid,
-                            user: user_uuid,
-                            exchange: exchange,
-                            stub: stub,
-                            symbol: symbol,
-                            signal: signal,
-                            result: result.result == 'error' ? 0 : 1,
-                            message: result.message != undefined ? result.message : ''
+                            provider    :   provider_uuid,
+                            user        :   user_uuid,
+                            exchange    :   exchange,
+                            stub        :   stub,
+                            symbol      :   symbol,
+                            signal      :   signal + (direction != undefined ? ':' + direction : ''),
+                            result      :   result.result,
+                            message     :   result.message != undefined ? result.message : '',
+                            metadata    :   JSON.stringify({
+                                                data: result.data,
+                                                stats: result.stats,
+                                                logs: result.messages,
+                                            })
                         }
                         var database = global.frostybot.modules['database'];
                         var output = global.frostybot.modules['output'];
-                        database.insert('signals',data);
+                        database.insert('signals', data);
                         output.debug('signal_exec_result', [data]);
                     });
 

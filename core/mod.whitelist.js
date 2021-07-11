@@ -193,14 +193,14 @@ module.exports = class frostybot_whitelist_module extends frostybot_module {
             this.mod.output.notice('whitelist_enabled')
             return true;
         }
-        this.mod.output.notice('whitelist_disabled')
+        //this.mod.output.notice('whitelist_disabled')
         return false
     }
 
     // Verify IP in whitelist
 
     async verify(ip) {
-        if (ip == '<cluster>') return true;
+        if (['127.0.0.1','<cluster>'].includes(ip)) return true;
         if (await this.is_enabled()) {
             if (this.mod.utils.is_object(ip) && (ip.hasOwnProperty('ip') || ip.hasOwnProperty('ipaddress')))
               ip = ip.ip != undefined ? ip.ip : ip.ipaddress;

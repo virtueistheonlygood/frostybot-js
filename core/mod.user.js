@@ -138,33 +138,34 @@ module.exports = class frostybot_user_module extends frostybot_module {
         else
             return false;
     }
-    
-    // Get use token or see if it is still valid for the UI access to the API
 
-    async get_token(uuid, return_token = true) {
-        var result = await this.database.select('users', {uuid: uuid});
-        if (result.length == 1) {
-            var token = result[0]['token'];
-            var expiry = result[0]['expiry'];
-            var ts = (new Date()).getTime();
-            if (ts < expiry) {
-                return return_token ? token : true;
-            }
-        }
+    // Create a new user token
+
+    async create_token(uuid) {
+        var timeout = await this.mod.settings.get('core','gui:sessiontimeout', 3600);
+        var duration = 1000 * timeout;
+        var token = this.mod.encryption.new_uuid();
+        var expiry = (new Date()).getTime() + duration;
+        var result = await this.database.insertOrReplace('tokens', { uuid: uuid, token: token, expiry: this.mod.utils.ts_to_datetime(expiry)});
+        if (result != false && result.changes > 0)
+            return {
+                uuid: uuid,
+                token: token,
+                expiry: expiry
+            };
         return false;
-    }
+    }    
 
     // Verify token
 
     async verify_token(param) {
         var uuid = param.uuid;
         var token = param.token;
-        var result = await this.database.select('users', {uuid: uuid});
+        var result = await this.database.select('tokens', {uuid: uuid, token: token});
         if (result.length == 1) {
-            var dbtoken = result[0]['token'];
             var dbexpiry = new Date(result[0]['expiry']).getTime();
             var ts = (new Date()).getTime();
-            if (token == dbtoken && ts < dbexpiry) {
+            if (ts < dbexpiry) {
                 return true;
             }
         }
@@ -265,30 +266,13 @@ module.exports = class frostybot_user_module extends frostybot_module {
     // Logout
 
     async logout(params) {
-
-        var uuid = params.hasOwnProperty('uuid') ? params.uuid : false;
-        if (uuid != false) {
-            var result = await this.database.update('users', { token: null, expiry: null }, {uuid: uuid});
+        if (params.hasOwnProperty('token')) {
+            var uuid = params.token.uuid;
+            var token = params.token.token;
+            var result = await this.database.delete('token', { uuid: uuid, token: token});
             if (result.changes > 0)
                 return true;
         }
-        return false;
-    }
-
-    // Create a new user token
-
-    async create_token(uuid) {
-        var timeout = await this.mod.settings.get('core','gui:sessiontimeout', 3600);
-        var duration = 1000 * timeout;
-        var token = this.mod.encryption.new_uuid();
-        var expiry = (new Date()).getTime() + duration;
-        var result = await this.database.update('users', { token: token, expiry: this.mod.utils.ts_to_datetime(expiry) }, {uuid: uuid});
-        if (result != false && result.changes > 0)
-            return {
-                uuid: uuid,
-                token: token,
-                expiry: expiry
-            };
         return false;
     }
 
@@ -533,6 +517,20 @@ module.exports = class frostybot_user_module extends frostybot_module {
             //return result;
         }  
         return this.mod.output.error('log_retrieve', [uuid]);  
+    }
+
+    // Get log tail
+
+    async logtail(params) {
+        var timestamp = parseInt(params.ts);
+        var dt = new Date(timestamp);
+        var datetime = dt.toISOString().substr(0,19).replace('T', ' ');
+        //var datetime = this.mod.utils.to_mysqldatetime(dt);
+        var result = await this.database.query("SELECT * FROM `logs` WHERE uuid='" + params.user + "' AND `timestamp` > '" + datetime + "' limit 500;");
+        if (result.length > 1) {
+            return result;
+        }  
+        return [];
     }
 
     // Extract UUID from params

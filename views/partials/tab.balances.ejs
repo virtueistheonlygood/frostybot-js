@@ -2,10 +2,7 @@
 
 if (typeof(tab_balances) !== 'undefined') {
   var accounts = Object.values(tab_balances);
-  var stubs = [];
-  accounts.forEach(account => {
-    stubs.push(account.stub);
-  })
+  var stubs = tab_balances.hasOwnProperty('stubs') ? tab_balances.stubs : [];
 } else {
   var stubs = [];
 }
@@ -20,20 +17,28 @@ if (typeof(tab_balances) !== 'undefined') {
         <!--span>
           <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;"><span class="fa fa-columns"></span> Columns</button>
         </span-->
-        <span style="display: inline-block;">
-          <select id="balancesstub" style="width: 200px; display: inline-block; font-weight: normal; border-radius: 5px;">
+        <span style="display: inline-block; white-space: nowrap;">
+          <!--%- include('../partials/stub.selector.ejs', {stubs: stubs}); %--> 
+          <select id="balancesstubselector" style="width: 200px; height: 30px; font-weight: normal; border-radius: 5px; display: none;">
             <%
-              stubs.forEach(stub => {
+                stubs.forEach(stub => {
             %>
-                <option value="<%= stub %>"><%= stub %></option>
+                    <option value="<%= stub %>"><%= stub %></option>
             <%
-              });
+                });
             %>
-          </select>  
+          </select> 
         </span>
-        <span style="display: inline-block;">
-          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="balancesrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
+        <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="balancescolumnchooser" style="margin-bottom: 20px;  width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Choose Columns"><span class="fa fa-columns"></span></button>
         </span>
+        <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton jqx-fill-state-normal jqx-button" href="#" id="balancescolumnsreset" style="margin-bottom: 20px;  width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Reset Column Layout"><span class="fa fa-undo"></span></button>
+        </span>
+        <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton jqx-fill-state-normal jqx-button" href="#" id="balancesrefreshlink" style="margin-bottom: 20px; width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Refresh Data from Exchange"><span class="fas fa-sync"></span></button>
+        </span>
+
       </div>
     </div>
   </div>
@@ -54,7 +59,7 @@ if (typeof(tab_balances) !== 'undefined') {
   }
   
 </style>
-<div id="balancesgrid" style="margin-bottom: 10px;"></div>
+<div id="balancesgrid"></div>
 <script src="/scripts/notifications.js"></script>
 <script src="/scripts/api.js"></script>
 
@@ -64,80 +69,113 @@ if (typeof(tab_balances) !== 'undefined') {
         
       var griddata = {};
 
-      var balancesRefresh = setInterval(function() {
+      // Autorefresh
+
+      if (window.timers == undefined) window.timers = {};
+      if (window.timers.hasOwnProperty('balancesRefresh')) {
+        clearInterval(window.timers.balancesRefresh);
+      }
+      window.timers['balancesRefresh'] = setInterval(function() {
         var currentPage = localStorage.getItem("currentPage")
-        var lastRefresh = localStorage.getItem("lastBalancesRefresh")
-        if ((currentPage == 'tab_balances') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9500))) {
-          localStorage.setItem('lastBalancesRefresh', (new Date().getTime()))
-          getGridData(false, true);
+        if (currentPage == 'tab_balances') {
+          refreshGrid();
         }
       }, 10000)
 
-  
-      function setGridData(data) {
-        balancesSource.localdata = data;
-        $("#balancesgrid").jqxGrid('updatebounddata');
-      }
 
-      function clearBalances(stub) {
-        setGridCache(stub, []);
-        setGridData([]);
-      }
+      // Stub selector dropdown box
 
-      function getGridCache(stub) {
-        if (griddata.hasOwnProperty(stub))
-          return griddata[stub];
-        return false;
-      }
+      $("#balancesstubselector").jqxDropDownList({height: 30, width: 200, checkboxes: true, autoDropDownHeight: true });    
 
-      function setGridCache(stub, data) {
-        griddata[stub] = data;
-        return true;
-      }
+      // Initialize
 
-      function refreshCache(stub = null, quiet = false) {
-        if (stub == null)
-          stub = $("#balancestub").val();
-        var token = null;
-        if (localStorage) {
-          var token = localStorage.getItem("token");
-          if (token != null) {
-            var params = {
-              token: JSON.parse(token),
-              stub: stub,
-              ts: (new Date()).getTime()
-            };
-            if (quiet != true) setGridData([]);
-            jQuery.getJSON({
-              url: "/ui/data/griddata_balances",
-              data: params,
-              global: !quiet,
-              success: function(result) {
-                setGridCache(stub, result);
-                setGridData(result);
+      function initStubs() {
+          var items = $("#balancesstubselector").jqxDropDownList('getItems'); 
+          if (items.length == 1) {
+              $("#balancesstubselector").jqxDropDownList('checkItem', items[0]);
+              updateStubs();
+          }
+          if (items.length > 1) {
+              loadStubs();
+              var allChecked = $("#balancesstubselector").jqxDropDownList('getCheckedItems');
+              if (Array.isArray(allChecked) && allChecked.length > 0) {
+                  updateStubs();
+              } else {
+                  items.forEach(item => {
+                      $("#balancesstubselector").jqxDropDownList('checkItem', item);
+                  })
+                  updateStubs();
               }
-            });
+              $("#balancesstubselector").show();
           }
-        }
       }
 
-      function getGridData(cached = true, quiet = false) {
-        //$('#balancesgrid').jqxGrid('showloadelement');
-        var stub = $("#balancesstub").val();
-        if (cached == true) {
-          var cache = getGridCache(stub);
-          if (cache != false) {
-            setGridData(cache);
-            return true;
+      initStubs();
+
+      // Load stubs from localstorage
+
+      function loadStubs() {
+          if (localStorage) {
+              var stubs = localStorage.getItem("stubsselected");
+              if (![undefined,null,''].includes(stubs)) {
+                  $("#balancesstubselector").jqxDropDownList('uncheckAll');
+                  (stubs + ',_').split(',').forEach(filter => {
+                      if (filter != '_') {
+                          var item = $("#balancesstubselector").jqxDropDownList('getItemByValue', filter);
+                          if (item != undefined) {
+                              if (item.hasOwnProperty('index')) {
+                                  $("#balancesstubselector").jqxDropDownList('checkIndex', item.index)
+                              }
+                          }
+                      }
+                  });
+              }
           }
-        }
-        refreshCache(stub, quiet);
-        return true;
       }
-      
-  
+
+      //loadStubs();
+
+      // Update selected stubs
+
+      function updateStubs() {
+          if (localStorage) {
+              var allChecked = $("#balancesstubselector").jqxDropDownList('getCheckedItems');
+              var stubsarr = [];
+              if (Array.isArray(allChecked)) {
+                  for (var i = 0; i < allChecked.length; i++) {
+                      var item = allChecked[i];
+                      stubsarr.push(item.value);
+                  }
+              }
+              var stubs = stubsarr.join(',');
+              localStorage.setItem("stubsselected", stubs);
+          }
+      }
+
+      $("#balancesstubselector").on('checkChange', function () {
+          updateStubs();
+      });
+
+      $("#balancesstubselector").on('click', function() {
+          updateStubs();
+      });
+
+      // Get Balances Grid Data
+
+      function getSelectedStubs() {
+          var allChecked = $("#balancesstubselector").jqxDropDownList('getCheckedItems');
+          var stubsarr = [];
+          if (Array.isArray(allChecked)) {
+              for (var i = 0; i < allChecked.length; i++) {
+                  var item = allChecked[i];
+                  stubsarr.push(item.value);
+              }
+          }
+          return JSON.stringify(stubsarr);
+      }
+
       var balancesSource = {
-        localdata: griddata,
+        localdata: [],
         datafields: [
           { name: 'currency', type: 'string', },
           { name: 'base_free', type: 'number' },
@@ -149,16 +187,62 @@ if (typeof(tab_balances) !== 'undefined') {
         ],
         datatype: "json"
       };
+
+      function setGridData(data) {
+        balancesSource.localdata = data;
+        $("#balancesgrid").jqxGrid('updatebounddata');
+        setPlaceHolderMessage("No balances found for the selected stub(s).");
+        //setTimeout(function () {
+        //  $(".jqx-grid-empty-cell span").html("<em>No balances found for selected stub(s).</em>");
+        //}, 100);
+      }
+
+      function refreshGrid(forcerefresh = false, quiet = true) {
+        if (localStorage) {
+          var token = localStorage.getItem("token");
+          if (token != null) {
+            var params = {
+              token: JSON.parse(token),
+              stubs: getSelectedStubs(),
+              ts: (new Date()).getTime(),
+              forcerefresh: forcerefresh,
+            };
+            if (quiet != true) setGridData([]);
+            setPlaceHolderMessage("Refreshing balances...")
+            jQuery.getJSON({
+                url: "/ui/data/griddata_balances",
+                data: params,
+                global: !quiet,
+                success: function(result) {
+                  setGridData(result);
+                }
+            });
+          }
+        }
+      }
+
+      var balancesSource = {
+        localdata: griddata,
+        datafields: [
+          { name: 'stub', type: 'string', },
+          { name: 'currency', type: 'string', },
+          { name: 'base_free', type: 'number' },
+          { name: 'base_used', type: 'number' },
+          { name: 'base_total', type: 'number' },
+          { name: 'usd_free', type: 'number' },
+          { name: 'usd_used', type: 'number' },
+          { name: 'usd_total', type: 'number' },
+        ],
+        datatype: "json"
+      };
   
-      var balancesAdapter = new $.jqx.dataAdapter(balancesSource);
-  
-      var gridheight = $(window).height() - 420;
-      if (gridheight < 300) gridheight = 300;
-  
-  
+      var balancesAdapter = new $.jqx.dataAdapter(balancesSource, {autobind: false});
+
+      var initialState = null;
+
       $("#balancesgrid").jqxGrid({
         width: '100%',
-        height: gridheight,
+        autoheight: true,
         source: balancesAdapter,
         columnsresize: true,
         filterable: true,
@@ -169,12 +253,19 @@ if (typeof(tab_balances) !== 'undefined') {
         columnsheight: 20,
         rowsheight: 20,
         theme: 'dark',
-        showemptyrow: false,
+        showemptyrow: true,
+        selectionmode: 'none',
         columnsmenu: true,
         autosavestate: true,
         autoloadstate: true,
+        showdefaultloadelement: false,
+        enablehover: false,
+        ready: function () {
+          initialState = $("#balancesgrid").jqxGrid('getstate');
+        },
         columns: [
-          { text: 'Currency', datafield: 'currency', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Balances: </b><font>' + value +'</div>'; }); return renderstring; } },
+          { text: 'Stub', datafield: 'stub', filtertype: 'checkedlist', width: 'auto' },
+          { text: 'Currency', datafield: 'currency', filtertype: 'checkedlist', width:  100, aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Balances: </b><font>' + value +'</div>'; }); return renderstring; } },
           { text: 'Free', datafield: 'base_free', columngroup: 'base', hideable: true, width: 120, align: 'right', cellsalign: 'right', cellsformat: 'd4'},
           { text: 'Used', datafield: 'base_used', columngroup: 'base', hideable: true, width: 120, align: 'right', cellsalign: 'right', cellsformat: 'd4'},
           { text: 'Total', datafield: 'base_total', columngroup: 'base', hideable: true, width: 120, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
@@ -187,38 +278,38 @@ if (typeof(tab_balances) !== 'undefined') {
           { text: 'USD Value', align: 'center', name: 'usd' },
         ],
       });
-    
-      $("#balancesstub").jqxDropDownList({height: 30, width: 150});
 
-      if (localStorage) {
-        var balancesstubselected = localStorage.getItem("balancesstubselected");
-        if (balancesstubselected != null) {
-          $("#balancesstub").val(balancesstubselected);
-        }
+      function setPlaceHolderMessage(text) {
+        var localizationobject = {};
+        localizationobject.emptydatastring = text;
+        $("#balancesgrid").jqxGrid('localizestrings', localizationobject);
       }
 
-  
-      $("#balancesrefreshlink").on('click', function() {
-        getGridData(false);
+      setPlaceHolderMessage("No balances found for the selected stub(s).");
+    
+      $("#balancesstubselector").on('checkChange', function () {
+        refreshGrid();
       });
 
-        
-      $("#balancesstub").on('change', function() {
-        var stub = $("#balancesstub").val();
-        if (localStorage) {
-          localStorage.setItem("balancesstubselected", stub);
-        }
-        getGridData(true);
+       
+      $("#balancesrefreshlink").on('click', function() {
+        refreshGrid(true, false);
       });
-  
-      getGridData(true);
+
+      $("#balancescolumnsreset").on('click', function() {
+        $("#balancesgrid").jqxGrid('loadstate', initialState);
+      });
+
       $('#balancesnavbar').show();
 
-      $("#columnchooser").jqxButton();
-      $("#columnchooser").on('click', function () {
+      $("#balancescolumnchooser").jqxButton();
+      $("#balancescolumnchooser").on('click', function () {
           $("#balancesgrid").jqxGrid('openColumnChooser');
       });
-  
+
+      refreshGrid();
+      $("#balancesgrid").jqxGrid('clearselection');
+
     });
     
   </script>

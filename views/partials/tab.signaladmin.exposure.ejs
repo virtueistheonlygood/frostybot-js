@@ -1,0 +1,189 @@
+
+<div class="row flex-nowrap" style="margin: 0px; overflow: hidden;">
+  <div id="grid_signaladmin_exposure" style="width: 450px; min-height: 615px; margin: 0px; padding: 0px;"></div>
+  <div style="width: 505px; min-height: 615px; text-align: center">
+    <div id="chart_signaladmin_exposure" style="min-height: 550px; padding: 0px; margin: 0px;"></div>
+  </div>
+</div>
+          
+<style type="text/css">
+  .red   { color: #BB0000; }
+  .green { color: #008800; }
+</style>
+
+<!--div id="positionsgrid" style="margin-bottom: 10px;"></div-->
+<script src="/scripts/notifications.js"></script>
+<script src="/scripts/api.js"></script>
+
+<script type="text/javascript">
+  
+    $(document).ready(function () {
+      
+      var panelheight = $(window).height() - 320;
+      if (panelheight < 300) panelheight = 300;
+
+      var gridheight = panelheight - 35;
+
+      if (localStorage) {
+        var token = localStorage.getItem("token");
+        if (token != null) {
+          var token = JSON.parse(token);
+        }
+      }
+
+      // Get Exposure Grid Data
+
+      var exposureSource = {
+        url: '/ui/data/griddata_signaladmin_exposure',
+        data: {
+          token: token
+        },
+        datafields: [
+          { name: 'exchange', type: 'string', },
+          { name: 'symbol', type: 'string', },
+          { name: 'qty', type: 'number' },
+          { name: 'total', type: 'number' },
+          { name: 'pnl', type: 'number' },
+          { name: 'actions', type: 'string' },
+        ],
+        datatype: "json"
+      };
+  
+      var exposureAdapter = new $.jqx.dataAdapter(exposureSource);
+
+      // Exchange Renderer
+
+      function exchange_renderer(row, columnfield, value, defaulthtml, columnproperties) {
+        switch (value) {
+          case 'binance_spot'    : var name = 'Binance (S)'; break;
+          case 'binance_margin'  : var name = 'Binance (M)'; break;
+          case 'binance_futures' : var name = 'Binance (F)'; break;
+          case 'binance_coinm'   : var name = 'Binance (C)'; break;
+          case 'binanceus'       : var name = 'Binance.us'; break;
+          case 'ftx'             : var name = 'FTX.com'; break;
+          case 'ftxus'           : var name = 'FTX.us'; break;
+          case 'deribit'         : var name = 'Deribit'; break;
+          case 'bitmex'          : var name = 'Bitmex'; break;
+          default                : var name = value; break;
+        }
+        return '<font style="margin: 5px;">' + name + '</font>'
+      }
+
+      // Symbol Renderer
+
+      function symbol_renderer(row, columnfield, value, defaulthtml, columnproperties) {
+        var name = String(value).toUpperCase().replace('/','').replace('-','')
+        return '<font style="margin: 5px;">' + name + '</font>'
+      }
+
+      // Aggregate Currency Renderer
+
+      function currency_total(aggregates) {
+        var renderstring = ""; 
+        $.each(aggregates, function (key, value) { 
+          var number = String(value).replace('$','').replace(/,/g, '').replace(/ /g, '');
+          renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + (number < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; 
+        }); 
+        return renderstring; 
+      }
+
+      // Aggregate Number Renderer
+
+      function number_total(aggregates) {
+        var renderstring = ""; 
+        $.each(aggregates, function (key, value) { 
+          renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font><b>' + value +'</b></font></div>'; 
+        }); 
+        return renderstring; 
+      }
+
+      // Currency Class
+
+      function currency_class(row, column, value, data) {
+        var number = String(value).replace('$','').replace(/,/g, '').replace(/ /g, '');
+        return number < 0 ? "red" : "green"
+      }
+
+      // Exposure Grid
+
+      $("#grid_signaladmin_exposure").jqxGrid({
+        width: 450,
+        height: 615,
+        autoshowloadelement: false,
+        source: exposureSource,
+        columnsresize: true,
+        filterable: true,
+        sortable: true,
+        showaggregates: true,
+        showstatusbar: true,
+        statusbarheight: 23,
+        columnsheight: 20,
+        rowsheight: 20,
+        theme: 'dark',
+        enablehover: false,
+        selectionmode: 'none',
+        ready: function () {
+          refresh_exposure_chart();
+        },
+        columns: [
+          { text: 'Exchange', datafield: 'exchange', filtertype: 'checkedlist', width: 'auto', cellsrenderer: exchange_renderer },
+          { text: 'Symbol', datafield: 'symbol', filtertype: 'checkedlist', width: 100, cellsrenderer: symbol_renderer },
+          { text: 'Qty', datafield: 'qty', width: 50, align: 'right', cellsalign: 'center', align: 'center', aggregates: ['sum'], aggregatesrenderer: number_total, cellsformat: 'd0' },
+          { text: 'Total ($)', datafield: 'total', width: 135, align: 'right', cellsalign: 'right', cellsformat: 'c2', aggregatesrenderer: currency_total, cellsalign: 'right', cellclassname: currency_class, aggregates: ['sum']},
+          //{ text: 'PNL ($)', datafield: 'pnl', width: 135, align: 'right', cellsalign: 'right', cellsformat: 'c2', aggregatesrenderer: currency_total, cellsalign: 'right', cellclassname: currency_class, aggregates: ['sum']},
+          //{ text: 'Actions', datafield: 'actions', width: 90, align: 'center', cellsalign: 'center' }, 
+        ]
+      });
+
+      var rows = $("#grid_signaladmin_exposure").jqxGrid('getrows');
+
+      // Customer Exposure Chart
+      $('#chart_signaladmin_exposure').jqxChart({
+        title: "Exposure by Pair",
+        description: "",
+        enableAnimations: true,
+        showLegend: true,
+        padding: { left: 5, top: 5, right: 5, bottom: 5 },
+        source: rows,
+        colorScheme: 'scheme02',
+        borderLineColor: 'White',
+        seriesGroups: [
+          {
+            type: 'pie',
+            //showLabels: true,
+            xAxis:  {
+              formatSettings: { prefix: '' }
+            },
+            series: [{ 
+                dataField: 'total',
+                displayText: 'symbol',
+                labelRadius: 120,
+                initialAngle: 15,
+                radius: 170,
+                centerOffset: 0,
+                formatSettings: { prefix: '$', decimalPlaces: 2 }                
+            }]
+          }
+        ]
+      });
+
+      // Update Chart
+
+      function refresh_exposure_chart() {
+        var rows = $("#grid_signaladmin_exposure").jqxGrid('getrows');
+        var chart = $('#chart_signaladmin_exposure').jqxChart('getInstance');
+        chart.source = rows;
+        chart.update();
+      }
+
+      refresh_exposure_chart();
+
+      // Link Chart to Grid
+
+      $("#grid_signaladmin_exposure").on('filter', function () {
+        refresh_exposure_chart();
+      });
+
+    });
+
+</script>

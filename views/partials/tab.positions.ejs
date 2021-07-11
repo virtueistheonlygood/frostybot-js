@@ -2,14 +2,9 @@
 
 if (typeof(tab_positions) !== 'undefined') {
   var accounts = tab_positions.hasOwnProperty('accounts') ? tab_positions.accounts : [];
-  var showspot = tab_positions.hasOwnProperty('showspot') ? tab_positions.showspot : false;
   var showchart = tab_positions.hasOwnProperty('showchart') ? tab_positions.showchart : false;
-  var stubs = [];
-  Object.values(accounts).forEach(account => {
-    stubs.push(account.stub);
-  })
+  var stubs = tab_positions.hasOwnProperty('stubs') ? tab_positions.stubs : [];
 } else {
-  var showspot = false;
   var stubs = [];
 }
 
@@ -19,43 +14,43 @@ if (typeof(tab_positions) !== 'undefined') {
   <div class="row">
     <div class="col "><p class="m-0" id="positionstitle">Positions</p></div>
     <div class="col text-right">
-      <div class="float-right" id="positionsnavbar" style="width: 700px; vertical-align: middle; float: right; margin-right: 10px; display: none;">
+      <div class="float-right" id="positionsnavbar" style="white-space: nowrap; vertical-align: center; float: right; margin-right: 10px; display: none;">
         <span style="display: inline-block; white-space: nowrap;">
-          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsclosealllink" style="margin-bottom: 20px; width: 100px; color: red"><span class="fa fa-close"></span> Close All</button>
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsclosealllink" style="margin-bottom: 20px; width: 100px; color: red; display: none;"><span class="fas fa-times"></span> Close</button>
         </span>
         <span style="display: inline-block; white-space: nowrap;">
-          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="columnchooser" style="margin-bottom: 20px; width: 100px;">
-          <span class="fa fa-columns" style="display: inline-block;"></span> Columns</button>
-        </span>
-        <span style="display: inline-block; white-space: nowrap;">
-          <select id="positionsstub" style="width: 200px; display: inline-block; font-weight: normal; border-radius: 5px;">
+          <!--%- include('../partials/stub.selector.ejs', {stubs: stubs}); %--> 
+          <select id="positionsstubselector" style="width: 200px; height: 30px; font-weight: normal; border-radius: 5px; display: none;">
             <%
-              stubs.forEach(stub => {
+                stubs.forEach(stub => {
             %>
-                <option value="<%= stub %>"><%= stub %></option>
+                    <option value="<%= stub %>"><%= stub %></option>
             <%
-              });
+                });
             %>
-          </select>  
+          </select> 
         </span>
         <span style="display: inline-block; white-space: nowrap;">
-          <div id="positionsshowchart" style='margin-left: 10px; font-weight: normal'><span>Show Chart</span></div>
+          <div id="positionsshowchart" style='margin-left: 10px; font-weight: normal; margin-right: 10px'><span>Show Chart</span></div>
         </span>
         <span style="display: inline-block; white-space: nowrap;">
-          <div id="positionsshowspot" style='margin-left: 10px; font-weight: normal'><span>Show Spot</span></div>
+          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionscolumnchooser" style="margin-bottom: 20px;  width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Choose Columns"><span class="fa fa-columns"></span></button>
         </span>
         <span style="display: inline-block; white-space: nowrap;">
-          <button type="button" class="btn btn-default frostybot-navbutton" href="#" id="positionsrefreshlink" style="margin-bottom: 20px;"><span class="fa fa-refresh"></span> Refresh</button>
+          <button type="button" class="btn btn-default frostybot-navbutton jqx-fill-state-normal jqx-button" href="#" id="positionscolumnsreset" style="margin-bottom: 20px;  width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Reset Column Layout"><span class="fa fa-undo"></span></button>
+        </span>
+        <span style="display: inline-block; white-space: nowrap;">
+          <button type="button" class="btn btn-default frostybot-navbutton jqx-fill-state-normal jqx-button" href="#" id="positionsrefreshlink" style="margin-bottom: 20px; width: 30px;" data-toggle="tooltip" data-placement="bottom" title="Refresh Data from Exchange"><span class="fas fa-sync"></span></button>
         </span>
       </div>
     </div>
   </div>
 </div>
-<div class="frostybot-panel-content" >
-  <div id="table_positions"></div>
-</div>
+<!--div class="frostybot-panel-content" -->
 
-</div>
+<div id="table_positions"></div>
+
+
 
 <style type="text/css">
   .red {
@@ -67,8 +62,8 @@ if (typeof(tab_positions) !== 'undefined') {
   }
   
 </style>
-<div id="positionsgrid" style="margin-bottom: 10px; height: 100px;"></div>
-<iframe id="chartpanel" style="height: 350px; width: 100%; overflow: hidden!important; <%= (!showchart ? 'display: none;' : '') %>"></iframe>
+<div id="positionsgrid"></div>
+<iframe id="chartpanel" scrolling="no" style="overflow: hidden;"></iframe>
 <script src="/scripts/notifications.js"></script>
 <script src="/scripts/api.js"></script>
 
@@ -76,100 +71,131 @@ if (typeof(tab_positions) !== 'undefined') {
   
     $(document).ready(function () {
         
-      var griddata = {};
-      var showspot = '<%=showspot%>' == 'true' ? true : false;
       var showchart = '<%=showchart%>' == 'true' ? true : false;
 
-      var positionsRefresh = setInterval(function() {
+      var griddata = {};
+
+      if (showchart == false) {
+        $('#chartpanel').hide();
+      }
+
+      // Get auth token
+
+      if (localStorage) {
+        var token = localStorage.getItem("token");
+        if (token != null) {
+          var token = JSON.parse(token);
+        }
+      }
+
+      // Stub selector dropdown box
+
+      $("#positionsstubselector").jqxDropDownList({height: 30, width: 200, checkboxes: true, autoDropDownHeight: true });    
+
+      // Initialize
+
+      function initStubs() {
+          var items = $("#positionsstubselector").jqxDropDownList('getItems'); 
+          if (items.length == 1) {
+              $("#positionsstubselector").jqxDropDownList('checkItem', items[0]);
+              updateStubs();
+          }
+          if (items.length > 1) {
+              loadStubs();
+              var allChecked = $("#positionsstubselector").jqxDropDownList('getCheckedItems');
+              if (Array.isArray(allChecked) && allChecked.length > 0) {
+                  updateStubs();
+              } else {
+                  items.forEach(item => {
+                      $("#positionsstubselector").jqxDropDownList('checkItem', item);
+                  })
+                  updateStubs();
+              }
+              $("#positionsstubselector").show();
+          }
+      }
+
+      initStubs();
+
+      // Load stubs from localstorage
+
+      function loadStubs() {
+          if (localStorage) {
+              var stubs = localStorage.getItem("stubsselected");
+              if (![undefined,null,''].includes(stubs)) {
+                  $("#positionsstubselector").jqxDropDownList('uncheckAll');
+                  (stubs + ',_').split(',').forEach(filter => {
+                      if (filter != '_') {
+                          var item = $("#positionsstubselector").jqxDropDownList('getItemByValue', filter);
+                          if (item != undefined) {
+                              if (item.hasOwnProperty('index')) {
+                                  $("#positionsstubselector").jqxDropDownList('checkIndex', item.index)
+                              }
+                          }
+                      }
+                  });
+              }
+          }
+      }
+
+      //loadStubs();
+
+      // Update selected stubs
+
+      function updateStubs() {
+          if (localStorage) {
+              var allChecked = $("#positionsstubselector").jqxDropDownList('getCheckedItems');
+              var stubsarr = [];
+              if (Array.isArray(allChecked)) {
+                  for (var i = 0; i < allChecked.length; i++) {
+                      var item = allChecked[i];
+                      stubsarr.push(item.value);
+                  }
+              }
+              var stubs = stubsarr.join(',');
+              localStorage.setItem("stubsselected", stubs);
+          }
+      }
+
+      $("#positionsstubselector").on('checkChange', function () {
+          updateStubs();
+      });
+
+      $("#positionsstubselector").on('click', function() {
+          updateStubs();
+      });
+
+      // Autorefresh
+
+      if (window.timers == undefined) window.timers = {};
+      if (window.timers.hasOwnProperty('positionsRefresh')) {
+        clearInterval(window.timers.positionsRefresh);
+      }
+      window.timers['positionsRefresh'] = setInterval(function() {
         var currentPage = localStorage.getItem("currentPage")
-        var lastRefresh = localStorage.getItem("lastPositionsRefresh")
-        if ((currentPage == 'tab_positions') && ((lastRefresh == null) || ((new Date().getTime()) - lastRefresh > 9500))) {
-          localStorage.setItem('lastPositionsRefresh', (new Date().getTime()))
-          getGridData(false, true);
+        if (currentPage == 'tab_positions') {
+          refreshGrid();
         }
       }, 10000)
 
-     
-      function setGridData(data) {
-        positionsSource.localdata = data;
-        $("#positionsgrid").jqxGrid('updatebounddata');
-        $('.closepositionlink').on('click', function() {
-          var stub = $(this).attr('data-stub');
-          var symbol = $(this).attr('data-symbol');
-          if (confirm("Are you sure you wish to close your " + symbol + " position?")) {
-            closePosition(stub, symbol)
-          }
-        });
-      }
+      // Get Positions Grid Data
 
-      function removePosition(stub, symbol) {
-        var data = getGridCache(stub).filter(item => item.symbol != symbol);
-        setGridCache(stub, data);
-        setGridData(data);
-      }
-
-      function clearPositions(stub) {
-        setGridCache(stub, []);
-        setGridData([]);
-      }
-
-      function getGridCache(stub) {
-        if (griddata.hasOwnProperty(stub))
-          return griddata[stub];
-        return false;
-      }
-
-      function setGridCache(stub, data) {
-        griddata[stub] = data;
-        return true;
-      }
-
-      function refreshCache(stub = null, quiet = false) {
-        if (stub == null)
-          stub = $("#positionsstub").val();
-        var showspot = $("#positionsshowspot").jqxCheckBox('val');
-        var token = null;
-        if (localStorage) {
-          var token = localStorage.getItem("token");
-          if (token != null) {
-            var params = {
-              token: JSON.parse(token),
-              stub: stub,
-              showspot: showspot,
-              ts: (new Date()).getTime()
-            };
-            if (quiet != true) setGridData([]);
-            jQuery.getJSON({
-              url: "/ui/data/griddata_positions",
-              data: params,
-              global: !quiet,
-              success: function(result) {
-                setGridCache(stub, result);
-                setGridData(result);
+      function getSelectedStubs() {
+          var allChecked = $("#positionsstubselector").jqxDropDownList('getCheckedItems');
+          var stubsarr = [];
+          if (Array.isArray(allChecked)) {
+              for (var i = 0; i < allChecked.length; i++) {
+                  var item = allChecked[i];
+                  stubsarr.push(item.value);
               }
-            });
           }
-        }
+          return JSON.stringify(stubsarr);
       }
 
-      function getGridData(cached = true, quiet = false) {
-        //$('#positionsgrid').jqxGrid('showloadelement');
-        var stub = $("#positionsstub").val();
-        if (cached == true) {
-          var cache = getGridCache(stub);
-          if (cache != false) {
-            setGridData(cache);
-            return true;
-          }
-        }
-        refreshCache(stub, quiet);
-        return true;
-      }
-      
-  
       var positionsSource = {
-        localdata: griddata,
+        localdata: [],
         datafields: [
+          { name: 'stub', type: 'string', },
           { name: 'symbol', type: 'string', },
           { name: 'type', type: 'string', },
           { name: 'direction', type: 'string', },
@@ -182,20 +208,93 @@ if (typeof(tab_positions) !== 'undefined') {
           { name: 'entry_value', type: 'number' },
           { name: 'current_value', type: 'number' },
           { name: 'pnl', type: 'number' },
-          { name: 'actions', type: 'string', },
           { name: 'tvsymbol', type: 'string', },
+          { name: 'chart', type: 'string', },
+          { name: 'close', type: 'string', },
         ],
         datatype: "json"
       };
-  
-      var positionsAdapter = new $.jqx.dataAdapter(positionsSource);
-  
-      /*var gridheight = $(window).height() - 420;
-      if (gridheight < 300) gridheight = 300;*/
-  
-  
+
+      function setGridData(data) {
+        var state = $("#positionsgrid").jqxGrid('getstate');
+        positionsSource.localdata = data;
+        $("#positionsgrid").jqxGrid('updatebounddata');
+        $("#positionsgrid").jqxGrid('loadstate', state);
+        $("#positionsgrid").jqxGrid('savestate');
+        setPlaceHolderMessage("No open positions found for your selected stubs and filters.");
+      }
+
+      function refreshGrid(forcerefresh = false, quiet = true) {
+        if (localStorage) {
+          var token = localStorage.getItem("token");
+          if (token != null) {
+            var params = {
+              token: JSON.parse(token),
+              stubs: getSelectedStubs(),
+              ts: (new Date()).getTime(),
+              forcerefresh: forcerefresh,
+            };
+            if (quiet != true) setGridData([]);
+            setPlaceHolderMessage("Refreshing positions...");
+            jQuery.getJSON({
+                url: "/ui/data/griddata_positions",
+                data: params,
+                global: !quiet,
+                success: function(result) {
+                  setGridData(result);
+                  $("a.showchartlink").on('click', function(e) {
+                    var stub = $(this).attr("data-stub");
+                    var symbol = $(this).attr("data-symbol");
+                  })
+                }
+            });
+          }
+        }
+      }
+
+
+      var positionsAdapter = new $.jqx.dataAdapter(positionsSource, {autobind: false});
+
+      // Symbol Renderer
+
+      function symbol_renderer(row, columnfield, value, defaulthtml, columnproperties) {
+        var name = String(value).toUpperCase().replace('/','').replace('-','')
+        return '<font style="margin: 5px;">' + name + '</font>'
+      }
+
+      // Aggregate Currency Renderer
+
+      function currency_total(aggregates) {
+        var renderstring = ""; 
+        $.each(aggregates, function (key, value) { 
+          var number = String(value).replace('$','').replace(/,/g, '').replace(/ /g, '');
+          renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + (number < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; 
+        }); 
+        return renderstring; 
+      }
+
+      // Aggregate Number Renderer
+
+      function number_total(aggregates) {
+        var renderstring = ""; 
+        $.each(aggregates, function (key, value) { 
+          renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font><b>' + value +'</b></font></div>'; 
+        }); 
+        return renderstring; 
+      }
+
+      // Currency Class
+
+      function currency_class(row, column, value, data) {
+        var number = String(value).replace('$','').replace(/,/g, '').replace(/ /g, '');
+        return number < 0 ? "red" : "green"
+      }      
+      
+      var initialState = null;
+
       $("#positionsgrid").jqxGrid({
         width: '100%',
+        //height: 100,
         autoheight: true,
         source: positionsAdapter,
         columnsresize: true,
@@ -211,102 +310,160 @@ if (typeof(tab_positions) !== 'undefined') {
         columnsmenu: true,
         autosavestate: true,
         autoloadstate: true,
+        showdefaultloadelement: false,
+        showemptyrow: true,
+        selectionmode: 'checkbox',
+        enablehover: false,
+        ready: function () {
+          initialState = $("#positionsgrid").jqxGrid('getstate');
+          setTimeout(function() {
+            $("#positionsgrid").jqxGrid('clearselection');
+          }, 200);
+        },
         columns: [
-          { text: 'Symbol', datafield: 'symbol', filtertype: 'checkedlist', width: 'auto', aggregates: ['count'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>Positions: </b><font>' + value +'</div>'; }); return renderstring; } },
-          { text: 'Type', datafield: 'type', hideable: true, filtertype: 'checkedlist', width: 75 },
-          { text: 'Direction', datafield: 'direction', hideable: true, width: 80, cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" }  },
-          { text: 'Base Size', datafield: 'base_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
-          { text: 'Quote Size', datafield: 'quote_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
-          { text: 'USD Size', datafield: 'usd_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><b>' + value +'</b></div>'; }); return renderstring; }, cellsformat: 'c2', cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" } },
+          { text: 'Stub', datafield: 'stub', filtertype: 'checkedlist', width: 'auto' },
+          { text: 'Symbol', datafield: 'symbol', filtertype: 'checkedlist', width: 100, cellsrenderer: symbol_renderer },
+          //{ text: 'Type', datafield: 'type', hideable: true, filtertype: 'checkedlist', width: 75 },
+          { text: 'Direction', datafield: 'direction', align: 'center', cellsalign: 'center', hideable: true, width: 80, cellclassname: function(row, column, value, data) { return data.direction == "short" ? "red" : "green" }  },
+          { text: 'Base Size', datafield: 'base_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: currency_class },
+          { text: 'Quote Size', datafield: 'quote_size', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4', cellclassname: currency_class },
+          { text: 'USD Value', datafield: 'usd_size', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'c2', aggregatesrenderer: currency_total, cellsalign: 'right', cellclassname: currency_class, aggregates: ['sum']},
           { text: 'Entry Price', datafield: 'entry_price', hideable: true, hidden: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
           { text: 'Mark Price', datafield: 'current_price', hideable: true, hidden: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
           { text: 'Est Liq Price', datafield: 'liquidation_price', hideable: true, width: 100, align: 'right', cellsalign: 'right', cellsformat: 'd4' },
           //{ text: 'Current Value ($)', datafield: 'usd_size', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return data.pnl < 0 ? "red" : "green" }, aggregates: ['sum'] },
-          { text: 'PNL', datafield: 'pnl', hideable: true, width: 100, align: 'right', aggregates: ['sum'], aggregatesrenderer: function (aggregates) { var renderstring = ""; $.each(aggregates, function (key, value) { renderstring += '<div style="position: relative; margin: 4px; overflow: hidden;"><font class="' + ((value.replace('$','') * 1) < 0 ? 'red' : 'green') + '"><b>' + value +'</b></font></div>'; }); return renderstring; }, cellsalign: 'right', cellsformat: 'c2', cellclassname: function(row, column, value, data) { return value < 0 ? "red" : "green" }, aggregates: ['sum'] },
-          { text: 'Actions', datafield: 'actions', align: 'center', cellsalign: 'center', width: 75 },
+          { text: 'PNL ($)', datafield: 'pnl', width: 100, align: 'right', cellsalign: 'right', cellsformat: 'c2', aggregatesrenderer: currency_total, cellsalign: 'right', cellclassname: currency_class, aggregates: ['sum']},
+          { text: 'Chart', datafield: 'chart', align: 'center', cellsalign: 'center', width: 50 },
+          { text: 'Close', datafield: 'close', align: 'center', cellsalign: 'center', width: 50 },
         ]
       });
-  
-      function closePosition(stub, symbol) {
-        showNotice('Closing position on ' + symbol + '...');
-        removePosition(stub, symbol);
-        api('trade:close', { stub: stub, symbol: symbol, silent: true }, function(json) {
+
+      function setPlaceHolderMessage(text) {
+        var localizationobject = {};
+        localizationobject.emptydatastring = text;
+        $("#positionsgrid").jqxGrid('localizestrings', localizationobject);
+      }
+
+      setPlaceHolderMessage("No open positions found for your selected stubs and filters.");
+
+
+      // Close Position
+
+      function closePosition(stub, symbol, direction) {
+        showNotice('Closing ' + direction + ' position on ' + symbol + '...');
+        api('trade:close', { stub: stub, symbol: symbol, direction: direction, force: true, silent: true }, function(json) {
           if (json.result == "success") {
-            showSuccess(symbol + ' position closed successfully');
-            griddata[stub] = griddata[stub].filter(item => item.symbol = symbol);
+            showSuccess(symbol + ' ' + direction + ' position closed successfully');
+            removePosition(stub, symbol, direction);
           } else {
-            showFail('Failed to close position on ' + symbol)
+            showFail('Failed to close ' + direction + ' position on ' + symbol)
           }
         });            
       }
-    
-      // display selected row index.
-      $("#positionsgrid").on('rowselect', function (event) {
-        var rowindex = event.args.rowindex;
+
+      // Remove position from grid
+
+      function removePosition(stub, symbol, direction) {
+        var rows = $('#positionsgrid').jqxGrid('getrows');
+        rows
+          .filter(row => row.stub == stub && row.symbol == symbol && row.direction == direction)
+          .forEach(row => {
+            var index = row.boundindex;
+            var rowid = $('#positionsgrid').jqxGrid('getrowid', index);
+            $('#positionsgrid').jqxGrid('deleterow', rowid);
+          });
+      }
+
+      // Grid Actions Handler
+
+      $("#positionsgrid").on("cellclick", function (event) {
+        var args = event.args;
+        var datafield = args.datafield;
+        var rowindex = args.rowindex;
         var data = $('#positionsgrid').jqxGrid('getrowdata', rowindex);
-        var symbol = data.tvsymbol;
-        if (symbol != localStorage.getItem('currentchartsymbol')) {
-          $("#chartpanel").attr('src',"/ui/chart?symbol=" + symbol);
-          localStorage.setItem('currentchartsymbol', symbol)
+        switch (datafield) {
+          case 'chart' :  var tvsymbol = data.tvsymbol;
+                          toggleChart(tvsymbol)
+                          break;
+          case 'close' :  var stub = data.stub;
+                          var symbol = data.symbol;
+                          var direction = data.direction;
+                          if (confirm('Are you sure you want to close your ' + direction + ' on ' + symbol + ' for stub ' + stub + '?')) {
+                            closePosition(stub, symbol, direction);
+                          }
+                          break;
+        }
+      });  
+    
+
+      // Row selection handling
+
+      $("#positionsgrid").on('rowselect', function (event) {
+        var rowindexes = $('#positionsgrid').jqxGrid('getselectedrowindexes');
+        if (Array.isArray(rowindexes) && rowindexes.length > 0) {
+          $("#positionsclosealllink").show();
+        } else {
+          $("#positionsclosealllink").hide();
         }
       });
-
+    
+      $("#positionsgrid").on('rowunselect', function (event) {
+        var rowindexes = $('#positionsgrid').jqxGrid('getselectedrowindexes');
+        if (Array.isArray(rowindexes) && rowindexes.length > 0) {
+          $("#positionsclosealllink").show();
+        } else {
+          $("#positionsclosealllink").hide();
+        }
+      });
+    
 
       function updateChart(content) {
         $("#chartpanel").html(content);
       }
 
-      $("#positionsstub").jqxDropDownList({height: 30, width: 150});
-
-      if (localStorage) {
-        var positionsstubselected = localStorage.getItem("positionsstubselected");
-        if (positionsstubselected != null) {
-          $("#positionsstub").val(positionsstubselected);
-        }
-      }
-
-      $("#positionsshowspot").jqxCheckBox({ height: 30, width: 100, checked: showspot});
-      $("#positionsshowspot").on('change', function() {
-          refreshCache();
-      });
-  
       $("#positionsshowchart").jqxCheckBox({ height: 30, width: 100, checked: showchart});
       $("#positionsshowchart").on('change', function() {
           toggleChart();
       });
   
+      $("#positionscolumnsreset").on('click', function() {
+        $("#positionsgrid").jqxGrid('loadstate', initialState);
+      });
+
       $("#positionsrefreshlink").on('click', function() {
-        getGridData(false);
+        refreshGrid(true, false);
       });
 
       $("#positionsclosealllink").on('click', function() {
-        var stub = $("#positionsstub").val();
-        if (confirm('Are you sure you want to close all positions on ' + stub + '?')) {
-            clearPositions(stub);
-            showNotice('Closing all positions on ' + stub + '...');
-            api('trade:closeall', { stub: stub, silent: true }, function(json) {
-                if (json.result == "success") {
-                    showSuccess('All positions on ' + stub + ' closed successfully');
-                } else {
-                    showFail('Failed to close all positions')
-                }
-            });      
+        var rowindexes = $('#positionsgrid').jqxGrid('getselectedrowindexes');
+        if (confirm('Are you sure you want to close ' + rowindexes.length + ' selected positions?')) {
+          var deleteQueue = [];
+          rowindexes.forEach(rowindex => {
+            var data = $('#positionsgrid').jqxGrid('getrowdata', rowindex);
+            var stub = data.stub;
+            var symbol = data.symbol;
+            var direction = data.direction;
+            deleteQueue.push({
+              stub: stub,
+              symbol: symbol,
+              direction: direction
+            });
+          });
+          deleteQueue.forEach(item => {
+            closePosition(item.stub, item.symbol, item.direction);
+          });
+          $("#positionsgrid").jqxGrid('clearselection');
         }
       });
          
-      $("#positionsstub").on('change', function() {
-        var stub = $("#positionsstub").val();
-        if (localStorage) {
-          localStorage.setItem("positionsstubselected", stub);
-        }
-        getGridData(true);
+      $("#positionsstubselector").on('checkChange', function () {
+          refreshGrid();
       });
-  
-      getGridData(true);
+
       $('#positionsnavbar').show();
 
-      $("#columnchooser").jqxButton();
-      $("#columnchooser").on('click', function () {
+      $("#positionscolumnchooser").jqxButton();
+      $("#positionscolumnchooser").on('click', function () {
           $("#positionsgrid").jqxGrid('openColumnChooser');
       });
 
@@ -325,12 +482,14 @@ if (typeof(tab_positions) !== 'undefined') {
         });
       }
 
-      function toggleChart() {
+      function toggleChart(symbol) {
         var showchart = $("#positionsshowchart").jqxCheckBox('val');
-        if (showchart) {
-          var rowindex = $('#positionsgrid').jqxGrid('getselectedrowindex');
-          var data = $('#positionsgrid').jqxGrid('getrowdata', rowindex);
-          var symbol = data.tvsymbol;
+        if (showchart == true || symbol != undefined) {
+          if (symbol == undefined) {
+            var data = $('#positionsgrid').jqxGrid('getrowdata', 0);
+            var symbol = data.tvsymbol;
+          }
+          $("#positionsshowchart").jqxCheckBox('checked', true);
           $("#chartpanel").attr('src',"/ui/chart?symbol=" + symbol);
           localStorage.setItem('currentchartsymbol', symbol)
           update('gui:showchart', true)
@@ -344,9 +503,16 @@ if (typeof(tab_positions) !== 'undefined') {
 
       if (showchart) {
         var symbol = localStorage.getItem('currentchartsymbol');
+        if (symbol == undefined) {
+          var data = $('#positionsgrid').jqxGrid('getrowdata', 0);
+          var symbol = data.tvsymbol;
+        }
         $("#chartpanel").attr('src',"/ui/chart?symbol=" + symbol);
       }
-  
+
+
+      refreshGrid();
+
     });
     
   </script>

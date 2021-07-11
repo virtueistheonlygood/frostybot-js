@@ -26,12 +26,13 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         // Method permissions 
 
         var permissions = {
+            'gui:auth':   templates.any,
             'gui:enable':   templates.localonly,
             'gui:disable':   templates.localonly,
             'gui:main':   templates.any,
             'gui:register':   templates.any,
             'gui:login':   templates.any,
-            'gui:verify_recaptcha':   templates.localonly,
+            'gui:verify_recaptcha':   templates.any,
             'gui:content':   templates.tokenorany,
             'gui:data':   templates.tokenonly,
             'gui:chart':   templates.any,
@@ -39,14 +40,15 @@ module.exports = class frostybot_gui_module extends frostybot_module {
 
         // API method to endpoint mappings (Webhooks only, no REST endpoints)
         var api = {
-            'gui:enable':   [],         // Enable GUI (Webhook only, no REST)
-            'gui:disable':  [],         // Disable GUI (Webhook only, no REST)
-            'gui:main':     [],         // Main GUI Container (Webhook only, no REST)
-            'gui:register': [],         // Registration Page (Webhook only, no REST)
-            'gui:login':    [],         // Login Page 
-            'gui:verify_recaptcha': [], // Verify Google Recaptcha3
-            'gui:content':  [],         // Get GUI Content
-            'gui:data':     [],         // Get GUI Data
+            'gui:auth':     ['post|/auth'],     // Authenticate GUI Connection
+            'gui:enable':   [],                 // Enable GUI (Webhook only, no REST)
+            'gui:disable':  [],                 // Disable GUI (Webhook only, no REST)
+            'gui:main':     [],                 // Main GUI Container (Webhook only, no REST)
+            'gui:register': [],                 // Registration Page (Webhook only, no REST)
+            'gui:login':    [],                 // Login Page 
+            'gui:verify_recaptcha': [],         // Verify Google Recaptcha3
+            'gui:content':  [],                 // Get GUI Content
+            'gui:data':     [],                 // Get GUI Data
             'gui:chart':    ['get|/chart/:symbol'], // Get TradingView Chart embed for Symbol
         }
 
@@ -56,6 +58,37 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
         
     }    
+
+    // Authenticate a GUI connection
+
+    async auth(params) {
+
+        var [res] = this.extract_request(params);
+
+        var schema = {
+            email: {
+                required: 'string'
+            },
+            password: {
+                required: 'string'
+            },
+            token2fa: {
+                optional: 'string'
+            }
+        }
+
+        if (!(params = this.mod.utils.validator(params, schema))) return res.send(JSON.stringify({response : 'error', message: 'auth_error'}));
+
+        var token = await this.mod.user.login(params);
+        if (token == false) {
+            return res.send(JSON.stringify({response : 'failed', message: 'auth_failed'}));
+        } else {
+            res.cookie('fbAuthCookie', token, { expires: (new Date(token.exiry)) })
+            return res.send(JSON.stringify({response : 'success', message: 'auth_success', token: token}));
+        }
+
+    }
+
 
     // Enable GUI
 
@@ -147,10 +180,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         if (params.uuid != undefined) {
             is_provider_admin = this.mod.signals.is_provider_admin(uuid);
         }
+        //return this.render_page(res, "pages/mainv2", {});
         return this.render_page(res, "pages/main", { pageTitle: '', providerAdmin: is_provider_admin });
-        //} else {
-        //    return this.render_page(res, "pages/main", { pageTitle: 'Configuration', uuid: uuid });
-        //} 
     }
 
     // Load Login Page
@@ -176,9 +207,10 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         }
         return res.send(auth);        
         */
-        var multiuser = await this.mod.settings.get('core','multiuser:enabled');
+        var multiuser = await this.mod.settings.get('core','multiuser:enabled',false);
         var recaptchasite = await this.mod.settings.get('core','gui:recaptchasite',false);
-        return this.render_page(res, "pages/login", { pageTitle: 'Login', regsuccess: regsuccess, sessiontimeout: sessiontimeout, showregister: (multiuser ? true: false), recaptchasite: recaptchasite });
+        var registrationenabled = await this.mod.config.get('core:registrationenabled',multiuser);
+        return this.render_page(res, "pages/login", { pageTitle: '', regsuccess: regsuccess, sessiontimeout: sessiontimeout, showregister: registrationenabled, recaptchasite: recaptchasite });
     }
 
     // Register User
@@ -190,7 +222,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         if (!(await this.gui_is_enabled()))
             return this.render_error(res, 'GUI is not enabled.');
         var recaptchasite = await this.mod.settings.get('core','gui:recaptchasite',false);
-        return this.render_page(res, "pages/register", { pageTitle: 'Register', recaptchasite: recaptchasite });
+        return this.render_page(res, "pages/register", { pageTitle: '', recaptchasite: recaptchasite });
     }
 
     // Get Data
@@ -226,6 +258,13 @@ module.exports = class frostybot_gui_module extends frostybot_module {
             return this.render_error(res, 'GUI is not enabled.');
         var params = {...req.params, ...req.query};
         var token = params.hasOwnProperty('token') ? params.token : false;
+        
+        // Check token validity
+        if (token !== false) {
+            var verify = await this.mod.user.verify_token(token)
+            if (verify == false) return res.send({'error' : 'invalid_token'});
+        }
+
         var uuid = token != false ? token.uuid : false;
         if (uuid == false) {
             return res.send({'error' : 'invalid_uuid'});
@@ -237,6 +276,7 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                 var contentfunc = 'content_' + key.toLowerCase();
                 if (typeof( this[contentfunc] ) == 'function') {
                     data[key] = await this[contentfunc](params);
+                    data['_global_'] = data[key];
                 }
                 var template = key.split('_').join('.');
                 return this.render_page(res, "partials/" + template + ".ejs", data);   
@@ -262,6 +302,25 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return logo;
     }
 
+    // Check if user is a signal provider administrator
+
+    async is_signal_admin(uuid) {
+        let providers = Object.values(await this.mod.signals.get_providers()); 
+        for (var i = 0; i < providers.length; i++) {
+            var provider = providers[i]
+            var is_admin = await this.mod.signals.is_admin(provider.uuid, uuid)
+            if (is_admin)
+                return true;
+        }
+        return false;
+    }
+
+    // Check if any accounts are configured for this user
+
+    async has_configured_accounts(uuid) {
+        return await this.mod.accounts.has_accounts(uuid);
+    }
+
     // Main Menu
 
     async content_menu_main(params) {
@@ -270,9 +329,8 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         };
         var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
         if (uuid != null) {
-            //if (await this.mod.signals.is_signal_admin(uuid)) {
-            //    config['isSignalAdmin'] = true;
-            //}
+            config['hasConfiguredAccounts'] = await this.has_configured_accounts(uuid);
+            config['isSignalAdmin'] = await this.is_signal_admin(uuid);
         }
         return config;
     }
@@ -345,11 +403,32 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                                     return obj;
                                 }, {});
             var griddata = [];
-            symbols.forEach(symbol => {
+            var pairmode = stubconfig[stub + ':pairmode'] || 'blacklist';
+            /*
+            if (['whitelist', 'blacklist'].includes(String(params.switchpairmode))) {
+                var key = [stub,'pairmode'].join(':');
+                stubconfig[key] = params.switchpairmode
+                await this.mod.config.set(key, params.switchpairmode);
+                symbols.forEach(async (symbol) => {
+                    var lowersymbol = symbol.toLowerCase();
+                    var listed = String(stubconfig[stub + ':' + lowersymbol + ':listed']) == 'true' ? true : false; 
+                    var key = [stub,lowersymbol,'listed'].join(':');
+                    stubconfig[key] = !listed
+                    await this.mod.config.set(key, !listed);
+                });
+            }
+            */
+            symbols.forEach(async (symbol) => {
                 var lowersymbol = symbol.toLowerCase();
+                if (pairmode == 'blacklist' && String(stubconfig[stub + ':' + lowersymbol + ':ignored']) == 'true') {
+                    stubconfig[stub + ':' + lowersymbol + ':listed'] = true;
+                    await this.mod.config.set(stub + ':' + lowersymbol + ':ignored', null);
+                    await this.mod.config.set(stub + ':' + lowersymbol + ':listed', true);
+                }
+                var listed = Boolean(stubconfig[stub + ':' + lowersymbol + ':listed']);
                 var gridrow = [
                         symbol,
-                        stubconfig.hasOwnProperty(stub + ':' + lowersymbol + ':ignored') ? Boolean(stubconfig[stub + ':' + lowersymbol + ':ignored']) : false,
+                        listed,
                         stubconfig.hasOwnProperty(stub + ':' + lowersymbol + ':defsize') ? stubconfig[stub + ':' + lowersymbol + ':defsize'] : '',
                         stubconfig.hasOwnProperty(stub + ':' + lowersymbol + ':dcascale') ? stubconfig[stub + ':' + lowersymbol + ':dcascale'] : '',
                         stubconfig.hasOwnProperty(stub + ':' + lowersymbol + ':defstoptrigger') ? stubconfig[stub + ':' + lowersymbol + ':defstoptrigger'] : '',
@@ -377,8 +456,13 @@ module.exports = class frostybot_gui_module extends frostybot_module {
                     filtered.push(provider)
                 }
             }
+            var hedgemode = exchange == 'binance_futures' ? await this.mod.accounts.get_hedge_mode({stub: stub} ) : { enabled: false, canchange: false };
             config = {
                 stub: stub,
+                exchange: exchange,
+                hedgemode: hedgemode,
+                //pairmode: (['whitelist', 'blacklist'].includes(params.switchpairmode) ? params.switchpairmode :  pairmode),
+                pairmode: pairmode,
                 symbols: symbols,
                 providers: filtered,
                 config: stubconfig,
@@ -391,20 +475,23 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Balances Tab
 
     async content_tab_balances(params) {
-        var config = this.mod.accounts.get();
-        return config;
+        var accounts = await this.mod.accounts.get();
+        var stubs = Object.keys(accounts);
+        return {
+            stubs: stubs,
+            accounts: accounts,
+        }
     }
 
     // Positions Tab
 
     async content_tab_positions(params) {
         var accounts = await this.mod.accounts.get();
-        var showspot = await this.mod.config.get('gui:showspotpositions', false);
         var showchart = await this.mod.config.get('gui:showchart', false);
-        
+        var stubs = Object.keys(accounts);
         return {
+            stubs: stubs,
             accounts: accounts,
-            showspot: showspot,
             showchart: showchart
         }
     }
@@ -437,46 +524,55 @@ module.exports = class frostybot_gui_module extends frostybot_module {
     // Balance Grid Data
 
     async data_griddata_balances(params) {
-        var stub = params.stub;
-        await this.mod.exchange.refresh_balances_datasource({ user : params.token.uuid, stub : params.stub });
-        var balances = await this.mod.exchange.balances(stub);
-        var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
-        for (var i =0; i < balances.length; i++) {
-            var balance = balances[i];
-            balance['base_free'] = balance.base.free;
-            balance['base_used'] = balance.base.used;
-            balance['base_total'] = balance.base.total;
-            balance['usd_free'] = balance.usd.free;
-            balance['usd_used'] = balance.usd.used;
-            balance['usd_total'] = balance.usd.total;
-            delete balance.base
-            delete balance.usd
-            balances[i] = balance;
+        var stubs = JSON.parse(params.stubs);
+        var forcerefresh = params.forcerefresh;
+        var allbalances = [];
+        for (var s = 0; s < stubs.length; s++) {
+            var stub = stubs[s];
+            if (String(forcerefresh) == 'true')
+                await this.mod.exchange.refresh_balances_datasource({ user : params.token.uuid, stub : stub });
+            var balances = await this.mod.exchange.balances(stub);
+            var balances = (balances !== false ? balances : []).sort((a, b) => (a.currency > b.currency) ? 1 : -1);
+            for (var i =0; i < balances.length; i++) {
+                var balance = balances[i];
+                //balance['stub'] = stub;
+                balance['base_free'] = balance.base.free;
+                balance['base_used'] = balance.base.used;
+                balance['base_total'] = balance.base.total;
+                balance['usd_free'] = balance.usd.free;
+                balance['usd_used'] = balance.usd.used;
+                balance['usd_total'] = balance.usd.total;
+                delete balance.base
+                delete balance.usd
+                allbalances.push(balance);
+            }
         }
-        return balances;
+        return allbalances;
     }
 
     // Position Grid Data
 
     async data_griddata_positions(params) {
-        var stub = params.stub;
-        var showspot = params.hasOwnProperty('showspot') ? params.showspot : 'false';
-        await this.mod.exchange.refresh_positions_datasource({ user : params.token.uuid, stub : params.stub });
-        this.mod.config.set({'gui:showspotpositions': showspot});
-        var positions = await this.mod.exchange.positions(stub);
-        var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1);
-        if (String(showspot) == 'false') {
-            positions = positions.filter(position => position.type.toLowerCase() != "spot");
+        var stubs = JSON.parse(params.stubs);
+        var forcerefresh = params.forcerefresh;
+        var allpositions = [];
+        for (var s = 0; s < stubs.length; s++) {
+            var stub = stubs[s];
+            if (String(forcerefresh) == 'true')
+                await this.mod.exchange.refresh_positions_datasource({ user : params.token.uuid, stub : params.stub });
+            var positions = await this.mod.exchange.positions([params.token.uuid, stub]);
+            var positions = (positions !== false ? positions : []).sort((a, b) => (a.symbol > b.symbol) ? 1 : -1).filter(position => position.market.type != "spot");
+            for (var i = 0; i < positions.length; i++) {
+                var position = positions[i];
+                var market = position.market;
+                position['stub'] = stub;
+                position['tvsymbol'] = market.index.tradingview
+                position['chart'] = '<a href="#" class="showchartlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-direction="' + position.direction + '" data-toggle="tooltip" title="Chart"><span class="fas fa-chart-line"></span></a>';
+                position['close'] = '<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-direction="' + position.direction + '" data-toggle="tooltip4" title="Close Position"><span style="color: red;" class="fas fa-times"></span></a>';
+                allpositions.push(position);
+            }
         }
-        for (var i =0; i < positions.length; i++) {
-            var position = positions[i];
-            var symbol = position.symbol;
-            var exchange = position.exchange; 
-            var market = await this.mod.exchange.market(exchange, symbol);
-            positions[i]['tvsymbol'] = (market !== false ? market.tvsymbol : null) 
-            position.actions = '<a href="#" class="closepositionlink" data-stub="' + stub + '" data-symbol="' + position.symbol + '" data-toggle="tooltip" title="Close"><span style="color: red;" class="fa fa-close fa-lg fa-danger"></span></a>'
-        }
-        return positions;
+        return allpositions;
     }
 
     // Orders Tab
@@ -551,6 +647,48 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return { stub: stub, days: days };
     }
 
+    // Singal Administration Tab
+
+    async content_tab_signaladmin(params) {
+        var accounts = await this.mod.accounts.get();
+        return {
+            accounts: accounts,
+        }
+    }
+
+    // Signal History Grid Data
+
+    async data_griddata_signaladmin_history(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        if (uuid) {
+            var data = await this.mod.signals.history()
+            return data;
+        }
+        return false;
+    }
+
+    // Customer Exposure Grid Data
+
+    async data_griddata_signaladmin_exposure(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        if (uuid) {
+            var data = await this.mod.signals.exposure()
+            return data;
+        }
+        return false;
+    }
+
+    // Customer Exposure Grid Data
+
+    async data_griddata_signaladmin_volume(params) {
+        var uuid = params.hasOwnProperty('token') ? (params.token.hasOwnProperty('uuid') ? params.token.uuid : false) : false;
+        if (uuid) {
+            var data = await this.mod.signals.volume(params)
+            return data;
+        }
+        return false;
+    }
+
     // PNL Per Day Chart Data
 
     async data_griddata_tradepnl(params) {
@@ -621,6 +759,22 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         return config;
     }
 
+    // Format Log Data
+
+    async format_logs(data) {
+        var logs = [];
+        for (var i = 0; i < data.length; i++) {
+            var entry = data[i];
+            var datetimestr = ((new Date(entry.timestamp)).toISOString().split('.'))[0].replace('T',' ');
+            logs.push({
+                timestamp: datetimestr,
+                type: entry.type.toUpperCase(),
+                message: entry.message.replace('??','>>')
+            });
+        }
+        return logs;
+    }
+
     // Log Data
 
     async data_logdata(params) {
@@ -632,10 +786,31 @@ module.exports = class frostybot_gui_module extends frostybot_module {
         if ((result !== false) && (result.length > 0)) {
             for (var i = 0; i < result.length; i++) {
                 var entry = result[i];
-                log.push([entry.timestamp, entry.type.toUpperCase().padEnd(7, ' '), entry.message.replace('??','>>')].join(' │ '));
+                log.push([(entry.timestamp.split('.')[0]).replace('T',' '), entry.type.toUpperCase().padEnd(7, ' '), entry.message.replace('??','>>')].join(' │ '));
             }
         }
         return log;
+    }
+
+    // Log Tail
+
+    async data_logtail(params) {
+        var result = await this.mod.user.logtail(params);
+        if ((result !== false) && (result.length > 0)) {
+            return await this.format_logs(result);
+        }
+    }
+    
+    // Signal Log
+
+    async data_signallogs(params) {
+        var uid = params.uid;
+        var result = await this.mod.signals.logs(uid);
+        if ((result !== false) && (result.length > 0)) {
+            return await this.format_logs(result);
+        } else {
+            return await this.data_logtail(params);
+        }
     }
 
     // Logout

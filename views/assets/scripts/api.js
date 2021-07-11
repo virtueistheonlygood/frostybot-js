@@ -53,3 +53,40 @@ function getToken() {
     }
     return null;
 }
+
+var defaultContent = {
+}
+
+var contentHooks = {
+}
+
+function updateContent(key, params = {}, callback = null) {
+    var token = getToken();
+    if (token != null) {
+        params['token'] = token;
+    }
+    $.get( "/ui/content/" + key, params)
+    .done(function( html ) {
+        if (html.error !== undefined) {
+            if (html.error == 'invalid_token') {
+                localStorage.setItem("token", null);
+                loadPage('/ui/login?sessiontimeout=true');
+            }
+        } else {
+            $('#'+key).html( html);
+            if (defaultContent.hasOwnProperty(key)) {
+                defaultContent[key].forEach(subkey => {
+                    updateContent(subkey, {});
+                });
+            }
+            if (contentHooks.hasOwnProperty(key)) {
+                contentHooks[key]();
+            }
+            if (callback != null)
+                callback();
+        }
+    })
+    .fail(function( jqxhr, textStatus, error ) {
+        var err = textStatus + ", " + error;
+    });
+}

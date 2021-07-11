@@ -19,10 +19,14 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     async initialize() {
 
+        // Allow some time for startup, then initialize
+
         await this.load_normalizers();
-        await this.refresh_markets()
+        //await this.refresh_markets()        
+        await this.register_markets_datasource()
         await this.register_positions_datasource()
-        await this.register_balances_datasource()
+        await this.register_balances_datasource()    
+    
         
     }
 
@@ -44,9 +48,10 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
         // API method to endpoint mappings
         var api = {
-            'exchange:info'     :  'get|/exchange/:exchange/info',             // Get information about exchange
-            'exchange:markets'  :  'get|/exchange/:exchange/markets',          // Get all markets for an exchange 
-            'exchange:markets'  :  'get|/exchange/:exchange/markets/:symbol',  // Get market data for specific symbol 
+            'exchange:info'       :  'get|/exchange/:exchange/info',             // Get information about exchange
+            'exchange:markets'    :  'get|/exchange/:exchange/markets',          // Get all markets for an exchange 
+            'exchange:markets'    :  'get|/exchange/:exchange/markets/:symbol',  // Get market data for specific symbol 
+            'exchange:positions'  :  'get|/exchange/:exchange/markets/:symbol',  // Get market data for specific symbol 
         }
 
         // Register endpoints with the REST and Webhook APIs
@@ -88,34 +93,54 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         return params;
     }
 
+    // Parse user/stub config for Execute command and return decrypted stub config
+
+    async getstubconfig(userinfo) {
+        var config = null;
+        switch (typeof(userinfo)) {
+            // Only stub provided (use uuid from context)
+            case    'string'    :   var uuid = context.get('uuid')
+                                    var stub = userinfo;
+                                    config = await this.mod.accounts.stubs_by_uuid(uuid, stub);
+                                    break;
+
+            // [uuid, stub] Array or Full stub config object provided
+            case    'object'    :   if (this.mod.utils.is_array(userinfo)) {
+                                        var [uuid, stub] = userinfo;
+                                        config = await this.mod.accounts.stubs_by_uuid(uuid, stub);
+                                    } else {
+                                        if (userinfo.parameters != undefined) {
+                                            config = userinfo;
+                                        }
+                                    }
+                                    break;
+
+        }
+        if (await this.mod.utils.is_object(config)) {
+            if (config.uuid == undefined) config['uuid'] = context.get('uuid');
+        }
+        return config != null ? await this.mod.utils.decrypt_values(config, ['apikey', 'secret']) : false;
+    }
+
     // Execute method on the exchange normalizer
 
-    async execute(userstub, method, params) {
-        if (Array.isArray(userstub)) {
-            var [uuid, stub] = userstub;
-        } else {
-            var uuid = context.get('uuid')
-            var stub = userstub
-        }
-        var params = await this.convert_symbol(stub, params);
-        var stubs = await this.mod.accounts.stubs_by_uuid(uuid, stub);
-        if (stubs.length == 1) {
-            var encrypted = stubs[0];
-            var decrypted = await this.mod.utils.decrypt_values( encrypted, ['apikey', 'secret']);
-            decrypted.uuid = uuid;
-            var file = await this.get_normalizer_module_by_stub(decrypted);
+    async execute(userinfo, method, params) {
+        var config = await this.getstubconfig(userinfo);
+        if (config !== false) {
+            var file = await this.get_normalizer_module_by_stub(config);
             const fs = require('fs');
             if (fs.existsSync(file)) {
                 var exclass = require(file);
-                var mod = new exclass(decrypted);
+                var mod = new exclass(config);
                 if (typeof(mod['initialize']) === 'function') { 
                     await mod.initialize();
                 }
                 try {
-                    if (typeof(mod[method]) === 'function')
+                    if (typeof(mod[method]) === 'function') {
                         var result = await mod[method](params);
-                    else 
+                    } else {
                         var result = false;
+                    }
                 } catch(e) {
                     this.mod.output.exception(e);
                     return false;
@@ -124,6 +149,30 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             }
         }
         return false;
+    }
+
+    // Get UUIDs and Stubs based on a filter
+
+    async uuids_and_stubs(filter = {}) {
+        var query = {
+            mainkey: 'accounts'
+        }
+        if (filter['user'] != undefined) query['uuid'] = filter['user'];
+        if (filter['stub'] != undefined) query['subkey'] = filter['stub'];
+        var result = await this.database.select('settings', query);
+        var stubs = {}
+        if (this.mod.utils.is_array(result) && result.length > 0) {
+            for (var i = 0; i < result.length; i++) {
+                var uuid = result[i].uuid;
+                var data = JSON.parse(result[i].value);
+                var stub = data.stub;
+                if (stubs[uuid] == undefined) stubs[uuid] = {};
+                var config = await this.mod.utils.decrypt_values(data, ['apikey', 'secret']);
+                config['uuid'] = uuid;
+                stubs[uuid][stub] = config
+            }
+        }      
+        return stubs;            
     }
 
     // Get Normalizer Module List
@@ -145,6 +194,28 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         return modules;
     }
 
+    // Get hedge mode enabled
+
+    async hedge_mode_enabled(params) {
+        if (Array.isArray(params)) {
+            var [uuid, stub] = params
+        } else {
+            var uuid = context.get('uuid')
+            var stub = params
+        }
+        var cachekey = ['exchange:hedge_mode_enabled', uuid, stub].join(':');
+        return await this.mod.cache.method(cachekey, 10, async () => {
+            return await this.mod.exchange.execute([uuid, stub], 'get_hedge_mode');
+        });
+    }
+
+    // Get hedge mode can be changed
+
+    async hedge_mode_canchange(params) {
+        var positions = await this.positions(params);
+        return positions.length > 0 ? false : true;
+    }
+
     // Get exchange from stub
 
     async get_exchange_from_stub(params) {
@@ -154,10 +225,13 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             var uuid = context.get('uuid')
             var stub = params
         }
-        var stubs = await this.mod.accounts.stubs_by_uuid(uuid, stub)
-        var filter = (this.mod.utils.is_array(stubs)) ? stubs.filter(item => item.stub == stub) : []
-        var exchange = filter.length == 1 ? filter[0].exchange + (filter[0].type != undefined ? '_' + filter[0].type : '') : false;
-        return exchange;
+        var cachekey = ['exchange:get_exchange_from_stub', uuid, stub].join(':');
+        return await this.mod.cache.method(cachekey, 10, async () => {
+            var stubs = await this.mod.accounts.stubs_by_uuid(uuid, stub)
+            var filter = (this.mod.utils.is_array(stubs)) ? stubs.filter(item => item.stub == stub) : [stubs]
+            var exchange = filter.length == 1 ? filter[0].exchange + (filter[0].type != undefined ? '_' + filter[0].type : '') : false;
+            return exchange;    
+        });
     }
 
     // Get specific config setting for exchange normalizer
@@ -171,47 +245,74 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Get positions
 
-    async positions(stub, symbol = null) {
+    async positions(stub, symbol = null, direction = null) {
+        if (Array.isArray(stub)) {
+            var [uuid, stub] = stub
+        } else {
+            var uuid = context.get('uuid')
+        }
         var query = {
-            user: context.get('uuid'),
+            uuid: uuid,
             stub: stub
         }
-        if (symbol != null) query['symbol'] = symbol
-        return await this.mod.datasources.select('exchange:positions', query);
+        if (symbol != null) query['symbol'] = symbol;
+        var result = await this.mod.datasource.select('exchange:positions', query);
+        if (direction != null) {
+            return result.filter(row => row.direction.toLowerCase() == direction.toLowerCase());
+        }
+        return result
     }
 
     // Get balances
 
     async balances(stub, currency = null) {
+        if (Array.isArray(stub)) {
+            var [uuid, stub] = stub
+        } else {
+            var uuid = context.get('uuid')
+        }
         var query = {
-            user: context.get('uuid'),
+            uuid: uuid,
             stub: stub
         }
         if (currency != null) query['currency'] = currency
-        return await this.mod.datasources.select('exchange:balances', query);
+        //var cachekey = ['exchange:balances'].concat(Object.values(query)).join(':');
+        var result = await this.mod.datasource.select('exchange:balances', query);
+        return result;
     }
 
     // Get orders
 
-    async orders(stub, symbol) {
-        var decrypted = await this.mod.accounts.getaccount(stub)
-        var file = await this.get_normalizer_module_by_stub(decrypted);
-        const fs = require('fs');
-        if (fs.existsSync(file)) {
-            var exclass = require(file);
-            var mod = new exclass(decrypted);
-            if (typeof(mod['initialize']) === 'function') { 
-                await mod.initialize();
-            }
-            var params = await this.convert_symbol(stub, {symbol: symbol})
-            try {
-                var result = await mod.order_history(params);
-            } catch(e) {
-                this.mod.output.exception(e);
-            }
+    async all_orders(stub, symbol = undefined, since = undefined, limit = undefined) {
+        try {
+            var params = {};
+            if (![undefined, false, '', '<ALL>'].includes(symbol)) params['symbol'] = symbol;
+            if (![undefined, false, ''].includes(since)) params['since'] = since;
+            if (![undefined, false, ''].includes(limit)) params['limit'] = limit;
+            var result = await this.execute(stub, 'all_orders', params);
+            return result;                
+        } catch(e) {
+            this.mod.output.exception(e);
         }
-        return result;                
+        return false;
     }
+
+    // Get open orders
+
+    async open_orders(stub, symbol = undefined, since = undefined, limit = undefined) {
+        try {
+            var params = {};
+            if (![undefined, false, '', '<ALL>'].includes(symbol)) params['symbol'] = symbol;
+            if (![undefined, false, ''].includes(since)) params['since'] = since;
+            if (![undefined, false, ''].includes(limit)) params['limit'] = limit;
+            var result = await this.execute(stub, 'open_orders', params);
+            return result;                
+        } catch(e) {
+            this.mod.output.exception(e);
+        }
+        return false;
+    }
+
 
     // Load normalizer modules
 
@@ -225,6 +326,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             var file = modules[exchange];
             var exclass = require(file);
             this.normalizers[exchange] = new exclass();
+            //await this.normalizers[exchange].markets();
             global.frostybot.exchanges[exchange] = {};
             var settings = [
                 'type', 
@@ -246,6 +348,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                 var setting = settings[k];
                 global.frostybot.exchanges[exchange][setting] = this.normalizers[exchange][setting];
             }
+            //console.log(global.frostybot.exchanges[exchange])
         }
     }
 
@@ -272,10 +375,10 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
     // Get market by ID, symbol or tvsymbol
 
     async findmarket(exchange, search) {
-        if (global.frostybot.markets[exchange] == undefined)
-            await this.refresh_markets(exchange);
-
         var markets = global.frostybot.markets[exchange];
+        if (markets == undefined) {
+            await this.refresh_markets_datasource();
+        }
         var mapping = global.frostybot.mapping[exchange];
         if (markets != undefined)
             return markets[mapping[search]] != undefined ? markets[mapping[search]] : false;
@@ -285,18 +388,14 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Find ticker for an ID or symbol
 
-    async findticker(exchange, search) {
-        var market = await this.findmarket(exchange, search);
-        if (market != false) {
-            var id = market.id;
-            var symbol = market.symbol;
-            var ticker_by_id = global.frostybot.tickers[exchange][id];
-            var ticker_by_symbol = global.frostybot.tickers[exchange][symbol];
-            var ticker = ticker_by_id != undefined ? ticker_by_id : (ticker_by_symbol != undefined ? ticker_by_symbol : undefined);
-            return ticker != undefined ? ticker : false;
+    async findticker(exchange, id) {
+        if (this.mod.redis.is_connected()) {
+            var ticker = await this.mod.redis.get(['ticker', exchange, id].join(':'))
+        } else {
+            var ticker = global.frostybot.tickers[exchange][id];
         }
-        return false;
-    }
+        return ticker != undefined ? ticker : false;
+}
 
     // Get specific market
 
@@ -305,7 +404,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         if (typeof(params) == 'string') {
             // Internal call
             var exchange = params;
-            var symbol = sym;
+            var symbol = sym.toUpperCase();
             return await this.markets(exchange, symbol);
         } else {
             // External call
@@ -329,6 +428,21 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
         return symbols;
     }
 
+    // Index Market
+
+    index_market(market) {
+        if (market.index != undefined) {
+            if (global.frostybot.markets == undefined) global.frostybot.markets = {};
+            if (global.frostybot.markets[market.exchange] == undefined) global.frostybot.markets[market.exchange] = {};
+            if (global.frostybot.markets[market.exchange][market.id] == undefined) global.frostybot.markets[market.exchange][market.id] = market;
+            if (global.frostybot.mapping == undefined) global.frostybot.mapping = {};
+            if (global.frostybot.mapping[market.exchange] == undefined) global.frostybot.mapping[market.exchange] = {};
+            Object.values(market.index).forEach(val => {
+              global.frostybot.mapping[market.exchange][val] = market.id;
+            });
+        }        
+    }
+
     // Get market data
 
     async markets(params, sym = undefined) {
@@ -348,21 +462,36 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             var symbol = params.symbol;
         }
 
-        if (global.frostybot.markets[exchange] == undefined)
-            await this.refresh_markets(exchange);
-        
+        if (global.frostybot.markets == undefined) await this.refresh_markets_datasource();
+        if (global.frostybot.markets[exchange] == undefined) {
+            var query = {
+                exchange: exchange,
+            }
+            if (symbol != undefined) query['id'] = symbol;
+            var result = await this.mod.datasource.select('exchange:markets', query);
+            var results = {};
+            if (result != false) {
+                for (var i = 0; i < result.length; i++) {
+                    var market = result[i];
+                    await market.update();
+                    this.index_market(market);
+                    results[market.id] = market;
+                }
+            }
+        }
+
         if (symbol != undefined) {
             var market =  await this.findmarket(exchange, symbol);
 //            if (market !== false) return await this.update_pricing(exchange, symbol);
             if (market !== false) {
-                market.update();
+                //market.update();
                 return market;
             }
         } else {
             var results = {};
             for (const [symbol, market] of Object.entries(global.frostybot.markets[exchange])) {
 //                results[symbol] = await this.update_pricing(exchange, symbol);
-                market.update();
+                //market.update();
                 results[symbol] = market;
             }
             return results;
@@ -437,7 +566,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
 
     // Refresh market data from the exchange
 
-    async refresh_markets(exchange) {
+    /*async refresh_markets(exchange) {
         if (global.frostybot == undefined) global.frostybot = {};
         if (global.frostybot.markets == undefined) global.frostybot.markets = {};
         if (global.frostybot.mapping == undefined) global.frostybot.mapping = {};
@@ -447,6 +576,7 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
             if (global.frostybot.mapping[exchange] == undefined) global.frostybot.mapping[exchange] = {};
             try {
                 var result = await normalizer.execute('markets', {}, true);
+                console.log('MARKETS: ' + result.length)
             } catch(e) {
                 this.mod.output.exception(e);
                 return false;
@@ -467,51 +597,30 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
                 this.mod.output.error('exchange_refresh_markets', [exchange])
             }
         }
-    }
+    }*/
 
     // Get position data for the exchange:positions datasource
 
     async refresh_positions_datasource(params = {}) {
-        var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
-        //if (params == {}) {
-        //    var isactive = this.mod.datasources.isactive('exchange:positions')
-        //    if (!isactive) {
-        //        this.mod.output.debug('custom_message',['This node is not active for exchange:positions'])
-        //        return false;
-        //    }
-        //}
+        var uuidstubs = await this.uuids_and_stubs(params);
         var all = [];
         for (const [user, stubs] of Object.entries(uuidstubs)) {
-            for(var i = 0; i < stubs.length; i++) {
-                var stub = stubs[i].stub;
-                var encrypted = stubs[i];
-                var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
-                decrypted.uuid = user;
-                var file = await this.get_normalizer_module_by_stub(decrypted);
-                const fs = require('fs');
-                if (fs.existsSync(file)) {
-                    var exclass = require(file);
-                    var mod = new exclass(decrypted);
-                    if (typeof(mod['initialize']) === 'function') { 
-                        await mod.initialize();
-                    }
-                    try {
-                        var result = await mod.execute('positions', {}, true);
-                    } catch(e) {
-                        var result = false;
-                        //this.mod.output.exception(e);
-                    }
-                    if (result != false) {
-                        this.mod.datasources.delete('exchange:positions', {user: user, stub: stub})
-                        var positions = [];
-                        if (Array.isArray(result) && (result.length > 0)) {
-                            for (var j = 0; j < result.length; j++) {
-                                positions.push(result[j]);                       
-                            }
-                            await this.mod.datasources.update_data('exchange:positions', positions);
+            for (const [stub, config] of Object.entries(stubs)) {
+                try {
+                    var result = await this.execute(config, 'positions');
+                } catch (e) {
+                    var result = false;
+                }                
+                await this.mod.datasource.delete('exchange:positions', {uuid: user, stub: stub})
+                if (result != false) {
+                    var positions = [];
+                    if (Array.isArray(result) && (result.length > 0)) {
+                        for (var j = 0; j < result.length; j++) {
+                            positions.push(result[j]);                       
                         }
-                        all = all.concat(positions)
+                        await this.mod.datasource.update_data('exchange:positions', positions);
                     }
+                    all = all.concat(positions)
                 }
             }
         }
@@ -521,86 +630,95 @@ module.exports = class frostybot_exchange_module extends frostybot_module {
     // Get position data for the exchange:positions datasource
 
     async refresh_balances_datasource(params = {}) {
-        var uuidstubs = await this.mod.accounts.uuids_and_stubs(params);
-        //if (params == {}) {
-            //var isactive = await this.mod.datasources.isactive('exchange:balances')
-            //this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
-            //if (!isactive) {
-            //    this.mod.output.debug('custom_message',['This node is not active for exchange:balances'])
-            //    return false;
-            //}
-        //}
-        var all = []
+        var uuidstubs = await this.uuids_and_stubs(params);
+        var all = [];
         for (const [user, stubs] of Object.entries(uuidstubs)) {
-            for(var i = 0; i < stubs.length; i++) {
-                var stub = stubs[i].stub;
-                
-                var encrypted = stubs[i];
-                var decrypted = await this.mod.utils.decrypt_values(encrypted, ['apikey', 'secret']);
-                decrypted.uuid = user;
-                var file = await this.get_normalizer_module_by_stub(decrypted);
-                const fs = require('fs');
-                if (fs.existsSync(file)) {
-                    var exclass = require(file);
-                    var mod = new exclass(decrypted);
-                    if (typeof(mod['initialize']) === 'function') { 
-                        await mod.initialize();
-                    }
-                    try {
-                        var result = await mod.execute('balances', {}, true);
-                    } catch(e) {
-                        var result = false;
-                        //this.mod.output.exception(e);
-                    }
-                    if (result != false) {
-                        this.mod.datasources.delete('exchange:balances', {user: user, stub: stub})
-                        var balances = [];
-                        if (Array.isArray(result) && (result.length > 0)) {
-                            for (var j = 0; j < result.length; j++) {
-                                balances.push(result[j]);                       
-                            }
-                            await this.mod.datasources.update_data('exchange:balances', balances);
-                            
+            for (const [stub, config] of Object.entries(stubs)) {
+                try {
+                    var result = await this.execute(config, 'balances');
+                } catch (e) {
+                    var result = false;
+                }                
+                if (result != false) {
+                    await this.mod.datasource.delete('exchange:balances', {uuid: user, stub: stub})
+                    var balances = [];
+                    if (Array.isArray(result) && (result.length > 0)) {
+                        for (var j = 0; j < result.length; j++) {
+                            balances.push(result[j]);                       
                         }
-                        all = all.concat(balances)
+                        await this.mod.datasource.update_data('exchange:balances', balances);
                     }
+                    all = all.concat(balances)
                 }
             }
         }
-        return all;
+        return all; 
+    }
+
+    // Get market data for the exchange:markets datasource
+
+    async refresh_markets_datasource(params = {}) {
+        if (this.exchange_list() == {}) await this.load_normalizers();
+        var exchanges = this.exchange_list();
+        for (var e = 0; e < exchanges.length; e++) {
+            var exchange = exchanges[e];
+            try {
+                var result = await this.normalizers[exchange].markets();
+                for (var i = 0; i < result.length; i++) {
+                    var market = result[i]
+                    this.index_market(market);
+                }
+            } catch (e) {
+                this.mod.output.exception(e)
+                var result = false;
+            }
+            if (Array.isArray(result) && (result.length > 0)) {
+                await this.mod.datasource.update_data('exchange:markets', result);
+            }
+        }
+        return result; 
     }
 
     // Poll All Users and Cache Position Data
 
     async register_positions_datasource() {
-        var interval = 180;
         var indexes = {
-            unqkey  : ['user', 'stub', 'symbol'],
-            idxkey1 : 'user',
+            unqkey  : ['uuid', 'stub', 'symbol', 'direction'],
+            idxkey1 : 'uuid',
             idxkey2 : 'stub',
             idxkey3 : 'symbol',
         }
-        this.mod.datasources.register('exchange:positions', indexes, async() => {
+        this.mod.datasource.register('0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58 * * * *', 'exchange:positions', indexes, async() => {
             return await this.mod.exchange.refresh_positions_datasource();
         }, 180);
-        this.mod.datasources.start('exchange:positions', interval);
     }
 
     // Poll All Users and Cache Balance Data
 
     async register_balances_datasource() {
-        var interval = 180;
         var indexes = {
-            unqkey  : ['user', 'stub', 'currency'],
-            idxkey1 : 'user',
+            unqkey  : ['uuid', 'stub', 'currency'],
+            idxkey1 : 'uuid',
             idxkey2 : 'stub',
             idxkey3 : 'currency',
         }
-        this.mod.datasources.register('exchange:balances', indexes, async() => {
+        this.mod.datasource.register('1,3,5,7,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,39,41,43,45,47,49,51,53,55,57,59 * * * *', 'exchange:balances', indexes, async() => {
             return await this.mod.exchange.refresh_balances_datasource();
         }, 180);
-        this.mod.datasources.start('exchange:balances', interval);
     }
 
+    // Poll All Market Data
+    
+    async register_markets_datasource() {
+        var indexes = {
+            unqkey  : ['exchange', 'id'],
+            idxkey1 : 'exchange',
+            idxkey2 : 'id'
+        }
+        this.mod.datasource.register('*/5 * * * *', 'exchange:markets', indexes, async() => {
+            return await this.mod.exchange.refresh_markets_datasource();
+        }, 600);
+    }
+    
 
 }

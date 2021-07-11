@@ -16,13 +16,13 @@
 
 %>
 
-<div class="row"  style="border: solid 1px #AAAAAA; border-radius: 5px; margin: 10px; margin-bottom: 10px; padding: 10px; min-width: 650px;">     <!--  RIGHT COLUMN -->
+<div class="row frostybot-panel-area"  style="margin: 10px; margin-bottom: 10px; padding: 10px; min-width: 650px;">     <!--  RIGHT COLUMN -->
 
   <div class="col">
 
   
   <div class="row mb-2 flex-nowrap">
-    <div class="col" style="margin-left: 10px;">
+    <div class="col" style="margin-left: 10px; padding-bottom: 10px; border-bottom: inset 1px #444444;">
       <label class="col-form-label-md frostybot-form-label-lq"><b>Exchange Connection Information</b></label>
     </div>
   </div>
@@ -58,15 +58,19 @@
                   <%
 
                     var exchanges = {
-                      'Binance:binance_spot':     "Binance Spot",
+                      //'Binance:binance_spot':     "Binance Spot",
                       'Binance:binance_futures':  "Binance USD-M Futures",
                       //'Binance:binance_coinm':    "Binance COIN-M Futures",
                       //'Binance:binanceus':        "Binance.US",
                       //'Bitmex:bitmex':            "Bitmex",
                       //'Deribit:deribit':          "Deribit",
-                      'FTX:ftx':                  "FTX.com",
+                      //'FTX:ftx':                  "FTX.com",
                       //'FTX:ftxus':                "FTX.us",
                     };
+
+                    if ([undefined, ''].includes(data['exchange'])) {
+                      data['exchange'] = 'binance_futures';
+                    } 
 
                     var optgroup = 'Binance';
                     for (const [exchange, description] of Object.entries(exchanges)) {

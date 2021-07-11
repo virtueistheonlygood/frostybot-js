@@ -1,6 +1,6 @@
 // Database Abstraction Layer
 
-const sqlite3 = require('better-sqlite3');
+const sqlite3 = require('sqlite-async');
 const frostybot_database_base_module = require('./core.database.base');
 
 module.exports = class frostybot_database_sqlite_module extends frostybot_database_base_module {
@@ -18,21 +18,47 @@ module.exports = class frostybot_database_sqlite_module extends frostybot_databa
             var dbcfg = JSON.parse(dbcfgjson);
             var dbfile = (dbcfg.hasOwnProperty('file') ? dbcfg.file : '/usr/local/frostybot-js/database/database.db').toLowerCase();
         }
-        this.db = new sqlite3(dbfile);
-        this.db.pragma('journal_mode = wal');
+        this.db = null;
+        //this.db.pragma('journal_mode = wal');
         this.name = dbfile;
+    }
+
+    // Open Database
+
+    async open() {
+        if (this.db == null) {
+            this.db = await sqlite3.open(this.name);
+        }
     }
     
     // Query data from the database
 
     async query(sql, values = []) {
-        return await this.db.prepare(sql).all(values);
+        await this.open();
+        try {
+            var statement = await this.db.prepare(sql);
+            return await statement.all(values);
+        } catch (e) {
+            console.log(e);
+            console.log(sql);
+            console.log(values);
+            return false;
+        }
     }
 
     // Execute a SQL statement
 
     async exec(sql, values = []) {
-        return await this.db.prepare(sql).run(values);
+        await this.open();
+        try {
+            var statement = await this.db.prepare(sql);
+            return await statement.run(values);
+        } catch (e) {
+            console.log(e);
+            console.log(sql);
+            console.log(values);
+            return false;
+        }
     }
 
     // Insert or Replace
@@ -41,13 +67,15 @@ module.exports = class frostybot_database_sqlite_module extends frostybot_databa
         var sql = '';
         var colList = [];
         var valList = [];
+        var vals = [];
+        data = this.mod.utils.remove_values(data, [null, undefined]);
         for (var key in data) {
-            var val = data[key];
             colList.push(key);
             valList.push("?");
+            vals.push(this.mod.utils.is_object(data[key]) ? JSON.stringify(data[key]) : data[key]);
         }
         sql = "INSERT OR REPLACE INTO `" + table + "` (`" + colList.join("`,`") + "`) VALUES (" + valList.join(",") + ");";
-        return await this.exec(sql, Object.values(data));       
+        return await this.exec(sql, vals);       
     }
 
 

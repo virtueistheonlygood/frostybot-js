@@ -3,27 +3,28 @@
 -- Create orders table
 
 CREATE TABLE orders (
-    uid             INTEGER        PRIMARY KEY AUTOINCREMENT
-                                   NOT NULL
-                                   UNIQUE,
-    uuid            VARCHAR (36)   NOT NULL,
-    stub            VARCHAR (20)   NOT NULL,
-    orderid         VARCHAR (15)   NOT NULL,
-    customid        VARCHAR (15),
-    symbol          VARCHAR (20)   NOT NULL,
-    timestamp       TIMESTAMP      NOT NULL,
-    type            VARCHAR (15)   NOT NULL,
-    direction       VARCHAR (4)    NOT NULL,
-    order_price     DECIMAL (18, 8) NOT NULL,
-    trigger_price   DECIMAL (18, 8),
-    size_base       DECIMAL (18, 8) NOT NULL,
-    size_quote      DECIMAL (18, 8) NOT NULL,
-    size_usd        DECIMAL (18, 8) NOT NULL,
-    filled_base     DECIMAL (18, 8) NOT NULL,
-    filled_quote    DECIMAL (18, 8) NOT NULL,
-    filled_usd      DECIMAL (18, 8) NOT NULL,
-    status          VARCHAR (15)   NOT NULL,
-    metadata        TEXT
+    uid           INTEGER         PRIMARY KEY AUTOINCREMENT
+                                  NOT NULL
+                                  UNIQUE,
+    uuid          VARCHAR (36)    NOT NULL,
+    stub          VARCHAR (20)    NOT NULL,
+    exchange      VARCHAR (20)    NOT NULL,
+    symbol        VARCHAR (20)    NOT NULL,
+    orderid       VARCHAR (30)    NOT NULL,
+    customid      VARCHAR (30),
+    timestamp     TIMESTAMP       NOT NULL,
+    type          VARCHAR (15)    NOT NULL,
+    direction     VARCHAR (4)     NOT NULL,
+    order_price   DECIMAL (18, 8) NOT NULL,
+    trigger_price DECIMAL (18, 8),
+    size_base     DECIMAL (18, 8) NOT NULL,
+    size_quote    DECIMAL (18, 8) NOT NULL,
+    size_usd      DECIMAL (18, 8) NOT NULL,
+    filled_base   DECIMAL (18, 8) NOT NULL,
+    filled_quote  DECIMAL (18, 8) NOT NULL,
+    filled_usd    DECIMAL (18, 8) NOT NULL,
+    status        VARCHAR (15)    NOT NULL,
+    metadata      TEXT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS IDX_ORDERS_UUID_STUB_ORDERID ON orders (
@@ -87,6 +88,34 @@ CREATE INDEX IDX_OBJECTCLASS_IDXKEYS ON datasources (
     idxkey3
 );
 
+GO
+
+-- Add metadata column to signals table
+
+ALTER TABLE signals ADD COLUMN metadata TEST NULL;
+
+GO
+
+-- Create tokens table
+
+CREATE TABLE tokens (
+    uid    INTEGER      PRIMARY KEY AUTOINCREMENT
+                        UNIQUE
+                        NOT NULL,
+    uuid   VARCHAR (36) NOT NULL,
+    token  VARCHAR (36) NOT NULL,
+    expiry DATETIME     NOT NULL
+);
+
+GO
+
+CREATE UNIQUE INDEX IDX_UUID_TOKEN ON tokens (
+    uuid,
+    token
+);
+
+GO
+
 -- Update version
 
-INSERT OR REPLACE INTO `settings` (mainkey, subkey, value) VALUES ('core', 'sqlite:dbver', 5);
+INSERT OR REPLACE INTO `settings` (mainkey, subkey, value) VALUES ('core', 'sqlite:dbver', 6);

@@ -78,37 +78,38 @@ module.exports = class frostybot_queue_module extends frostybot_module {
     // Submit an order to the exchange
 
     async submit(stub, symbol, order) {
-        let result = await this.mod.exchange.execute(stub, 'create_order', order);
+        try {
+            var result = await this.mod.exchange.execute(stub, 'create_order', order);
+        } catch (e) {
+            this.mod.signals.output.error('Exchange Exception: ' + (e.msg || e.message || e))
+            return false;
+        }
+        
+        var id = result.id;
+        var exchange = await this.mod.exchange.get_exchange_from_stub(stub)
+        let doublecheck = await this.mod.exchange.setting(exchange, 'doublecheck');
             
-        if (result.result == 'success') {
-            var id = result.order.id;
-            this.mod.output.debug('order_submitted', [id]);
-            var exchange = await this.mod.exchange.get_exchange_from_stub(stub)
-            let doublecheck = await this.mod.exchange.setting(exchange, 'doublecheck');
-            
-            if (doublecheck == true) {
-                this.mod.output.debug('order_check_enabled', [id]);
-                var check = await this.check(stub, symbol, id);
-                if (check == true) {
-                    // Doublecheck successful
-                    this.mod.output.notice('order_check', [id]);
-                    return result;
-                } else {
-                    // Doublecheck failed
-                    //this.mod.output.error('order_check', [id]);
-                    this.mod.output.warning('order_submit', ['DoubleCheckError: Doublecheck failed for ID: ' + id] ); 
-                    return false;
-                }
-
-            } else {
-
-                // Doublecheck disabled and order successful
-                //this.mod.output.debug('order_check_disabled');
+        if (doublecheck == true) {
+            this.mod.output.debug('order_check_enabled', [id]);
+            var check = await this.check(stub, symbol, id);
+            if (check == true) {
+                // Doublecheck successful
+                this.mod.signals.output.success('Signal executed successfully');
+                this.mod.output.notice('order_check', [id]);
                 return result;
+            } else {
+                // Doublecheck failed
+                this.mod.signals.output.error('Doublecheck failed: Order ID: ' + id);
+                this.mod.output.warning('order_submit', ['DoubleCheckError: Doublecheck failed for ID: ' + id] ); 
+                return false;
             }
+        } else {
+            this.mod.signals.output.success('Signal executed successfully');
+            // Doublecheck disabled and order successful
+            //this.mod.output.debug('order_check_disabled');
+            return result;
+        }
 
-        }  
-        var message = result.error.type + ': ' + (this.mod.utils.is_object(result.error.message) ? this.mod.utils.serialize_object(result.error.message) : result.error.message);
         this.mod.output.warning('order_submit', [message] ); 
         return false;
 
@@ -120,10 +121,11 @@ module.exports = class frostybot_queue_module extends frostybot_module {
         var uuid = context.get('reqId')
         this.create(stub, symbol)
         var noexecute = await this.mod.config.get('debug:noexecute', false);
-        var maxretry = parseInt(await this.mod.config.get(stub + ':maxretry', 5));
-        var retrywait = parseInt(await this.mod.config.get(stub + ':retrywait', 10));
+        var maxretry = parseInt(await this.mod.config.get(stub + ':maxretry', 3));
+        var retrywait = parseInt(await this.mod.config.get(stub + ':retrywait', 5));
         if (noexecute == true) {
             this.mod.output.debug('debug_noexecute');
+            this.mod.signals.output.error('User has configured debug:noexecute mode')
             var result = this.queue[uuid][stub][symbol];
             this.clear(stub, symbol);
             return result;
@@ -137,17 +139,19 @@ module.exports = class frostybot_queue_module extends frostybot_module {
             
             for (const order of this.queue[uuid][stub][symbol]) {
 
-                var result = null;
-        
-                for (var retry = 1; retry <= maxretry; retry++) {
-                    result = await this.submit(stub, symbol, order);
-                    if (result === false) {
-                        this.mod.output.warning('order_retry_wait', [retrywait])
-                        await this.mod.utils.sleep(retrywait)
-                        this.mod.output.warning('order_retry_num', [retry, maxretry])                
-                    } else break
+                var result = await this.submit(stub, symbol, order);;
+
+                if (result === false) {
+
+                    for (var retry = 0; retry < maxretry; retry++) {
+                        result = await this.submit(stub, symbol, order);
+                        if (result === false) {
+                            this.mod.output.warning('order_retry_wait', [retrywait])
+                            await this.mod.utils.sleep(retrywait)
+                            this.mod.output.warning('order_retry_num', [retry, maxretry])                
+                        } else break
+                    }
                 }
-                
                 
                 if (result == false) {
                     //output.set_exitcode(-1);

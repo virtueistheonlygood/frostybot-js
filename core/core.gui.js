@@ -15,6 +15,10 @@ module.exports = {
         'get|/content/:key'              :  'gui:content',          // Get Content
         'get|/data/:key'                 :  'gui:data',             // Get Data
 
+        // Authentication a GUI connection
+
+        'post|/auth'                     :  'gui:auth',             // Authenticate a GUI connection
+
     },
 
 }

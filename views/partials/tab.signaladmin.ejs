@@ -1,0 +1,117 @@
+<div class="frostybot-panel-header">
+  <div class="row">
+    <div class="col"><p class="m-0" id="signaladmintitle">Signal Provider Administration</p></div>
+    <div class="col text-right">
+      <div class="float-right" id="signaladminnavbar" style="width: 580px; vertical-align: middle; float: right; margin-right: 10px;">
+        <span style="display: inline-block; white-space: nowrap;">
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="frostybot-panel-content" style="margin: 0px" >
+  <!--div class="row flex-nowrap" style="margin: 0px;" -->
+  
+    <div id="signaladmin_tabs" style="min-height: 650px;">
+
+      <ul>
+        <li>Signal History</li>
+        <li>Customer Exposure</li>
+        <li>Daily Volume</li>
+      </ul>
+
+      <div>
+        <div id="tab_signaladmin_history"><%- include('tab.signaladmin.history.ejs'); %></div>
+      </div>
+
+      <div>
+        <div id="tab_signaladmin_exposure"></div>
+      </div>
+
+      <div>
+        <div id="tab_signaladmin_volume"></div>
+      </div>
+
+    </div>
+
+  <!--/div-->
+</div>
+
+<style type="text/css">
+  .red   { color: #BB0000; }
+  .green { color: #008800; }
+</style>
+
+<script src="/scripts/notifications.js"></script>
+<script src="/scripts/api.js"></script>
+
+<script type="text/javascript">
+  
+    $(document).ready(function () {
+
+      function getToken() {
+        if (localStorage) {
+            var token = localStorage.getItem("token");
+            if (token != null) {
+                var token = JSON.parse(token);
+                if (token != null) {
+                   return token;
+                }
+            }
+        }
+        return null;
+      }
+
+      // Update Tab Content 
+
+      function updateContent(key) {
+        var params = {}
+        var token = getToken();
+        if (token != null) {
+            params['token'] = token;
+        }
+        $.get( "/ui/content/" + key, params)
+        .done(function( html ) {
+            if (html.error !== undefined) {
+              if (html.error == 'invalid_token') {
+                localStorage.setItem("token", null);
+                document.location.href = '/ui/login?sessiontimeout=true';
+              }
+            } else {
+              $('#'+key).html( html);
+              var height = $('#'+key).height();
+              $('#signaladmin_tabs').jqxTabs({'height': height})
+            }
+        })
+        .fail(function( jqxhr, textStatus, error ) {
+            var err = textStatus + ", " + error;
+        });
+      }
+
+      // Tabs
+
+      $('#signaladmin_tabs').jqxTabs({ width: '100%', position: 'top', scrollable: false});     
+
+      // Tab was changed to the Customer Exposure Tab (Perform Refresh)
+
+      $('#signaladmin_tabs').on('selected', function (event) {            
+        if (event.args !== undefined) {
+          var tabtitle = $('#signaladmin_tabs').jqxTabs('getTitleAt', event.args.item);
+          switch (tabtitle) {
+            case 'Signal History'     : $("#tab_signaladmin_history").html('');
+                                        updateContent('tab_signaladmin_history');
+                                        break;
+            case 'Customer Exposure'  : $("#tab_signaladmin_exposure").html('');
+                                        updateContent('tab_signaladmin_exposure');  
+                                        break;
+            case 'Daily Volume'       : $("#tab_signaladmin_volume").html('');
+                                        updateContent('tab_signaladmin_volume');  
+                                        break;
+          }
+        }
+      });
+
+    });
+
+</script>

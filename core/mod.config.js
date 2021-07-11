@@ -11,18 +11,18 @@ const config_keys = {
     'core:url': 'string',                         // The Base URL of this Frostybot (used for loopback requests) - Default: http://localhost
     'core:webhook': 'string',                     // The Base Path of the Webhook endpoint (Default: /frostybot)
     'core:rest': 'string',                        // The Base Path of the REST endpoint (Default: /rest)
-    'core:refreshmarkets': 'cron',                // The refresh cron for market data
-    'core:refreshpositions': 'cron',              // The refresh cron for position data
-    'core:refreshbalances': 'cron',               // The refresh cron for balance data
+    'core:permissionset': 'oneof:disabled,standard,provider', // The permission set to use for the instance (disabled/standard/provider)
     'output:messages': 'oneof:none,brief,full',   // (none/brief/full) Include messages in result JSON object
     'output:debug': 'boolean',                    // (Boolean) Enable debug output
     'output:stats': 'boolean',                    // (Boolean) Enable debug output
     'debug:noexecute': 'boolean',                 // (Boolean) Do not process order queue and execute orders on the exchange
     'gui:logfilters': 'string',                   // GUI Log Viewer message type filters
+    'core:registrationenabled': 'boolean',         // Allow users to register on this Frostybot
     'gui:showspotpositions': 'boolean',           // Show spot "positions" in the GUI
     'gui:showchart': 'boolean',                   // Show the Tradingview Chart
     'gui:columnspositions': 'string',             // Which columns to show on the positions tab in the GUI
     'trade:require_maxsize': 'boolean',           // (Boolean) Whether or not to require the maxsize parameter when using relative pricing
+    '{stub}:enabled': 'boolean',                  // Stub is enabled (stubs that fail testing will be automatically diabled)
     '{stub}:provider': 'string',                  // (UUID) Signal provider configured for stub
     '{stub}:defsize': 'string',                   // Default order size for orders on this stub
     '{stub}:dcascale': 'string',                  // Default size factor for DCA orders
@@ -33,7 +33,10 @@ const config_keys = {
     '{stub}:ignored': 'string',                   // List of market symbols ignored from signals
     '{stub}:maxretry': 'string',                  // Number of times an order will be retried until it fails (default: 5)
     '{stub}:retrywait': 'string',                 // Number of seconds to wait before retrying an order (default: 10)
-    '{stub}:{symbol}:ignored': 'boolean',         // (Boolean) Market symbol is ignored
+    '{stub}:disablelossclose': 'boolean',         // Never close at a loss (close signals that would result in a loss will be ignored)
+    '{stub}:pairmode': 'string',                  // Pair Selection Mode (whitelist/blacklist)
+    '{stub}:{symbol}:listed': 'boolean',          // (Boolean) Include this symbol in the whitelist/blacklist (specified in {stub}:pairmode)
+    '{stub}:{symbol}:ignored': 'boolean',         // DEPRECATED: (Boolean) Market symbol is ignored (replaced by whitelist/blacklist)
     '{stub}:{symbol}:defsize': 'string',          // Default order size for orders on this stub and symbol
     '{stub}:{symbol}:dcascale': 'string',         // Default size factor for DCA orders on this stub and symbol
     '{stub}:{symbol}:defstoptrigger': 'string',   // Default trigger for stoploss on this stub and symbol
@@ -57,7 +60,7 @@ module.exports = class frostybot_config_module extends frostybot_module {
 
         // Permissions are the same for all methods, so define them once and reuse
         var permissions = {
-            'standard': ['core,singleuser', 'multiuser,user', 'token'],
+            'standard': ['core,singleuser', 'multiuser,user', 'local', 'token'],
             'provider': ['token', 'local' ],
         }
 
@@ -285,18 +288,20 @@ module.exports = class frostybot_config_module extends frostybot_module {
 
     async set(params, val = null) {
 
-        delete params.token;
-
+        var quiet = false;
         var check = {};
         var results = {};
 
         // Internal 
         if (this.mod.utils.is_string(params)) {
+            var quiet = true;
+            var key = params;
             check[key] = val;            
         }
         
         // User
         if (this.mod.utils.is_object(params) && Object.keys(params).length > 0) {
+            delete params.token;
             check = params;
         }
 
@@ -314,10 +319,10 @@ module.exports = class frostybot_config_module extends frostybot_module {
                     results[key] = '(deleted)';
                 } else {
                     if (await this.mod.settings.set(mainkey, subkey, val)) {
-                        this.mod.output.success('config_set', [key, val])
+                        if (!quiet) this.mod.output.success('config_set', [key, val])
                         results[key] = val;
                     } else {
-                        this.mod.output.error('config_set', [key, val])
+                        if (!quiet) this.mod.output.error('config_set', [key, val])
                     }   
                 }
             }

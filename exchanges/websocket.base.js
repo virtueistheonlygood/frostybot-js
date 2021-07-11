@@ -3,6 +3,8 @@
 const WebSocket = require('ws-reconnect');
 const EventEmitter = require('events');
 const READY_STATE = ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'];
+const RATE_LIMIT = 250; // Messages per second rate limit per websocket
+const rateLimit = require('ws-rate-limit');
 
 module.exports = class frostybot_websocket_base extends EventEmitter {
 
@@ -27,6 +29,9 @@ module.exports = class frostybot_websocket_base extends EventEmitter {
         
         var _this = this;
         this.ws = new WebSocket(url, {reconnectInterval: 5 });
+        this.limiter = rateLimit('1s', RATE_LIMIT)
+        this.limiter(this.ws)
+
             
         // Statistics update timer
         this.statsTimer = setInterval(function () {
@@ -143,6 +148,17 @@ module.exports = class frostybot_websocket_base extends EventEmitter {
     async start() {
         this.logger('notice','Websocket starting...')
         this.ws.start();
+    }
+    
+    // Stop the Websocket Interface
+
+    async stop() {
+        this.logger('notice','Websocket stopping...')
+        try {
+            this.ws.destroy();
+        } catch(e) {          
+        }
+        return true;
     }
     
     // Update Ticker Symbol

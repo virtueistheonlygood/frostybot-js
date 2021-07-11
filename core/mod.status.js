@@ -1,6 +1,8 @@
 // System status monitoring
 
 const frostybot_module = require('./mod.base')
+const frostybot_nodeinfo = require('../classes/classes.nodeinfo')
+const { execSync } = require('child_process');
 
 module.exports = class frostybot_status_module extends frostybot_module {
 
@@ -98,7 +100,7 @@ module.exports = class frostybot_status_module extends frostybot_module {
     // Get information about all the nodes participating in this instance
 
     async nodes() {
-        return await this.mod.datasources.select('node:info', {});
+        return await this.mod.datasource.select('node:info', {});
     }
 
     // Refresh node info datasource
@@ -132,9 +134,16 @@ module.exports = class frostybot_status_module extends frostybot_module {
                 }
             }
         }
+        try {
+            const stdout = execSync('dig +short myip.opendns.com @resolver1.opendns.com');
+            var publicIp = String(stdout).trim();
+            if (this.mod.utils.is_ip(publicIp)) 
+                ips.push(publicIp);
+        } catch (e) {   
+        }
         info['ip'] = ips;
-        var obj = new this.classes.nodeinfo(info.hostname, info.os, info.uptime, info.cpu, info.memory, info.ip);
-        await this.mod.datasources.update_data('node:info', [obj])
+        var obj = new frostybot_nodeinfo(info.hostname, info.os, info.uptime, info.cpu, info.memory, info.ip);
+        await this.mod.datasource.update_data('node:info', [obj])
         return [obj];
     }
 
@@ -145,10 +154,9 @@ module.exports = class frostybot_status_module extends frostybot_module {
             unqkey  : ['hostname'],
             idxkey1 : 'hostname'
         }
-        this.mod.datasources.register('node:info', indexes, async() => {
+        this.mod.datasource.register('* * * * *', 'node:info', indexes, async() => {
             return await this.mod.status.get_node_info();
-        }, 60, false);
-        this.mod.datasources.start('node:info', 60);
+        }, 60);
     }
 
 

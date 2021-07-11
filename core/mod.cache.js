@@ -38,16 +38,44 @@ module.exports = class frostybot_cache_module extends frostybot_module {
         
     }
 
+    // Initialize module
+
+    initialize() {
+        //this.client.flushall()
+    }
+
     // Set an item in cache
 
-    set( key, result, time ) {
-        return cache.set(key, result, time);
+    async set( key, value, time ) {
+        var ttl = (time == undefined ? null : time)
+        if (this.mod.redis.is_connected())
+            return await this.mod.redis.set('cache:' + key, value, ttl)
+        else 
+            return cache.set(key, value, time);        
     }
 
     // Get an item from cache
 
-    get( key ) {
-        return cache.get(key);
+    async get( key ) {
+        if (this.mod.redis.is_connected())
+            return await this.mod.redis.get('cache:' + key)
+        else {
+            var val = cache.get(key);
+            return (![undefined, null].includes(val)) ? this.mod.utils.is_json(val) ? JSON.parse(val) : val : undefined
+        }
+        
+    }
+
+    // Method wrapper to get/set cache as required
+
+    async method( key, time, callback) {
+        const value = await this.get(key);
+        if (value != undefined) {
+            return value;
+        }
+        var result = await callback();
+        await this.set(key, result, time);
+        return result;
     }
 
     // Get cache stats
@@ -73,10 +101,10 @@ module.exports = class frostybot_cache_module extends frostybot_module {
         var stats = cache.getStats()
         var total = stats.hits + stats.misses;
         cache.flushAll();
-        if (quiet === true)
-            this.mod.output.debug('cache_flush', total)
-        else
-            this.mod.output.success('cache_flush', total)
+        //if (quiet === true)
+        this.mod.output.debug('cache_flush', total)
+        //else
+        //  this.mod.output.success('cache_flush', total)
         return total;
     }
 

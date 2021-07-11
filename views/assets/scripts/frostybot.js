@@ -1,5 +1,5 @@
 $( document ).ready(function() {
-
+    
     // ---------------------------------------------------------
     //   Show Toast Message
     // ---------------------------------------------------------
@@ -77,33 +77,63 @@ $( document ).ready(function() {
     // --------------------------------------------------------------------------------------
 
     /*
+    var frostybot_wss = new WebSocket("ws://127.0.0.1:8900")
+    var wss_is_authenticated = false
 
-    var wsserver = window.location.hostname;
-    var ws = new WebSockets_Callback({
-        verbose: true, 
-        asElectron: false, 
-        asClient: true, 
-        address: wsserver,
-        //port: 6969
-    });
-
-    ws.options.onUnexpectedMessage = function(conn, msg){
-        console.log('Client sent a responseless message: ' + msg)
-    }    
-
-    ws.on('id', function(msg, respondWith) {
-        console.log('Server said:')
-        console.log(msg)
-        respondWith({msg: 'ACK'});
-    })
-
-    function wsAuth(token) {
-
-        ws.send({cmd: 'auth', token: token}, function(response){
-            console.log(response);
-        });
+    frostybot_wss.onopen = function() {
+        setInterval(function() {
+            frostybot_wss.send(JSON.stringify({op: "PING"}));
+            if (wss_is_authenticated == false) {
+                var token = getToken()
+                if (token != null) {
+                    frostybot_wss.send(JSON.stringify({op: "auth", token: token}));
+                }
+            }
+        }, 5000)
+    };
+    
+    
+    frostybot_wss.onmessage = function (evt) { 
+        var msg = evt.data;
+        msg = JSON.parse(msg);
+        switch (msg.code) {
+            case 201    :   console.log('PONG received');
+                            break;
+            case 202    :   console.log('Websocket authenticated')
+                            wss_is_authenticated = true
+                            console.log('Subscribing to GUI channel')
+                            frostybot_wss.send(JSON.stringify({op: "subscribe", channel: "gui"}));
+                            break;
+            case 204    :   switch (msg.type) {
+                                case 'positions'    :   var stub = msg.data.length > 0 ? msg.data[0].stub : null;
+                                                        if (stub != null)
+                                                            localStorage.setItem(['positions', stub].join(':'), JSON.stringify(msg.data));
+                                                        break;
+                                case 'balances'     :   var stub = msg.data.length > 0 ? msg.data[0].stub : null;
+                                                        if (stub != null)
+                                                            localStorage.setItem(['balances', stub].join(':'), JSON.stringify(msg.data));
+                                                        break;
+                            }
+                            break;
+        }
+    };
+    
+    frostybot_wss.onclose = function() { 
+        console.log("Websocket connection is closed..."); 
+        wss_is_authenticated = false;
+    };
+      
+    
+    function subscribe(stub, channel, symbol = null) {
+        if (symbol != null) {
+          var data = { symbol : symbol };
+        } else {
+          var data = {};
+        }
+        $.post(frostybot_rest + '/websocket/' + stub + '/subscribe/' + channel, data, function( data ) {
+          //$( ".result" ).html( data );
+        });  
     }
-
     */
 
     // ---------------------------------------------------------
@@ -181,17 +211,24 @@ $( document ).ready(function() {
         }
         $.get( "/ui/content/" + key, params)
         .done(function( html ) {
-            $('#'+key).html( html);
-            if (defaultContent.hasOwnProperty(key)) {
-                defaultContent[key].forEach(subkey => {
-                    updateContent(subkey, {});
-                });
+            if (html.error !== undefined) {
+                if (html.error == 'invalid_token') {
+                    localStorage.setItem("token", null);
+                    loadPage('/ui/login?sessiontimeout=true');
+                }
+            } else {
+                $('#'+key).html( html);
+                if (defaultContent.hasOwnProperty(key)) {
+                    defaultContent[key].forEach(subkey => {
+                        updateContent(subkey, {});
+                    });
+                }
+                if (contentHooks.hasOwnProperty(key)) {
+                    contentHooks[key]();
+                }
+                if (callback != null)
+                    callback();
             }
-            if (contentHooks.hasOwnProperty(key)) {
-                contentHooks[key]();
-            }
-            if (callback != null)
-                callback();
         })
         .fail(function( jqxhr, textStatus, error ) {
             var err = textStatus + ", " + error;
@@ -468,7 +505,8 @@ $( document ).ready(function() {
                 api('accounts:delete', { stub: stub}, function(json) {
                     if (json.result == "success") {
                         showSuccess('Account deleted successfully');
-                        updateContent('table_accounts');
+                        updateContent('tab_accounts');
+                        updateContent('menu_main');
                     } else {
                         showFail('Failed to delete Account')
                     }
@@ -534,18 +572,17 @@ $( document ).ready(function() {
                 uuid: getUUID(),
                 stub: $("#inputstub").val(),
                 exchange: exchange,
-                testnet: exchange == 'ftx' ? false : $("#inputtestnet").is(":checked"),
+                type: type,
+                testnet: $("#inputtestnet").is(":checked"),
                 apikey: $("#inputapikey").val(),
                 secret: $("#inputsecret").val(),
                 description: $("#inputdescription").val(),
+                subaccount: $("#inputsubaccount").val()
             }
-            var subaccount = $("#inputsubaccount").val();
-            if ((['ftx','ftxus'].includes(exchange)) && (subaccount != ''))
-                data['subaccount'] = subaccount; 
-            if (type != undefined) data['type'] = type;
             api('accounts:add', data, function(json) {
                 if (json.result == "success") {
                     showSuccess("Successfully added API key", 5000);
+                    updateContent('menu_main');
                     updateContent('table_accounts');
                 } else {
                     showError("Failed to add account, please check the API key and secret and try again.", 5000)
@@ -591,6 +628,10 @@ $( document ).ready(function() {
             var data = {};
             data[keyname] = String(val == '' ? "null" : val).replace('None','null');
             api('config:set', data, function(json) {
+                if (keyname.substr(-7) == ':listed') {
+                    var mode = $( "#pairmode").jqxSwitchButton('checked') == true ? 'whitelisted' : 'blacklisted';
+                    keyname = keyname.replace(':listed', ':' + mode)
+                }
                 if (json.result == "success") {
                     showSuccess("Successfully set configuration option: " + keyname, 5000);
                     return true;
@@ -601,12 +642,19 @@ $( document ).ready(function() {
             });
         }
 
+        // Get pair blacklist/whitelist mode
+        function getPairMode() {
+            return $("#configpairs").jqxGrid('getcolumnproperty', 'listed', 'text').toLowerCase();
+            //return $( "#pairmode").jqxSwitchButton('checked') == true ? 'blacklist' : 'whitelist';
+        }
+
         // Load Pair Config Grid
         $("#configpairs").on('cellendedit', function (event) {
             var stub = $( "#inputproviderstub" ).val();
             var column = $("#configpairs").jqxGrid('getcolumn', event.args.datafield);
             var symbol = event.args.row.symbol;
-            var keyname = stub + ":" + symbol + ":" + event.args.datafield;
+            var field = event.args.datafield;
+            var keyname = stub + ":" + symbol + ":" + field;
             if (column.displayfield != column.datafield) {
                 var val = event.args.value.value;
             } else {
@@ -618,13 +666,15 @@ $( document ).ready(function() {
 
         // Load Combo Boxes
         if ( $("#inputprovider").length ) {
-            $("#inputprovider").jqxDropDownList({ dropDownHeight: 250, width: 150, height: 30});
+            $("#inputprovider").jqxDropDownList({ dropDownHeight: 250, width: 150, height: 30, autoDropDownHeight: true});
         }
         $("#inputmaxposqty").jqxDropDownList({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdcascale").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdefstoptrigger").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdefprofittrigger").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
         $("#inputdefprofitsize").jqxComboBox({ dropDownHeight: 250, width: 150, height: 30});
+        //$("#inputdisablelossclose").jqxCheckBox({ width: 180, height: 25});
+        //$('#lossclose').jqxSwitchButton({ height: 25, width: 145, checked: disablelossclose, onLabel: 'Allowed', offLabel: 'Never', thumbSize: '20%'});
                     
         // Signal Provider Update
 
@@ -678,6 +728,94 @@ $( document ).ready(function() {
             var stub = $( "#inputproviderstub" ).val();
             var val = $( "#inputdefprofitsize" ).val();
             if (formLoaded) update(stub + ':defprofitsize', val);
+        });
+
+        // Disable Close at Loss Update
+        /*
+        $( "#inputdisablelossclose").on("change", function(event) {
+            var checked = event.args.checked;
+            var stub = $( "#inputproviderstub" ).val();
+            if (formLoaded) update(stub + ':disablelossclose', checked);
+        });
+        */
+        $( "#lossclose").on("change", function(event) {
+            var stub = $( "#inputproviderstub" ).val();
+            var checked = !($( "#lossclose").jqxSwitchButton('checked'));
+            if (formLoaded) update(stub + ':disablelossclose', checked);
+        });
+        
+        $( "#pairmode").on("change", function(event) {
+            var stub = $( "#inputproviderstub" ).val();
+            var mode = $( "#pairmode").jqxSwitchButton('checked') == true ? 'blacklist' : 'whitelist';
+            update(stub + ':pairmode', mode)
+            /*
+            if (formLoaded) {
+                $("#configpairs").jqxGrid({disabled: true});
+                $( "#pairmode").jqxSwitchButton({disabled: true});
+                updateContent('form_config', {stub: stub, switchpairmode: mode}, function() {
+                    showSuccess('Switched the pair selection mode successfully', 3000)
+                })
+            }
+            */
+        });
+        
+
+        // Check to enable the set leverage button
+        $("#inputlevtypecross").on("change", function() {
+            var cross = $("#inputlevtypecross").val();
+            var isolated = $("#inputlevtypeisolated").val();
+            var leverage = $("#inputlevsize").val();
+            if ((cross == true || isolated == true) && (leverage != '')) {
+                $("#setleverage").attr("disabled", false);
+            } else {
+                $("#setleverage").attr("disabled", true);
+            }
+        });
+
+        $("#inputlevtypeisolated").on("change", function() {
+            var cross = $("#inputlevtypecross").val();
+            var isolated = $("#inputlevtypeisolated").val();
+            var leverage = $("#inputlevsize").val();
+            if ((cross == true || isolated == true) && (leverage != '')) {
+                $("#setleverage").attr("disabled", false);
+            } else {
+                $("#setleverage").attr("disabled", true);
+            }
+        });
+
+        $("#inputlevsize").on("change", function() {
+            var cross = $("#inputlevtypecross").val();
+            var isolated = $("#inputlevtypeisolated").val();
+            var leverage = $("#inputlevsize").val();
+            if ((cross == true || isolated == true) && (leverage != '')) {
+                $("#setleverage").attr("disabled", false);
+            } else {
+                $("#setleverage").attr("disabled", true);
+            }
+        });
+
+        // Set Global Leverage
+
+        $("#setleverage").on( "click", function() {
+            if (confirm("WARNING: Be careful when using this feature. This will set the global leverage across all pairs. If you are currently in a position for any of these pairs, incorrectly setting the leverage may result in liquidation. Once started, this process will run in the background. You can continue to use Frostybot and can monitor the process of this task via the Log Viewer.")) {
+                var stub = $( "#inputproviderstub" ).val();
+                var cross = $("#inputlevtypecross").val();
+                var isolated = $("#inputlevtypeisolated").val();
+                var leverage = $("#inputlevsize").val();
+                var type = cross == true ? 'cross' : (isolated == true ? 'isolated' : null)
+                var data = {
+                    stub: stub,
+                    type: type,
+                    leverage: leverage
+                }
+                api('trade:globalleverage', data, function(json) {
+                    if (json.result == "success") {
+                        showSuccess("Successfully set leverage", 5000);
+                    } else {
+                        showError("Failed to set leverage, please check log for details.", 5000)
+                    }
+                });    
+            }
         });
 
         // Cancel Button

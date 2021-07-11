@@ -18,32 +18,42 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
 
         // Permissions are the same for all methods, so define them once and reuse
         var permissions = {
-            'standard': [ 'core,singleuser', 'multiuser,user', 'token' ],
-            'provider': [ 'token' ]
+            'standard': [ 'core,singleuser', 'multiuser,user', 'token', 'local' ],
+            'provider': [ 'token', 'local' ]
         }
 
         // API method to endpoint mappings
         var api = {
             'accounts:get': [
-                                'get|/accounts',                    // Get all account information
-                                'get|/accounts/:stub',              // Get account information for specific stub
+                                'get|/accounts',                          // Get all account information
+                                'get|/accounts/:stub',                    // Get account information for specific stub
             ],
             'accounts:add':    [
-                                'post|/accounts',                   // Add new account
-                                'put|/accounts',                    // Update account
+                                'post|/accounts',                         // Add new account
+                                'put|/accounts',                          // Update account
             ],
-            'accounts:delete': 
-                                'delete|/accounts/:stub',           // Delete account for specific stub
-            'accounts:test':    'post|/accounts/:stub/test',        // Test API keys with the exchange
+            'accounts:delete':  'delete|/accounts/:stub',                 // Delete account for specific stub
+            'accounts:test':    'post|/accounts/:stub/test',              // Test API keys with the exchange
+
+            'accounts:get_hedge_mode' : 'get|/accounts/:stub/hedgemode',  // Get Binance Futures Hedge Mode setting
+            'accounts:enable_hedge_mode'  : 'post|/accounts/:stub/hedgemode', // Enable Binance Futures Hedge Mode setting
+            'accounts:disable_hedge_mode' : 'delete|/accounts/:stub/hedgemode', // Disable Binance Futures Hedge Mode setting
         }
 
         // Register endpoints with the REST and Webhook APIs
         for (const [method, endpoint] of Object.entries(api)) {   
-            this.register_api_endpoint(method, endpoint, permissions); // Defined in mod.base.js
+            this.register_api_endpoint(method, endpoint, permissions);    // Defined in mod.base.js
         }
         
     }
 
+
+    // Check if a user has any configured accounts
+
+    async has_accounts(uuid) {
+        var result = await this.stubs_by_uuid(uuid);
+        return result.length == 0 ? false : true;
+    }
 
     // Get account silently (no log output, used internally)
 
@@ -64,14 +74,16 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         }
         if (stub != undefined) query['subkey'] = stub;
         var result = await this.database.select('settings', query);
+        console.log(result)
         var stubs = [];
         if (this.mod.utils.is_array(result) && result.length > 0) {
             for (var i = 0; i < result.length; i++) {
                 var data = JSON.parse(result[i].value);
+                data['uuid'] = uuid;
                 stubs.push(data);
             }
         }      
-        return stubs;
+        return (stub !== undefined && stubs.length == 1) ? stubs[0] : stubs;
     }
 
     // Get all uuids and stubs
@@ -194,9 +206,9 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     }
 
 
-    // Create new account
+    // Add new account
 
-    async create(params) {
+    async add(params) {
 
         var schema = {
             stub: {        required: 'string', format: 'lowercase' },
@@ -215,28 +227,35 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             return this.mod.output.error('binance_req_type')
         }
 
-        var [stub, data] = this.create_params(params);
-        let testresult = await this.test(data);
+        if (!['deribit', 'binance', 'bitmex', 'binanceus'].includes(params.exchange)) {
+            params.testnet = false;     // Testnet not supported
+        }
+
+        if (!['ftx', 'ftxus'].includes(params.exchange)) {
+            delete params.subaccount;   // Subaccount not supported
+        }
+
+        var testparams = {
+            exchange: params.exchange + (params.hasOwnProperty('type') ? '_' + params.type : ''),
+            apikey: params.apikey,
+            secret: params.secret,
+            testnet: params.testnet
+        }
+        let testresult = await this.test(testparams);
         if (testresult) {
+            var [stub, data] = this.create_params(params);
             data['stub'] = stub;
             data = await this.mod.utils.remove_props(data, ['tenant','token']);
             data = await this.mod.utils.encrypt_values(data, ['apikey', 'secret']);
             if (await this.mod.settings.set('accounts', stub, data)) {
                 this.mod.output.success('account_create', stub);
-                this.mod.datasources.refresh('exchange:positions', {user: context.get('uuid'), stub: stub});
-                this.mod.datasources.refresh('exchange:balances', {user: context.get('uuid'), stub: stub});
+                this.mod.datasource.refresh('exchange:positions', {user: context.get('uuid'), stub: stub});
+                this.mod.datasource.refresh('exchange:balances', {user: context.get('uuid'), stub: stub});
                 return true;
             }
             this.mod.output.error('account_create', stub);
         }
         return false;
-    }
-
-
-    // Alias for create
-
-    async add(params) {
-        return await this.create(params);
     }
 
     // Update account
@@ -291,10 +310,9 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
 
     // Get account connection info
 
-    async ccxtparams(account) {
+    async format_params(account) {
 
         if (account.hasOwnProperty('uuid')) delete account.uuid;
-        const ccxtlib = require ('ccxt');
         if (!account.hasOwnProperty('parameters')) {
             var stubs = Object.getOwnPropertyNames(account);
             if (stubs.length == 1) {
@@ -309,19 +327,9 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             exchange: account.hasOwnProperty('exchange') ? account.exchange : null,
             description: account.hasOwnProperty('description') ? account.description : null,
             parameters: {
-                apiKey:     account.parameters.hasOwnProperty('apikey') ? await  this.mod.encryption.decrypt(account.parameters.apikey) : null,
+                apikey:     account.parameters.hasOwnProperty('apikey') ? await  this.mod.encryption.decrypt(account.parameters.apikey) : null,
                 secret:     account.parameters.hasOwnProperty('secret') ? await this.mod.encryption.decrypt(account.parameters.secret) : null,
-                urls:       {},
             },   
-        }
-        if (['ftx','ftxus'].includes(result.exchange)) {
-            result.parameters.hostname = result.exchange == 'ftx' ? 'ftx.com' : 'ftx.us';
-            if (subaccount != null) {
-                switch (result.exchange) {
-                    case 'ftx'      :   result.parameters.headers = { 'FTX-SUBACCOUNT': subaccount }; break;
-                    case 'ftxus'    :   result.parameters.headers = { 'FTXUS-SUBACCOUNT': subaccount }; break;
-                }
-            }
         }
         if (result.exchange == 'binance') {
             var type = (account.hasOwnProperty('type') ? account.type.replace('futures','future').replace('coinm','delivery') : 'future');
@@ -333,19 +341,6 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
                 };
             }
         }
-        const exchangeId = account.exchange.replace('ftxus','ftx');
-        const exchangeClass = ccxtlib[exchangeId];
-        const ccxtobj = new exchangeClass ();
-        const ccxturls = ccxtobj.urls;
-        result.parameters.urls = ccxturls;
-        if (testnet) {
-            if (ccxturls.hasOwnProperty('test')) {
-                const url = ccxturls.test;
-                result.parameters.urls.api = url
-            } else {
-                this.mod.output.translate('warning', 'testnet_not_avail', this.mod.utils.uc_first(result.exchange));
-            }
-        }
         return result;
     }
 
@@ -353,27 +348,37 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     // Test account
 
     async test(params) {
-        if (params.hasOwnProperty('stub')) {
+
+        if (params.stub != undefined) {
             var account = await this.getaccount(params.stub);
-        } else {
-            var account = params;
-        }
-        const ccxtlib = require ('ccxt');
-        var ccxtparams = await this.ccxtparams(account);
-        const accountParams = ccxtparams.parameters;
-        const exchangeId = account.exchange.replace('ftxus','ftx');
-        const exchangeClass = ccxtlib[exchangeId];
-        const ccxtobj = new exchangeClass (accountParams);
-        try {
-            let result = await ccxtobj.fetchBalance();
-        } catch (e) {
-            if (e.name == 'AuthenticationError') {
-                this.mod.output.error('account_test');
-                return false;
+            var newparams = {
+                exchange: account.exchange + (account.hasOwnProperty('type') ? '_' + account.type : ''),
+                apikey: account.parameters.apikey,
+                secret: account.parameters.secret,
+                testnet: String(account.parameters.testnet) == 'true' ? true : false
             }
-        } 
-        this.mod.output.success('account_test');
-        return true;
+            params = newparams
+        }
+
+        var schema = {
+            exchange:{ required: 'string', format: 'lowercase' },
+            apikey:  { required: 'string' },
+            secret:  { required: 'string' },
+            testnet: { optional: 'boolean', default: false }
+        }
+
+        if (!(params = this.mod.utils.validator(params, schema))) return false; 
+
+        var [exchange, apikey, secret, testnet] = this.mod.utils.extract_props(params, ['exchange', 'apikey', 'secret', 'testnet']);
+
+        var exchmodule = require('../exchanges/exchange.' + exchange.replace('_','.'))
+        var exchobj = new exchmodule();
+        var result = await exchobj.test(apikey, secret, testnet);
+        if (result == true) {
+            return this.mod.output.success('account_test');
+        } else {
+            return this.mod.output.error('account_test')
+        }
     }
 
 
@@ -382,8 +387,8 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
     async get_exchange_from_stub(stub) {
         var account = await this.getaccount(stub);
         if (account !== false) {
-            var ccxtparams = await this.ccxtparams(account);
-            return ccxtparams.exchange;
+            var params = await this.format_params(account);
+            return params.exchange;
         }
         return false;
     }
@@ -406,6 +411,39 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
             return false;
         }
         return cacheresult;
+    }
+
+    // Get Binance Futures Hedge Mode Setting
+
+    async get_hedge_mode(params) {
+        return {
+            enabled: await this.mod.exchange.hedge_mode_enabled(params.stub),
+            canchange: await this.mod.exchange.hedge_mode_canchange(params.stub),
+        }
+    }
+
+    // Enable Binance Futures Hedge Mode
+
+    async enable_hedge_mode(params) {
+        var result = await this.mod.exchange.execute(params.stub, 'enable_hedge_mode')
+        if (result == true) {
+            var uuid = context.get('uuid')
+            var stub = params.stub
+            this.mod.cache.set(['exchange:hedge_mode_enabled', uuid, stub].join(':'), true, 10)
+        }
+        return result;
+    }
+
+    // Enable Binance Futures Hedge Mode
+
+    async disable_hedge_mode(params) {
+        var result = await this.mod.exchange.execute(params.stub, 'disable_hedge_mode')
+        if (result == true) {
+            var uuid = context.get('uuid')
+            var stub = params.stub
+            this.mod.cache.set(['exchange:hedge_mode_enabled', uuid, stub].join(':'), false, 10)
+        }
+        return result;
     }
 
 }
