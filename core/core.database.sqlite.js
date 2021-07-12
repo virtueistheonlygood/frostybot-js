@@ -39,9 +39,11 @@ module.exports = class frostybot_database_sqlite_module extends frostybot_databa
             var statement = await this.db.prepare(sql);
             return await statement.all(values);
         } catch (e) {
+            /*
             console.log(e);
             console.log(sql);
             console.log(values);
+            */
             return false;
         }
     }
@@ -54,9 +56,11 @@ module.exports = class frostybot_database_sqlite_module extends frostybot_databa
             var statement = await this.db.prepare(sql);
             return await statement.run(values);
         } catch (e) {
+            /*
             console.log(e);
             console.log(sql);
             console.log(values);
+            */
             return false;
         }
     }

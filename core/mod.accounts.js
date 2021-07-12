@@ -74,7 +74,7 @@ module.exports = class frostybot_accounts_module extends frostybot_module {
         }
         if (stub != undefined) query['subkey'] = stub;
         var result = await this.database.select('settings', query);
-        console.log(result)
+        //console.log(result)
         var stubs = [];
         if (this.mod.utils.is_array(result) && result.length > 0) {
             for (var i = 0; i < result.length; i++) {

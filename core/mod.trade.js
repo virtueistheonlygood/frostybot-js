@@ -1725,18 +1725,24 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     // Stoploss Order
 
     async stoploss(params, side = null, nosubmit = false) {
-        return await this.tpsl_order('stoploss', params, side, nosubmit);
+        if (params.stoptrigger != undefined && (params.stopbase != undefined || params.stopquote != undefined || params.stopsize != undefined || params.stopusd != undefined))
+            return await this.create_and_submit_order('stoploss', params);
+        else
+            return await this.tpsl_order('stoploss', params, side, nosubmit);
     }
 
 
     // Takeprofit Order
 
     async takeprofit(params, side = null, nosubmit = false) {
+        if (params.profittrigger != undefined && (params.profitbase != undefined || params.profitquote != undefined || params.profitsize != undefined || params.profitusd != undefined))
+            return await this.create_and_submit_order('takeprofit', params);
+        else
         return await this.tpsl_order('takeprofit', params, side, nosubmit);
     }
 
 
-    // Crate Take Profit and Stoploss Orders
+    // Crate Take Profit and profitloss Orders
 
     async tpsl(params, side = null, nosubmit = false) {
         params['reduce'] = "true";
