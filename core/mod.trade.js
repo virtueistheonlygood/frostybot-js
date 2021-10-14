@@ -776,7 +776,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
     async layered_order_params_conditional(type, params) {
         params = this.utils.lower_props(params);
         
-        var [market, profitbase, profitquote, profitusd, profittrigger, profittag] = this.utils.extract_props(params, ['market', 'profitbase', 'profitquote', 'profitusd', 'profittrigger', 'profittag']);
+        var [market, profittrigger] = this.utils.extract_props(params, ['market', 'profitbase']);
 
         if (this.is_relative(profittrigger)) {
             var operator = this.get_operator(profittrigger);
@@ -791,10 +791,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         var [val1, val2, qty] = parts;
 
-        if (operator != undefined) {   // Convert relative prices into absolute prices
-            val1 = this.get_relative_price(market, operator + String(val1));
-            val2 = this.get_relative_price(market, operator + String(val2));
-        }
+        // if (operator != undefined) {   // Convert relative prices into absolute prices
+        val1 = this.get_relative_price(market, operator + String(val1));
+        val2 = this.get_relative_price(market, operator + String(val2));
+        // }
 
         var order_params = [];
         var minprice = Math.min(val1, val2);
@@ -802,12 +802,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         var variance = (maxprice - minprice) / (qty - 1);
         for (var i = 0; i < qty; i++) {
             var adv_params   = params;
-            adv_params.profitbase  = (profitbase != undefined ? profitbase / qty : undefined);
-            adv_params.profitquote = (profitquote != undefined ? profitquote / qty : undefined);
-            adv_params.profitusd   = (profitusd != undefined ? profitusd / qty : undefined);
             adv_params.profittrigger = this.round_price(market, minprice + (variance * i));
-            adv_params.profitprice = this.round_price(market, minprice + (variance * i));
-            adv_params.profittag   = profittag != undefined ? profittag + (qty > 1 ? '-' + (i + 1) : '') : undefined;
             adv_params['is_layered'] = true;
             var level_params = await this.order_params_conditional(type, adv_params);
             order_params.push(level_params);
