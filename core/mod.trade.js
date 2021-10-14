@@ -836,7 +836,8 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         
         if (this.price_is_layered(trigger)) {
-            return this.layered_order_params_conditional(type, params);
+            var tp_level = this.layered_order_params_conditional(type, params);
+            return tp_level;
         }
         
         // If takeprofit and profitsize is percentage, calculate size
@@ -1493,7 +1494,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (side == null && potential.side != null) {
                 side = (potential.side == 'buy' ? 'sell' : 'buy');
             }
-            if ((params.profittrigger.indexOf('%') != -1) && (!this.is_relative(params.profittrigger))  && (!this.price_is_layered(params.profittrigger))) {
+            if ((params.profittrigger.indexOf('%') != -1) && (!this.is_relative(params.profittrigger))) {
                 var operator = side == 'sell' ? '+' : '-';
                 params.profittrigger =  operator + params.profittrigger;
             }
