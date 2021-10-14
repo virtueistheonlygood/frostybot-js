@@ -795,6 +795,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             val1 = this.get_relative_price(market, operator + String(val1));
             val2 = this.get_relative_price(market, operator + String(val2));
         }
+        
+        if (market == undefined) {
+            market = this.get_market_price(params.stub, params.symbol, params.side);
+        }
 
         var order_params = [];
         var minprice = Math.min(val1, val2);
