@@ -795,9 +795,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             val1 = this.get_relative_price(market, operator + String(val1));
             val2 = this.get_relative_price(market, operator + String(val2));
         }
-        
+
+        // Get market info
         if (market == undefined) {
-            market = this.get_market_price(params.stub, params.symbol, params.side);
+            market = await this.exchange_execute(params.stub, 'get_market_by_id_or_symbol', params.symbol);
+            market = market.avg;
         }
 
         var order_params = [];
