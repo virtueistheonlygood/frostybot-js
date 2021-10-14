@@ -791,10 +791,10 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         var [val1, val2, qty] = parts;
 
-        // if (operator != undefined) {   // Convert relative prices into absolute prices
-        val1 = this.get_relative_price(market, operator + String(val1));
-        val2 = this.get_relative_price(market, operator + String(val2));
-        // }
+        if (operator != undefined) {   // Convert relative prices into absolute prices
+            val1 = this.get_relative_price(market, operator + String(val1));
+            val2 = this.get_relative_price(market, operator + String(val2));
+        }
 
         var order_params = [];
         var minprice = Math.min(val1, val2);
