@@ -771,6 +771,41 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
     }
 
+    // Layered order params conditional
+
+    async layered_order_params_conditional(type, params) {
+        params = this.utils.lower_props(params);
+        
+        var [market, profitbase, profitquote, profitusd, profittrigger, profittag] = this.utils.extract_props(params, ['market', 'profitbase', 'profitquote', 'profitusd', 'profittrigger', 'profittag']);
+
+        var parts = String(profittrigger).replace('+','').replace('-','').split(',',3);
+        if (parts.length == 2) {
+            parts.push(5);          // Default quantity of orders in a layered order;
+        }
+        var [val1, val2, qty] = parts;
+
+        val1 = this.get_relative_price(market, operator + String(val1));
+        val2 = this.get_relative_price(market, operator + String(val2));
+
+        var order_params = [];
+        var minprice = Math.min(val1, val2);
+        var maxprice = Math.max(val1, val2);
+        var variance = (maxprice - minprice) / (qty - 1);
+        for (var i = 0; i < qty; i++) {
+            var adv_params   = params;
+            adv_params.profitbase  = (profitbase != undefined ? profitbase / qty : undefined);
+            adv_params.profitquote = (profitquote != undefined ? profitquote / qty : undefined);
+            adv_params.profitusd   = (profitusd != undefined ? profitusd / qty : undefined);
+            adv_params.profittrigger = this.round_price(market, minprice + (variance * i));
+            adv_params.profitprice = this.round_price(market, minprice + (variance * i));
+            adv_params.profittag   = profittag != undefined ? profittag + (qty > 1 ? '-' + (i + 1) : '') : undefined;
+            adv_params['is_layered'] = true;
+            var level_params = await this.order_params_conditional(type, adv_params);
+            order_params.push(level_params);
+        }
+        return order_params;
+    }
+
     
     // Generate paramaters for conditional orders (stop loss or take profit)
     
@@ -779,21 +814,31 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         params = this.utils.lower_props(params);
 
         switch (type) {
-            case 'stoploss' :   var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'stoptrigger', 'triggertype', 'stopprice', 'reduce', 'tag']);
+            case 'stoploss' :   var [market, stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['market', 'stub', 'symbol', 'side', 'stoptrigger', 'triggertype', 'stopprice', 'reduce', 'tag']);
                                 var above = 'buy';
                                 var below = 'sell';
                                 //side = undefined;
                                 break;
-            case 'trailstop' :  var [stub, symbol, side, trigger, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'trailstop', 'reduce', 'tag']);
+            case 'trailstop' :  var [market, stub, symbol, side, trigger, reduce, tag] = this.utils.extract_props(params, ['market', 'stub', 'symbol', 'side', 'trailstop', 'reduce', 'tag']);
                                 var above = 'buy';
                                 var below = 'sell';
                                 side = undefined;
                                 break;
-            case 'takeprofit' : var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'profittrigger', 'triggertype', 'profitprice', 'reduce', 'tag']);
+            case 'takeprofit' : var [market, stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['market', 'stub', 'symbol', 'side', 'profittrigger', 'triggertype', 'profitprice', 'reduce', 'tag']);
                                 var above = 'sell';
                                 var below = 'buy';
                                 //side = undefined;
                                 break;
+        }
+
+        // Get market info
+        if (market == undefined) {
+            var market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol);
+        }
+
+        if (this.price_is_layered(trigger)) {
+            params.market = market;
+            return this.layered_order_params_conditional(type, params);
         }
         
         // If takeprofit and profitsize is percentage, calculate size
@@ -825,9 +870,6 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         this.param_map = await this.exchange_get(stub, 'param_map');
         this.order_sizing = await this.exchange_get(stub, 'order_sizing');
         this.stablecoins = await this.exchange_get(stub, 'stablecoins');
-
-        // Get market info
-        const market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol);
 
         //Check if stoptrigger or stopprice is relative and convert if necessary
         if (this.is_relative(trigger) && ['stoploss', 'takeprofit'].includes(type)) {
@@ -1436,7 +1478,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
             // Check if currently in a position and if profittrigger is relative and make it relative to the position entry price
             var market = await this.exchange_execute(stub, 'market', {symbol: symbol});
-            if (this.is_relative(params.profittrigger)) {
+            if ((this.is_relative(params.profittrigger)) && (!this.price_is_layered(params.profittrigger))) {
                 var operator = String(params.profittrigger).substr(0,1);
                 if (side == null) {
                     side = (operator == '+' ? 'sell' : 'buy');
@@ -1450,12 +1492,12 @@ module.exports = class frostybot_trade_module extends frostybot_module {
             if (side == null && potential.side != null) {
                 side = (potential.side == 'buy' ? 'sell' : 'buy');
             }
-            if ((params.profittrigger.indexOf('%') != -1) && (!this.is_relative(params.profittrigger))) {
+            if ((params.profittrigger.indexOf('%') != -1) && (!this.is_relative(params.profittrigger))  && (!this.price_is_layered(params.profittrigger))) {
                 var operator = side == 'sell' ? '+' : '-';
                 params.profittrigger =  operator + params.profittrigger;
             }
             if (potential != false) {
-                if (this.is_relative(params.profittrigger)) {
+                if (this.is_relative(params.profittrigger) && (!this.price_is_layered(params.profittrigger))) {
                     if (isNaN(potential.price)) {
                         var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
                         //if (isNaN(price)) {
