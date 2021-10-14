@@ -778,14 +778,23 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         
         var [market, profitbase, profitquote, profitusd, profittrigger, profittag] = this.utils.extract_props(params, ['market', 'profitbase', 'profitquote', 'profitusd', 'profittrigger', 'profittag']);
 
+        if (this.is_relative(profittrigger)) {
+            var operator = this.get_operator(profittrigger);
+            price = price.replace(operator, '');
+        } else {
+            var operator = undefined;
+        }
+
         var parts = String(profittrigger).replace('+','').replace('-','').split(',',3);
         if (parts.length == 2) {
             parts.push(5);          // Default quantity of orders in a layered order;
         }
         var [val1, val2, qty] = parts;
 
-        val1 = this.get_relative_price(market, operator + String(val1));
-        val2 = this.get_relative_price(market, operator + String(val2));
+        if (operator != undefined) {   // Convert relative prices into absolute prices
+            val1 = this.get_relative_price(market, operator + String(val1));
+            val2 = this.get_relative_price(market, operator + String(val2));
+        }
 
         var order_params = [];
         var minprice = Math.min(val1, val2);
