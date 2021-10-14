@@ -791,11 +791,6 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         var [val1, val2, qty] = parts;
 
-        // Get market info
-        if (market == undefined) {
-            market = await this.exchange_execute(params.stub, 'get_market_by_id_or_symbol', params.symbol);
-        }
-
         if (operator != undefined) {   // Convert relative prices into absolute prices
             val1 = this.get_relative_price(market, operator + String(val1));
             val2 = this.get_relative_price(market, operator + String(val2));
@@ -828,30 +823,24 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         params = this.utils.lower_props(params);
 
         switch (type) {
-            case 'stoploss' :   var [market, stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['market', 'stub', 'symbol', 'side', 'stoptrigger', 'triggertype', 'stopprice', 'reduce', 'tag']);
+            case 'stoploss' :   var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'stoptrigger', 'triggertype', 'stopprice', 'reduce', 'tag']);
                                 var above = 'buy';
                                 var below = 'sell';
                                 //side = undefined;
                                 break;
-            case 'trailstop' :  var [market, stub, symbol, side, trigger, reduce, tag] = this.utils.extract_props(params, ['market', 'stub', 'symbol', 'side', 'trailstop', 'reduce', 'tag']);
+            case 'trailstop' :  var [stub, symbol, side, trigger, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'trailstop', 'reduce', 'tag']);
                                 var above = 'buy';
                                 var below = 'sell';
                                 side = undefined;
                                 break;
-            case 'takeprofit' : var [market, stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['market', 'stub', 'symbol', 'side', 'profittrigger', 'triggertype', 'profitprice', 'reduce', 'tag']);
+            case 'takeprofit' : var [stub, symbol, side, trigger, triggertype, price, reduce, tag] = this.utils.extract_props(params, ['stub', 'symbol', 'side', 'profittrigger', 'triggertype', 'profitprice', 'reduce', 'tag']);
                                 var above = 'sell';
                                 var below = 'buy';
                                 //side = undefined;
                                 break;
         }
-
-        // Get market info
-        if (market == undefined) {
-            var market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol);
-        }
-
+        
         if (this.price_is_layered(trigger)) {
-            params.market = market;
             return this.layered_order_params_conditional(type, params);
         }
         
@@ -884,6 +873,9 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         this.param_map = await this.exchange_get(stub, 'param_map');
         this.order_sizing = await this.exchange_get(stub, 'order_sizing');
         this.stablecoins = await this.exchange_get(stub, 'stablecoins');
+
+        // Get market info
+        const market = await this.exchange_execute(stub, 'get_market_by_id_or_symbol',symbol);
 
         //Check if stoptrigger or stopprice is relative and convert if necessary
         if (this.is_relative(trigger) && ['stoploss', 'takeprofit'].includes(type)) {
