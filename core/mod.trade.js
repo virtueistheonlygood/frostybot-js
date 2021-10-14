@@ -780,7 +780,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
         if (this.is_relative(profittrigger)) {
             var operator = this.get_operator(profittrigger);
-            price = price.replace(operator, '');
+            profittrigger = profittrigger.replace(operator, '');
         } else {
             var operator = undefined;
         }
@@ -791,15 +791,14 @@ module.exports = class frostybot_trade_module extends frostybot_module {
         }
         var [val1, val2, qty] = parts;
 
-        if (operator != undefined) {   // Convert relative prices into absolute prices
-            val1 = this.get_relative_price(market, operator + String(val1));
-            val2 = this.get_relative_price(market, operator + String(val2));
-        }
-
         // Get market info
         if (market == undefined) {
             market = await this.exchange_execute(params.stub, 'get_market_by_id_or_symbol', params.symbol);
-            market = market.avg;
+        }
+
+        if (operator != undefined) {   // Convert relative prices into absolute prices
+            val1 = this.get_relative_price(market, operator + String(val1));
+            val2 = this.get_relative_price(market, operator + String(val2));
         }
 
         var order_params = [];
