@@ -31,15 +31,23 @@ module.exports = class frostybot_exchange_binance_futures extends frostybot_exch
     // Custom params
 
     async custom_params(type, order_params, custom_params) {
-        /*
         if (!order_params.hasOwnProperty('params')) {
             order_params.params = {};
         }
-        var position_mode = await this.ccxtobj.fapiPrivateGetPositionSideDual();
+        var position_mode = await this.ccxt('fapiPrivate_get_positionside_dual');
         var dual = position_mode.hasOwnProperty('dualSidePosition') ? position_mode.dualSidePosition : false;
-        */
+        var side = order_params.side
+        if (dual) {
+            if (side == 'sell') {
+                order_params.params.positionSide = (type == 'sell' || type == 'short') ? 'SHORT' : 'LONG';
+            }
+            if (side == 'buy') {
+                order_params.params.positionSide = (type == 'buy' || type == 'long') ? 'LONG' : 'SHORT';
+            }
+            delete order_params.params.reduceOnly;
+        }
         return order_params;
-    }    
+    }
 
     // Set leverage for symbol
 

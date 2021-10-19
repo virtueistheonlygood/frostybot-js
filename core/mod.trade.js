@@ -771,6 +771,50 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
     }
 
+    // Layered order params conditional
+
+    async layered_order_params_conditional(type, params) {
+        params = this.utils.lower_props(params);
+        
+        var [market, profitbase, profitquote, profitusd, profittrigger, profittag] = this.utils.extract_props(params, ['market', 'profitbase', 'profitquote', 'profitusd','profittrigger', 'profittag']);
+
+        if (this.is_relative(profittrigger)) {
+            var operator = this.get_operator(profittrigger);
+            profittrigger = profittrigger.replace(operator, '');
+        } else {
+            var operator = undefined;
+        }
+
+        var parts = String(profittrigger).replace('+','').replace('-','').split(',',3);
+        if (parts.length == 2) {
+            parts.push(5);          // Default quantity of orders in a layered order;
+        }
+        var [val1, val2, qty] = parts;
+
+        if (operator != undefined) {   // Convert relative prices into absolute prices
+            val1 = this.get_relative_price(market, operator + String(val1));
+            val2 = this.get_relative_price(market, operator + String(val2));
+        }
+
+        var order_params = [];
+        var minprice = Math.min(val1, val2);
+        var maxprice = Math.max(val1, val2);
+        var variance = (maxprice - minprice) / (qty - 1);
+        for (var i = 0; i < qty; i++) {
+            var adv_params   = params;
+            adv_params.profitbase  = (profitbase != undefined ? profitbase / qty : undefined);
+            adv_params.profitquote = (profitquote != undefined ? profitquote / qty : undefined);
+            adv_params.profitusd   = (profitusd != undefined ? profitusd / qty : undefined);
+            adv_params.profittrigger = this.round_price(market, minprice + (variance * i));
+            // adv_params.profitprice = this.round_price(market, minprice + (variance * i));
+            adv_params.profittag   = profittag != undefined ? profittag + (qty > 1 ? '-' + (i + 1) : '') : undefined;
+            adv_params['is_layered'] = true;
+            var level_params = await this.order_params_conditional(type, adv_params);
+            order_params.push(level_params);
+        }
+        return order_params;
+    }
+
     
     // Generate paramaters for conditional orders (stop loss or take profit)
     
@@ -794,6 +838,11 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                                 var below = 'buy';
                                 //side = undefined;
                                 break;
+        }
+        
+        if (this.price_is_layered(trigger)) {
+            var tp_level = this.layered_order_params_conditional(type, params);
+            return tp_level;
         }
         
         // If takeprofit and profitsize is percentage, calculate size
@@ -1436,7 +1485,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
 
             // Check if currently in a position and if profittrigger is relative and make it relative to the position entry price
             var market = await this.exchange_execute(stub, 'market', {symbol: symbol});
-            if (this.is_relative(params.profittrigger)) {
+            if ((this.is_relative(params.profittrigger)) && (!this.price_is_layered(params.profittrigger))) {
                 var operator = String(params.profittrigger).substr(0,1);
                 if (side == null) {
                     side = (operator == '+' ? 'sell' : 'buy');
@@ -1455,7 +1504,7 @@ module.exports = class frostybot_trade_module extends frostybot_module {
                 params.profittrigger =  operator + params.profittrigger;
             }
             if (potential != false) {
-                if (this.is_relative(params.profittrigger)) {
+                if (this.is_relative(params.profittrigger) && (!this.price_is_layered(params.profittrigger))) {
                     if (isNaN(potential.price)) {
                         var price = (parseFloat(market.bid) + parseFloat(market.ask)) / 2;
                         //if (isNaN(price)) {
