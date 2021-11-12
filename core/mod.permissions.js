@@ -8,8 +8,8 @@ var context = require('express-http-context');
 const default_perm = {
   'accounts:add': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -18,8 +18,8 @@ const default_perm = {
   },
   'accounts:delete': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -28,15 +28,15 @@ const default_perm = {
   },
   'accounts:get': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user'
+      'core','singleuser',
+      'multiuser','user'
     ],
     'provider': []
   },
   'accounts:test': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -61,8 +61,8 @@ const default_perm = {
   },
   'config:get': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -72,8 +72,8 @@ const default_perm = {
   },
   'config:set': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -331,8 +331,8 @@ const default_perm = {
   },
   'trade:balances': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -341,8 +341,8 @@ const default_perm = {
   },
   'trade:buy': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -351,8 +351,8 @@ const default_perm = {
   },
   'trade:cancel': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -361,8 +361,8 @@ const default_perm = {
   },
   'trade:cancelall': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -371,8 +371,8 @@ const default_perm = {
   },
   'trade:close': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -382,8 +382,8 @@ const default_perm = {
   },
   'trade:closeall': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -393,8 +393,8 @@ const default_perm = {
   },
   'trade:leverage': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -403,8 +403,8 @@ const default_perm = {
   },
   'trade:long': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -413,72 +413,72 @@ const default_perm = {
   },
   'trade:market': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:markets': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:order': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:order_history': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:orders': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:pnl': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:position': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:positions': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': []
   },
   'trade:sell': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -487,8 +487,8 @@ const default_perm = {
   },
   'trade:short': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -497,8 +497,8 @@ const default_perm = {
   },
   'trade:stoploss': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -507,8 +507,8 @@ const default_perm = {
   },
   'trade:takeprofit': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -517,8 +517,8 @@ const default_perm = {
   },
   'trade:tpsl': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -527,8 +527,8 @@ const default_perm = {
   },
   'trade:trailstop': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
@@ -577,8 +577,8 @@ const default_perm = {
   },
   'user:log': {
     'standard': [
-      'core,singleuser',
-      'multiuser,user',
+      'core','singleuser',
+      'multiuser','user',
       'token'
     ],
     'provider': [
